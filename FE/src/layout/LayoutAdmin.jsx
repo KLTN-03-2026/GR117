@@ -1,19 +1,20 @@
-import Header from '../Components/Header.jsx';
-import Footer from '../Components/Footer.jsx';
+import Header from "../Components/Header.jsx";
+import Footer from "../Components/Footer.jsx";
 import Sidebar from "../Components/Sidebar.jsx";
-import { Outlet } from 'react-router-dom';
+import { Outlet } from "react-router-dom";
+import { jwt } from "../utils/jwt.js";
 
 function LayoutAdmin() {
+  const user = jwt();
+  const showSidebar = user?.role === "provider";
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      {/* Main content với Sidebar + Outlet */}
       <main className="flex flex-1 w-full">
-        {/* Sidebar cố định bên trái */}
-        <Sidebar />
+        {showSidebar && <Sidebar />}
 
-        {/* Nội dung chiếm hết phần còn lại */}
         <div className="flex-1 bg-gray-50">
           <Outlet />
         </div>
