@@ -1,6 +1,10 @@
-import { useState, useEffect } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaLocationDot, FaRegEye, FaRegEyeSlash } from "../../assets/Icons/Icons";
+import {
+  FaLocationDot,
+  FaRegEye,
+  FaRegEyeSlash,
+} from "../../assets/Icons/Icons";
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -10,10 +14,12 @@ export default function Register() {
     password: "",
     confirmPass: "",
   });
+
   const [show, setShow] = useState({
     password: false,
     confirmPass: false,
   });
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -33,10 +39,9 @@ export default function Register() {
     setLoading(true);
     setMessage("");
     setError("");
-    setSubmitted(true); // bật cờ để useEffect chạy
+    setSubmitted(true);
   };
 
-  // useEffect để gọi API khi submitted = true
   useEffect(() => {
     if (!submitted) return;
 
@@ -59,6 +64,7 @@ export default function Register() {
             password: "",
             confirmPass: "",
           });
+
           setTimeout(() => {
             navigate("/signin");
           }, 1500);
@@ -76,120 +82,169 @@ export default function Register() {
     registerUser();
   }, [submitted, form, navigate]);
 
+  const inputClass =
+    "w-full rounded-2xl border border-[#ead9cb] bg-[#fffaf7] px-4 py-3.5 text-sm text-[#1a1a2e] outline-none transition focus:border-[#f97316] focus:ring-4 focus:ring-[#f97316]/10";
+
+  const eyeButtonClass =
+    "absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-[#f97316]";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-teal-50 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-5">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="w-14 h-14 bg-gradient-to-br from-sky-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white font-bold">
-              <span><FaLocationDot /></span>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fffaf5] px-4 py-8">
+      <div className="absolute inset-0">
+        <div className="absolute left-0 top-0 h-72 w-72 rounded-full bg-[#f97316]/12 blur-3xl" />
+        <div className="absolute right-0 top-24 h-80 w-80 rounded-full bg-[#f59e0b]/10 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[#1a1a2e]/8 blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-xl">
+        <div className="rounded-[32px] border border-[#f4dfcf] bg-white p-6 shadow-[0_24px_80px_rgba(26,26,46,0.12)] sm:p-8 lg:p-10">
+          <div className="mx-auto w-full max-w-md">
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f97316] to-[#f59e0b] text-white shadow-lg shadow-orange-200">
+                <FaLocationDot className="text-2xl" />
+              </div>
+
+              <h1 className="text-3xl font-bold text-[#1a1a2e]">
+                Tạo tài khoản
+              </h1>
+
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Gia nhập ViVu Travel và bắt đầu hành trình của bạn.
+              </p>
             </div>
-            <h1 className="text-gray-900 font-semibold text-l">Tạo tài khoản</h1>
-            <p className="text-gray-500 text-sm">Tham gia ViVu Travel ngay hôm nay</p>
+
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
+                  Họ và tên
+                </label>
+                <input
+                  type="text"
+                  value={form.fullName}
+                  onChange={(e) => handleChange("fullName", e.target.value)}
+                  placeholder="Nguyễn Văn A"
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    placeholder="email@gmail.com"
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
+                    Số điện thoại
+                  </label>
+                  <input
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    placeholder="09xxxxxxxx"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <input
+                    type={show.password ? "text" : "password"}
+                    value={form.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                    placeholder="Tối thiểu 6 ký tự"
+                    className={`${inputClass} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShow((prev) => ({
+                        ...prev,
+                        password: !prev.password,
+                      }))
+                    }
+                    className={eyeButtonClass}
+                  >
+                    {show.password ? <FaRegEyeSlash /> : <FaRegEye />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
+                  Xác nhận mật khẩu
+                </label>
+                <div className="relative">
+                  <input
+                    type={show.confirmPass ? "text" : "password"}
+                    value={form.confirmPass}
+                    onChange={(e) =>
+                      handleChange("confirmPass", e.target.value)
+                    }
+                    placeholder="Nhập lại mật khẩu"
+                    className={`${inputClass} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShow((prev) => ({
+                        ...prev,
+                        confirmPass: !prev.confirmPass,
+                      }))
+                    }
+                    className={eyeButtonClass}
+                  >
+                    {show.confirmPass ? <FaRegEyeSlash /> : <FaRegEye />}
+                  </button>
+                </div>
+              </div>
+
+              {(message || error) && (
+                <div className="space-y-2">
+                  {message && (
+                    <p className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-600">
+                      {message}
+                    </p>
+                  )}
+                  {error && (
+                    <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-2xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:shadow-orange-300 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading ? "Đang xử lý..." : "Tạo tài khoản"}
+              </button>
+            </form>
+
+            <div className="mt-6 rounded-2xl border border-[#f4e5d7] bg-[#fff7ef] px-4 py-3 text-center text-sm text-slate-500">
+              Đã có tài khoản?
+              <Link
+                to="/signin"
+                className="ml-2 font-semibold text-[#f97316] transition hover:text-[#ea580c]"
+              >
+                Đăng nhập
+              </Link>
+            </div>
           </div>
-
-          {/* Form */}
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Full Name */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block text-left">Họ và tên</label>
-              <input
-                type="text"
-                value={form.fullName}
-                onChange={(e) => handleChange("fullName", e.target.value)}
-                placeholder="Nguyễn Văn A"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition"
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block text-left">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => handleChange("email", e.target.value)}
-                placeholder="email@gmail.com"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition"
-              />
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block text-left">Số điện thoại</label>
-              <input
-                type="text"
-                value={form.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
-                placeholder="09xxxxxxxx"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition"
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block text-left">Mật khẩu</label>
-              <div className="relative">
-                <input
-                  type={show.password ? "text" : "password"}
-                  value={form.password}
-                  onChange={(e) => handleChange("password", e.target.value)}
-                  placeholder="Tối thiểu 6 ký tự"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShow((prev) => ({ ...prev, password: !prev.password }))}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {show.password ? <FaRegEyeSlash /> : <FaRegEye />}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block text-left">Xác nhận mật khẩu</label>
-              <div className="relative">
-                <input
-                  type={show.confirmPass ? "text" : "password"}
-                  value={form.confirmPass}
-                  onChange={(e) => handleChange("confirmPass", e.target.value)}
-                  placeholder="Nhập lại mật khẩu"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShow((prev) => ({ ...prev, confirmPass: !prev.confirmPass }))}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {show.confirmPass ? <FaRegEyeSlash /> : <FaRegEye />}
-                </button>
-              </div>
-            </div>
-
-            {/* Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-sky-500 to-teal-500 text-white rounded-xl font-semibold hover:from-sky-600 hover:to-teal-600 transition-all shadow-md mt-2"
-            >
-              {loading ? "Đang xử lý..." : "Tạo tài khoản"}
-            </button>
-
-            {/* Messages */}
-            {message && <p className="text-green-600 text-center mt-2">{message}</p>}
-            {error && <p className="text-red-600 text-center mt-2">{error}</p>}
-          </form>
-
-          {/* Footer */}
-          <p className="text-center py-5 text-sm text-gray-500">
-            Đã có tài khoản?
-            <Link to="/signin" className="text-sky-600 font-medium hover:text-sky-700 ml-1">
-              Đăng nhập
-            </Link>
-          </p>
         </div>
       </div>
     </div>
