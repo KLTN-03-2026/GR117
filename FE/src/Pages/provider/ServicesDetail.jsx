@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { IoIosArrowBack } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
-import ButtonBack from "../Components/ButtonBack";
+import ButtonBack from "../../Components/ButtonBack";
 
 const ServicesDetail = () => {
   const { id } = useParams();
@@ -17,7 +17,7 @@ const ServicesDetail = () => {
         const result = await res.json();
         setService(result);
       } catch (err) {
-        console.error("Lỗi fetch chi tiết:", err);
+        console.error("Lá»—i fetch chi tiáº¿t:", err);
       } finally {
         setLoading(false);
       }
@@ -25,8 +25,8 @@ const ServicesDetail = () => {
     fetchDetail();
   }, [id]);
 
-  if (loading) return <p className="p-6">Đang tải chi tiết...</p>;
-  if (!service) return <p className="p-6 text-red-600">Không tìm thấy dịch vụ</p>;
+  if (loading) return <p className="p-6">Äang táº£i chi tiáº¿t...</p>;
+  if (!service) return <p className="p-6 text-red-600">KhĂ´ng tĂ¬m tháº¥y dá»‹ch vá»¥</p>;
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] p-8">
@@ -35,7 +35,7 @@ const ServicesDetail = () => {
         {/* button back */}
         <div className="flex justify-between mb-5 ">
 
-        <h1 className="text-3xl text-center font-bold text-orange-600 "> Chi tiết dịch vụ</h1>
+        <h1 className="text-3xl text-center font-bold text-orange-600 "> Chi tiáº¿t dá»‹ch vá»¥</h1>
            <ButtonBack/>
           
         </div>
@@ -44,7 +44,7 @@ const ServicesDetail = () => {
           {/* Supplier */}
           <div>
             <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              Nhà cung cấp
+              NhĂ  cung cáº¥p
             </label>
             <input
               type="text"
@@ -54,11 +54,11 @@ const ServicesDetail = () => {
             />
           </div>
 
-          {/* Tên dịch vụ + Giá */}
+          {/* TĂªn dá»‹ch vá»¥ + GiĂ¡ */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Tên dịch vụ
+                TĂªn dá»‹ch vá»¥
               </label>
               <input
                 type="text"
@@ -69,22 +69,22 @@ const ServicesDetail = () => {
             </div>
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Giá
+                GiĂ¡
               </label>
               <input
                 type="text"
-                value={`${service.prices}đ`}
+                value={`${service.prices}Ä‘`}
                 readOnly
                 className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
               />
             </div>
           </div>
 
-          {/* Địa điểm + Danh mục */}
+          {/* Äá»‹a Ä‘iá»ƒm + Danh má»¥c */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Địa điểm
+                Äá»‹a Ä‘iá»ƒm
               </label>
               <input
                 type="text"
@@ -95,7 +95,7 @@ const ServicesDetail = () => {
             </div>
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Danh mục
+                Danh má»¥c
               </label>
               <input
                 type="text"
@@ -106,10 +106,10 @@ const ServicesDetail = () => {
             </div>
           </div>
 
-          {/* Mô tả */}
+          {/* MĂ´ táº£ */}
           <div>
             <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              Mô tả dịch vụ
+              MĂ´ táº£ dá»‹ch vá»¥
             </label>
             <textarea
               value={service.descriptionDetail}
@@ -119,10 +119,10 @@ const ServicesDetail = () => {
             />
           </div>
 
-          {/* Ảnh đại diện */}
+          {/* áº¢nh Ä‘áº¡i diá»‡n */}
           <div>
             <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              Ảnh dịch vụ 
+              áº¢nh dá»‹ch vá»¥ 
             </label>
              <img
             src={
