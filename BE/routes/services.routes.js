@@ -9,25 +9,13 @@ const upload = require('../middlewares/uploads.js');
 const CheckProvider = [verifyToken, authorizeRoles('provider')];
 const CheckPU = [verifyToken, authorizeRoles('provider', 'user')];
 
-// Upload nhiều field
 
-//CheckPU,
-// Routes
-router.post('/add',upload.single("image") , servicesController.addServices);
-router.post('/upload', upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ success: false, message: 'Không có file nào được upload' });
-  }
-  res.json({
-    success: true,
-    message: 'Upload thành công',
-    file: req.file
-  });
-});
+router.post('/add',CheckProvider, upload.single('image'), servicesController.addServices);
 
-router.put('/put/:id', CheckProvider, upload.single("image"), servicesController.putServices);
 
-router.patch('/patch/:id', CheckProvider,upload.single("image") , servicesController.patchServices);
+router.put('/put/:id', CheckProvider, upload.single('image'), servicesController.putServices);
+
+router.patch('/patch/:id', CheckProvider, upload.single('image'), servicesController.patchServices);
 
 router.get('/detail/:id',  servicesController.servicesDetail);
 

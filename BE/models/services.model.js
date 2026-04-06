@@ -13,7 +13,8 @@ const serviceSchema = new mongoose.Schema({
   },
 
   category: {
-    type: String
+    type: String,
+     default: []
   },
 
   location: {
@@ -40,21 +41,33 @@ const serviceSchema = new mongoose.Schema({
 
   totalReviews: {
     type: Number,
-    default: 0
+    default: 0,
   },
 
   isFavorite: {
     type: Boolean,
-    default: false
+    default: false,
   },
 
   supplierId: {
-    type: String
+    type: String,
+  },
+
+  descriptionDetail: {
+    type: String,
+  },
+
+  imageFile: {
+    type: String,
+  },
+
+  imageUrl: {
+    type: String,
   },
 
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   }
 
 });
