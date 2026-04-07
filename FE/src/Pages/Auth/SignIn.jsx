@@ -33,7 +33,6 @@ function SignIn() {
       });
 
       const accessToken = res.data?.accessToken;
-      const refreshToken = res.data?.refreshToken;
       const user = res.data?.user;
 
       if (accessToken) {

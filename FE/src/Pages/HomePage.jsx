@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaShield, FaHeadphones, FaHeart, FaClock, MdStar } from "../assets/Icons/Icons"
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa6";
+import ServicesCardHomePage from "../Components/ServicesCardHomePage.jsx";
 
 const comments = [
     {
@@ -27,6 +28,8 @@ const comments = [
 ];
 
 function HomePage() {
+    const [Service, setService] = useState([]);
+
     const [index, setIndex] = useState(0);
 
     const handlePrev = () => {
@@ -40,6 +43,20 @@ function HomePage() {
             prev === comments.length - 1 ? 0 : prev + 1
         );
     };
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await fetch("http://localhost:5000/api/services/all");
+                const data = await res.json();
+                setService(data.data || []);
+            } catch (error) {
+                console.log(error);
+            }
+        };
+
+        fetchData();
+    }, []);
+    console.log(Service[0]?.ServiceName)
 
     return (
         <main className="flex-1">
@@ -165,23 +182,9 @@ function HomePage() {
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto px-6">
-
-                        <div className="rounded-2xl overflow-hidden shadow hover:shadow-lg transition">
-                            <img
-                                src="https://images.unsplash.com/photo-1501785888041-af3ef285b470"
-                                alt=""
-                                className="h-48 w-full object-cover"
-                            />
-
-                            <div className="p-4 text-left">
-                                <h3 className="font-semibold">Du thuyền Hạ Long</h3>
-                                <p className="text-gray-500 text-sm">Quảng Ninh</p>
-                                <p className="text-[#f97316] font-semibold mt-2">4.990.000đ</p>
-                            </div>
-                        </div>
-
-                    </div>
+                    {Service.map((props, index) => {
+                        return ServicesCardHomePage(props, index);
+                    })}
                 </section>
 
                 <section className="relative py-24 overflow-hidden">
