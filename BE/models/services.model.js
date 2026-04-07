@@ -4,73 +4,88 @@ const { v4: uuidv4 } = require("uuid");
 const serviceSchema = new mongoose.Schema({
   _id: {
     type: String,
-    default: uuidv4
+    default: uuidv4,
   },
 
   ServiceName: {
     type: String,
-    required: true
+    required: true,
+  },
+
+  provider_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Account",
+    required: true,
+  },
+
+  provider_name: {
+    type: String,
+    required: true,
   },
 
   category: {
-    type: String,
-     default: []
+    type: [String],
+    default: [],
   },
 
   location: {
-    type: String
+    type: {
+      type: String,
+      enum: ["Point"],
+      default: "Point",
+    },
+    coordinates: {
+      type: [Number],
+      required: true,
+      validate: {
+        validator: (val) => val.length === 2,
+        message: "Coordinates must be [lng, lat]",
+      },
+    },
   },
 
-  region: {
-    type: String
-  },//khu vực 
+  region: String,
 
-  duration: {
-    type: Number // number of days
-  },
+  duration: Number,
 
   price: {
     type: Number,
-    required: true
+    required: true,
   },
 
-  averageRating: {
-    type: Number,
-    default: 0
-  },
+  highlight: String,
 
-  totalReviews: {
+  description: String,
+
+  imageFile: String,
+  imageUrl: String,
+
+  rating: {
     type: Number,
     default: 0,
   },
-
-  isFavorite: {
-    type: Boolean,
-    default: false,
+  review_count: {
+    type: Number,
+    default: 0,
   },
-
-  supplierId: {
-    type: String,
+  includes : {
+    type: [String],
+    default: [],
   },
-
-  descriptionDetail: {
+  status: {
     type: String,
-  },
-
-  imageFile: {
-    type: String,
-  },
-
-  imageUrl: {
-    type: String,
+    enum: ["active", "inactive"],
+    default: "active",
   },
 
   createdAt: {
     type: Date,
     default: Date.now,
-  }
-
+  },
 });
+
+// bắt buộc cho map
+serviceSchema.index({ location: "2dsphere" });
 
 const Services = mongoose.model("services", serviceSchema);
 

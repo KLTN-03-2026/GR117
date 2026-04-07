@@ -16,6 +16,7 @@ exports.addServices = async (req, res) => {
       totalReviews,
       descriptionDetail,
       imageUrl,
+      status
     } = req.body;
      
     //xử lí ảnh 
@@ -44,6 +45,7 @@ exports.addServices = async (req, res) => {
       descriptionDetail,
       imageFile,
       imageUrl: finalImageUrl,
+      status : status || 'active'
     });
 
     await newService.save();

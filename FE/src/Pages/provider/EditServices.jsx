@@ -35,7 +35,7 @@ const isValidImageUrl = (value) => {
 
   try {
     const url = new URL(value);
-    return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url.pathname);
+    return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url.pa  
   } catch {
     return false;
   }
