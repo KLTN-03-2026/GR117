@@ -1,5 +1,6 @@
 const accounts = require("../models/account.js");
-
+const bcrypt = require("bcrypt");
+//chờ duyệt
 module.exports.getPendingProviders = async (req, res) => {
   try {
     const providers = await accounts
@@ -16,7 +17,7 @@ module.exports.getPendingProviders = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
-
+//phê duyệt 
 module.exports.approveProvider = async (req, res) => {
   try {
     const { id } = req.params;
@@ -59,7 +60,7 @@ module.exports.approveProvider = async (req, res) => {
     });
   }
 };
-
+//từ chối lời đăng ký 
 module.exports.rejectProvider = async (req, res) => {
   try {
     const { id } = req.params;
@@ -96,3 +97,169 @@ module.exports.rejectProvider = async (req, res) => {
     });
   }
 };
+
+//láy tất cả tài khoản 
+module.exports.getAllAccounts = async (req, res) => {
+  try {
+    const accountsList = await accounts.find().select("fullName email phone role status createdAt").sort({ createdAt: -1 });
+    return res.status(200).json({
+      message: "Lấy danh sách tài khoản thành công",
+      data: accountsList,
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách tài khoản:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+//thay đổi vai trò 
+module.exports.changeUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const role = req.body.role;
+
+    if (!["user", "provider", "admin"].includes(role)) {
+      return res.status(400).json({
+        message: "Vai trò không hợp lệ",
+      });
+    }
+    const account = await accounts.findById(id);
+    if (!account) {
+      return res.status(404).json({
+        message: "Tài khoản không tồn tại",
+      });
+    }
+    account.role = role;
+    await account.save();
+    return res.status(200).json({
+      message: "Thay đổi vai trò thành công",
+      data: {
+        id: account._id,
+        fullName: account.fullName,
+        email: account.email,
+        role: account.role,
+      },
+    });
+  } catch (error) {
+    console.error("Lỗi khi thay đổi vai trò:", error);
+    return res.status(500).json({
+      message: "Lỗi hệ thống",
+    });
+  }
+}
+
+//xóa tài khoản 
+module.exports.deleteAccount = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const acconut = await accounts.findById(id);
+    if (!acconut) {
+      return res.status(404).json({
+        message: "Tài khoản không tồn tại"
+      })
+    }
+    const deletedAccount = await accounts.findByIdAndDelete(id);
+    return res.status(200).json({
+      message: "xóa tài khoản thành công",
+      data: deletedAccount,
+    })
+  } catch (erro) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+}
+module.exports.lockAccount = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const account = await accounts.findById(id);
+    if (!account) {
+      return res.status(404).json({
+        message: "Tài khoản không tồn tại"
+      })
+    }
+    account.status = "locked";
+    await account.save();
+    return res.status(200).json({
+      message: "Khóa tài khoản thành công",
+      data: {
+        id: account._id,
+        fullName: account.fullName,
+        email: account.email,
+        status: account.status,
+      },
+    })
+  } catch (error) {
+    console.error("Lỗi khi khóa tài khoản:", error);
+    return res.status(500).json({
+      message: "Lỗi hệ thống",
+    });
+  }
+}
+
+// mở khóa tài khoản 
+module.exports.unlockAccount = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const account = await accounts.findById(id);
+    if (!account) {
+      return res.status(404).json({
+        message: "Tài khoản không tồn tại"
+      })
+    }
+    account.status = "active";
+    await account.save();
+    return res.status(200).json({
+      message: "Mở khóa tài khoản thành công",
+      data: {
+        id: account._id,
+        fullName: account.fullName,
+        email: account.email,
+        status: account.status,
+      },
+    })
+  } catch (error) {
+    console.error("Lỗi khi mở khóa tài khoản:", error);
+    return res.status(500).json({
+      message: "Lỗi hệ thống",
+    });
+  }
+}
+
+//thêm tài khoản mới 
+module.exports.addAccount = async (req, res) => {
+
+  //request gửi lên các thông cần thiết 
+  const { fullName, email, phone, password, role } = req.body;
+
+  try {
+    const existAccount = await accounts.find({$or:[{ email }, { phone }, { fullName }]});
+    if(existAccount){
+      return res.status(400).json({ message: "Email, FullName,phone đã tồn tại" });
+    }
+
+    //check trường có thiếu hay ko
+    if (!fullName || !email || !phone || !password || !role) {
+    return res.status(400).json({ mesage: "thiếu thông tin bắt buộc " })
+    }
+    //check độ dài trường 
+    if(fullName.length <5 || email.length <5 || fullName.length > 12 || email.length > 30 || phone.length < 10 || phone.length > 15  ){
+      return res.status(400).json({ message: "FullName phải từ 5 đến 12 ký tự" });
+    }    
+    const hasdPassword = await bcrypt.hash(password,8);
+    
+    const newAccount = new accounts.create({
+      fullName,
+      email,
+      phone,
+      password :hasdPassword,
+      role 
+    })
+    await newAccount.save();
+    return res.status(201).json({
+      message: "Thêm tài khoản thành công",
+      data: newAccount,
+    });
+  } catch (error) {
+    console.error("Lỗi khi thêm tài khoản:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+}
