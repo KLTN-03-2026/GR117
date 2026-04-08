@@ -12,7 +12,7 @@ module.exports.register = async (req, res) => {
   try {
     const { fullName, email, phone, password, confirmPass, role } = req.body;
 
-    // 🔹 Validate
+    // Validate
     if (!fullName || !email || !phone || !password || !confirmPass || !role) {
       return res.status(400).json({ message: "Thiếu thông tin đăng ký" });
     }

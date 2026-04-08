@@ -1,10 +1,10 @@
 const express = require('express');
-const authRoutes = require('./auth.routes.js')
+const authRoute = require('./auth.routes.js')
 const servicesRoute = require("./services.routes.js")
-const adminRoute = require("../routes/admin.routes.js")
+const scheduleRoute = require("../routes/schedule.routes.js")
 module.exports = function(app) {
-    app.use('/api/auth', authRoutes);
+    app.use('/api/auth', authRoute);
     app.use('/api/services',servicesRoute);
-    app.use('/api/admin', adminRoute);
-
-}
+    app.use('/api/schedules', scheduleRoute);
+}   
+    

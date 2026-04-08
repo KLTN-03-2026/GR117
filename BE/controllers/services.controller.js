@@ -16,10 +16,10 @@ exports.addServices = async (req, res) => {
       highlight,
       description,
       imageUrl,
+      itinerary,
       serviceIncludes,
       status,
-    } = req.body;
-   
+    } = req.body;  
     //  Validate cơ bản
     if (!serviceName || !prices || !nameProvider  ) {
       return res.status(400).json({
@@ -45,6 +45,7 @@ exports.addServices = async (req, res) => {
       highlight,
       description, //
       serviceIncludes,
+      itinerary,
       imageFile,
       imageUrl: finalImageUrl,
       status: status || "active",
