@@ -36,10 +36,12 @@ module.exports.register = async (req, res) => {
       }
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    
+     
     const role = isProvider ? "provider" : "user";
     const status = isProvider ? "inactive" : "active";
-    if(user.status !== "active"){
+    
+
+    if(status !== "active"){
       return res.status(403).json({ message: "Tài khoản của bạn chưa được duyệt. Vui lòng liên hệ quản trị viên." });
     }
     const newAccount = await accounts.create({

@@ -8,7 +8,7 @@ const serviceSchema = new mongoose.Schema({
     default: uuidv4,
   },
   //tên dịch vụ 
-  ServiceName: {
+  serviceName: {
     type: String,
     required: true,
   },
@@ -16,7 +16,6 @@ const serviceSchema = new mongoose.Schema({
   provider_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Account",
-    required: true,
   },
    //danh mục 
   category: {
@@ -26,15 +25,11 @@ const serviceSchema = new mongoose.Schema({
   //địa điểm 
   location: {type: String,},
   //khu vực  ví dụ : trung tâm thành phố, ngoại ô , ven biển , núi 
-  region: {
-    type : String,
-      enum : ["Miền Bắc","Miền Trung ","Miền Nam "],
-        default : "Miền Trung ",
-  },
+  region: {type : String},
   //thời gian của tour
   duration:{ type: String,required: true},
   //giá 
-  price: {
+  prices: {
     type: Number,
     required: true,
   },
@@ -48,10 +43,13 @@ const serviceSchema = new mongoose.Schema({
   //ảnh 
   imageFile: String,
   imageUrl: String,
-  
+   
+
+  //lịch trình chi tiết của tour
+  itinerary: String,
   
   //bao gồm buổi ăn , phương tiện 
-  ServiceIncludes : {
+  serviceIncludes : {
     type: [String],
     default: [],
   },
