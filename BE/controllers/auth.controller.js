@@ -4,46 +4,48 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const Session = require("../models/session.js");
 
-const ACCESS_TOKEN_TTL = "30m"; // Thường dưới 15m khi deploy
-const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000; // 14 ngày
+const ACCESS_TOKEN_TTL = "30m";
+const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 
-
-
+// ================= REGISTER =================
 module.exports.register = async (req, res) => {
   try {
-    const { fullName, email, phone, password, confirmPass, isProvider  } = req.body;
+    const { fullName, email, phone, password, confirmPass, role } = req.body;
 
-    if (!fullName || !email || !phone || !password || !confirmPass) {
+    // 🔹 Validate
+    if (!fullName || !email || !phone || !password || !confirmPass || !role) {
       return res.status(400).json({ message: "Thiếu thông tin đăng ký" });
     }
-    // Kiểm tra email tồn tại chưa
+
+    if (!["user", "provider"].includes(role)) {
+      return res.status(400).json({ message: "Role không hợp lệ" });
+    }
+
+    if (password !== confirmPass) {
+      return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
+    }
+
     const duplicate = await accounts.findOne({
       $or: [{ email }, { phone }],
     });
+
     if (duplicate) {
-      return res
-        .status(409)
-        .json({ message: "Email hoặc số điện thoại đã tồn tại" });
+      return res.status(409).json({
+        message: "Email hoặc số điện thoại đã tồn tại",
+      });
     }
-    if (confirmPass !== password) {
-      return res.status(401).json({ message: "Mật khẩu xác nhận không khớp" });
-    }
-    
-    if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
-      }
+
+    // hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-     
-    const role = isProvider ? "provider" : "user";
-    const status = isProvider ? "inactive" : "active";
-    
+    // set status theo role
+    const status = role === "provider" ? "pending" : "active";
 
-    if(status !== "active"){
-      return res.status(403).json({ message: "Tài khoản của bạn chưa được duyệt. Vui lòng liên hệ quản trị viên." });
-    }
+    // create account
     const newAccount = await accounts.create({
       fullName,
       email,
@@ -54,20 +56,24 @@ module.exports.register = async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "Đăng ký thành công",
+      message:
+        role === "provider"
+          ? "Đăng ký đối tác thành công, chờ admin duyệt"
+          : "Đăng ký thành công",
       data: {
+        id: newAccount._id,
         fullName: newAccount.fullName,
         email: newAccount.email,
         phone: newAccount.phone,
         role: newAccount.role,
+        status: newAccount.status,
       },
     });
   } catch (error) {
-    console.error("Lỗi khi gọi signUp:", error);
+    console.error("Lỗi register:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
-
 module.exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -83,35 +89,52 @@ module.exports.login = async (req, res) => {
         .json({ message: "Email hoặc password không chính xác" });
     }
 
-    // Kiểm tra password
     const passwordCorrect = await bcrypt.compare(password, user.password);
     if (!passwordCorrect) {
       return res
         .status(401)
         .json({ message: "Email hoặc password không chính xác" });
     }
-    // Tạo accessToken với JWT
+
+    if (user.role === "provider" && user.status === "pending") {
+      return res.status(403).json({
+        message: "Tài khoản đối tác đang chờ admin duyệt",
+      });
+    }
+
+    if (user.role === "provider" && user.status === "rejected") {
+      return res.status(403).json({
+        message: "Tài khoản đối tác đã bị từ chối",
+      });
+    }
+
+    if (user.status !== "active") {
+      return res.status(403).json({
+        message: "Tài khoản của bạn đang bị khóa hoặc chưa được kích hoạt",
+      });
+    }
+
     const accessToken = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL },
     );
-    // Tạo refresh token ngẫu nhiên
+
     const refreshToken = crypto.randomBytes(64).toString("hex");
 
-    // Lưu session mới vào DB
     await Session.create({
       userId: user._id,
       refreshToken,
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL),
     });
-    // Trả refresh token về trong cookie
+
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
       maxAge: REFRESH_TOKEN_TTL,
     });
+
     return res.status(200).json({
       message: "Đăng nhập thành công",
       data: {
@@ -122,6 +145,7 @@ module.exports.login = async (req, res) => {
           fullName: user.fullName,
           phone: user.phone,
           role: user.role,
+          status: user.status,
         },
       },
     });
@@ -138,7 +162,6 @@ module.exports.refreshToken = async (req, res) => {
       return res.status(401).json({ message: "Token không tồn tại." });
     }
 
-    // Tìm session và "populate" luôn thông tin user để lấy role
     const session = await Session.findOne({ refreshToken: token });
     if (!session) {
       return res
@@ -147,19 +170,17 @@ module.exports.refreshToken = async (req, res) => {
     }
 
     if (session.expiresAt < new Date()) {
-      await Session.deleteOne({ _id: session._id }); // Tiện tay xóa luôn session hết hạn
+      await Session.deleteOne({ _id: session._id });
       return res.status(403).json({ message: "Token đã hết hạn." });
     }
 
-    // LẤY ROLE: Vì Access Token cần role, bạn nên tìm user
     const user = await accounts.findById(session.userId);
     if (!user) {
       return res.status(404).json({ message: "Người dùng không tồn tại" });
     }
 
-    // Tạo access token mới CÓ CHỨA ROLE
     const accessToken = jwt.sign(
-      { userId: user._id, role: user.role }, // Thêm role ở đây!
+      { userId: user._id, role: user.role },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL },
     );
@@ -174,11 +195,8 @@ module.exports.refreshToken = async (req, res) => {
 module.exports.logout = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
-    // console.log("Token nhận được từ Cookie:", token);
     if (token) {
-      // Xóa session trong DB
       await Session.deleteOne({ refreshToken: token });
-      // Xóa cookie ở trình duyệt
       res.clearCookie("refreshToken");
     }
     return res.sendStatus(204);

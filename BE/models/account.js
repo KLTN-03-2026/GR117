@@ -29,7 +29,7 @@ const accountSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "inactive"],
+      enum: ["active", "pending", "rejected", "inactive"],
       default: "active",
     },
     role: {

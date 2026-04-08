@@ -4,6 +4,7 @@ import LayoutAdmin from "../layout/LayoutAdmin.jsx";
 import HomePage from "../Pages/HomePage.jsx";
 import SignIn from "../Pages/SignIn.jsx";
 import Register from "../Pages/Register.jsx";
+import ForgotPassword from "../Pages/ForgotPassword.jsx";
 import DashboardProvider from "../Pages/provider/DashboardProvider.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import { jwt } from "../utils/jwt.js";
@@ -35,6 +36,10 @@ function Routers() {
         <Route
           path="/register"
           element={user ? <Navigate to="/" /> : <Register />}
+        />
+        <Route
+          path="/forgot-password"
+          element={user ? <Navigate to="/" /> : <ForgotPassword />}
         />
         <Route path="/destination" element={<Destination />} />
         <Route path="/about" element={<About />} />

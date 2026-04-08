@@ -1,46 +1,46 @@
-﻿import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  FaLocationDot,
-  FaRegEye,
-  FaRegEyeSlash,
-} from "../assets/Icons/Icons";
+import { useState } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { CiLogin, FaRegEye, FaRegEyeSlash } from "../assets/Icons/Icons";
 import CustomApi from "../../Server";
 
 function SignIn() {
   const navigate = useNavigate();
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
 
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState({ type: "", text: "" });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  if (currentUser) {
+    const role = String(currentUser.role || "").toLowerCase();
+    const path =
+      role === "admin"
+        ? "/admin/dashboard"
+        : role === "provider" || role === "partner"
+          ? "/provider/dashboard"
+          : "/user/dashboard";
+
+    return <Navigate to={path} replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setMessage({ type: "", text: "" });
 
     try {
       const res = await CustomApi({
         Url: "/api/auth/login",
         method: "POST",
-        data: form,
+        data: { email, password },
       });
 
       const accessToken = res.data?.accessToken;
       const user = res.data?.user;
+      const role = String(user?.role || "").toLowerCase();
 
       if (accessToken) {
         localStorage.setItem("accessToken", accessToken);
@@ -50,110 +50,166 @@ function SignIn() {
         localStorage.setItem("currentUser", JSON.stringify(user));
       }
 
-      navigate("/");
+      if (rememberMe) {
+        localStorage.setItem("rememberLoginEmail", email);
+      } else {
+        localStorage.removeItem("rememberLoginEmail");
+      }
+
+      setMessage({
+        type: "success",
+        text: res.message || "Đăng nhập thành công",
+      });
+
+      const nextPath =
+        role === "admin"
+          ? "/admin/dashboard"
+          : role === "provider" || role === "partner"
+            ? "/provider/dashboard"
+            : "/";
+
+      navigate(nextPath);
       window.location.reload();
     } catch (apiError) {
-      setError(apiError.message || "Đăng nhập thất bại");
+      setMessage({
+        type: "error",
+        text: apiError.message || "Đăng nhập thất bại",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const inputClass =
-    "w-full rounded-2xl border border-[#ead9cb] bg-[#fffaf7] px-4 py-3.5 text-sm text-[#1a1a2e] outline-none transition focus:border-[#f97316] focus:ring-4 focus:ring-[#f97316]/10";
-
-  const eyeButtonClass =
-    "absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-[#f97316]";
+  const fillDemoAccount = (demoEmail, demoPassword) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setMessage({ type: "", text: "" });
+  };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#fffaf5] px-4 py-8">
-      <div className="absolute inset-0">
-        <div className="absolute left-0 top-0 h-72 w-72 rounded-full bg-[#f97316]/12 blur-3xl" />
-        <div className="absolute right-0 top-20 h-80 w-80 rounded-full bg-[#f59e0b]/10 blur-3xl" />
-        <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[#1a1a2e]/8 blur-3xl" />
-      </div>
+    <div className="flex min-h-[80vh] items-center justify-center bg-[#f8fafc] px-4 py-16">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <h1
+            className="text-[#0f172a]"
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: 32,
+              fontWeight: 700,
+            }}
+          >
+            Đăng nhập
+          </h1>
+          <p className="mt-2 text-slate-500" style={{ fontSize: 15 }}>
+            Chào mừng bạn quay trở lại VIVU Travel
+          </p>
+        </div>
 
-      <div className="relative w-full max-w-xl">
-        <div className="rounded-[32px] border border-[#f4dfcf] bg-white p-6 shadow-[0_24px_80px_rgba(26,26,46,0.12)] sm:p-8 lg:p-10">
-          <div className="mx-auto w-full max-w-md">
-            <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f97316] to-[#f59e0b] text-white shadow-lg shadow-orange-200">
-                <FaLocationDot className="text-2xl" />
-              </div>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-2xl bg-white p-8 shadow-lg"
+        >
+          <div>
+            <label
+              className="mb-1.5 block text-slate-500"
+              style={{ fontSize: 13, fontWeight: 500 }}
+            >
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@example.com"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
+              style={{ fontSize: 14 }}
+            />
+          </div>
 
-              <h1 className="text-3xl font-bold text-[#1a1a2e]">
-                Chào mừng trở lại
-              </h1>
-
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Đăng nhập vào ViVu Travel để tiếp tục sử dụng dịch vụ.
-              </p>
-            </div>
-
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="email@gmail.com"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
-                  Mật khẩu
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="Nhập mật khẩu"
-                    className={`${inputClass} pr-11`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className={eyeButtonClass}
-                  >
-                    {showPassword ? <FaRegEyeSlash /> : <FaRegEye />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <p className="rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
-                  {error}
-                </p>
-              )}
-
+          <div>
+            <label
+              className="mb-1.5 block text-slate-500"
+              style={{ fontSize: 13, fontWeight: 500 }}
+            >
+              Mật khẩu
+            </label>
+            <div className="relative">
+              <input
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 pr-12 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
+                style={{ fontSize: 14 }}
+              />
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-2xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:shadow-orange-300 disabled:cursor-not-allowed disabled:opacity-70"
+                type="button"
+                onClick={() => setShowPw((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                aria-label={showPw ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               >
-                {loading ? "Đang xử lý..." : "Đăng nhập"}
+                {showPw ? <FaRegEyeSlash size={18} /> : <FaRegEye size={18} />}
               </button>
-            </form>
-
-            <div className="mt-6 rounded-2xl border border-[#f4e5d7] bg-[#fff7ef] px-4 py-3 text-center text-sm text-slate-500">
-              Chưa có tài khoản?
-              <Link
-                to="/register"
-                className="ml-2 font-semibold text-[#f97316] transition hover:text-[#ea580c]"
-              >
-                Đăng ký ngay
-              </Link>
             </div>
           </div>
-        </div>
+
+          <div className="flex items-center justify-between">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-slate-500" style={{ fontSize: 13 }}>
+                Ghi nhớ đăng nhập
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => navigate("/forgot-password")}
+              className="text-[#f97316] transition hover:underline"
+              style={{ fontSize: 13 }}
+            >
+              Quên mật khẩu?
+            </button>
+          </div>
+
+          {message.text && (
+            <p
+              className={`rounded-xl px-4 py-3 text-center text-sm ${
+                message.type === "success"
+                  ? "bg-green-50 text-green-600"
+                  : "bg-red-50 text-red-600"
+              }`}
+            >
+              {message.text}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-3.5 text-white transition-all hover:shadow-lg hover:shadow-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
+            style={{ fontSize: 15, fontWeight: 600 }}
+          >
+            <CiLogin size={20} />
+            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          </button>
+
+          <p className="text-center text-slate-500" style={{ fontSize: 14 }}>
+            Chưa có tài khoản?{" "}
+            <Link
+              to="/register"
+              className="text-[#f97316] transition hover:underline"
+              style={{ fontWeight: 600 }}
+            >
+              Đăng ký ngay
+            </Link>
+          </p>
+        </form>
       </div>
     </div>
   );
