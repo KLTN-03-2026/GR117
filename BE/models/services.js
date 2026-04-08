@@ -1,91 +1,77 @@
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
+const Account  = require("../models/account.js");
 
 const serviceSchema = new mongoose.Schema({
   _id: {
     type: String,
     default: uuidv4,
   },
-
+  //tên dịch vụ 
   ServiceName: {
     type: String,
     required: true,
   },
-
+  
   provider_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Account",
     required: true,
   },
-
-  provider_name: {
-    type: String,
-    required: true,
-  },
-
+   //danh mục 
   category: {
     type: [String],
     default: [],
   },
-
-  location: {
-    type: {
-      type: String,
-      enum: ["Point"],
-      default: "Point",
-    },
-    coordinates: {
-      type: [Number],
-      required: true,
-      validate: {
-        validator: (val) => val.length === 2,
-        message: "Coordinates must be [lng, lat]",
-      },
-    },
+  //địa điểm 
+  location: {type: String,},
+  //khu vực  ví dụ : trung tâm thành phố, ngoại ô , ven biển , núi 
+  region: {
+    type : String,
+      enum : ["Miền Bắc","Miền Trung ","Miền Nam "],
+        default : "Miền Trung ",
   },
-
-  region: String,
-
-  duration: Number,
-
+  //thời gian của tour
+  duration:{ type: String,required: true},
+  //giá 
   price: {
     type: Number,
     required: true,
   },
-
+   // điểm nổi bật của tour
   highlight: String,
-
+ 
+  //mô tả 
   description: String,
+  
 
+  //ảnh 
   imageFile: String,
   imageUrl: String,
-
-  rating: {
-    type: Number,
-    default: 0,
-  },
-  review_count: {
-    type: Number,
-    default: 0,
-  },
-  includes : {
+  
+  
+  //bao gồm buổi ăn , phương tiện 
+  ServiceIncludes : {
     type: [String],
     default: [],
   },
+  totalSlots : Number,
+  bookedSlots : Number,
+  remainingSlots : Number,
+   // trạng thái 
   status: {
     type: String,
     enum: ["active", "inactive"],
     default: "active",
   },
-
+  deleted : Boolean,
+  deletedAt : Date, 
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-// bắt buộc cho map
-serviceSchema.index({ location: "2dsphere" });
 
 const Services = mongoose.model("services", serviceSchema);
 

@@ -1,14 +1,17 @@
-const accounts = require("../models/account.models.js");
+const accounts = require("../models/account.js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const Session = require("../models/session.models.js");
+const Session = require("../models/session.js");
 
 const ACCESS_TOKEN_TTL = "30m"; // Thường dưới 15m khi deploy
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000; // 14 ngày
+
+
+
 module.exports.register = async (req, res) => {
   try {
-    const { fullName, email, phone, password, confirmPass, role } = req.body;
+    const { fullName, email, phone, password, confirmPass, isProvider  } = req.body;
 
     if (!fullName || !email || !phone || !password || !confirmPass) {
       return res.status(400).json({ message: "Thiếu thông tin đăng ký" });
@@ -25,19 +28,27 @@ module.exports.register = async (req, res) => {
     if (confirmPass !== password) {
       return res.status(401).json({ message: "Mật khẩu xác nhận không khớp" });
     }
-
+    
     if (password.length < 6) {
       return res
         .status(400)
         .json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
-    }
+      }
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    
+    const role = isProvider ? "provider" : "user";
+    const status = isProvider ? "inactive" : "active";
+    if(user.status !== "active"){
+      return res.status(403).json({ message: "Tài khoản của bạn chưa được duyệt. Vui lòng liên hệ quản trị viên." });
+    }
     const newAccount = await accounts.create({
       fullName,
       email,
       phone,
       password: hashedPassword,
       role,
+      status,
     });
 
     return res.status(201).json({

@@ -1,4 +1,4 @@
-const Services = require("../models/services.model.js");
+const Services = require("../models/services.js");
 const fs = require("fs");
 const path = require("path");
 // ================= ADD =================
@@ -18,7 +18,6 @@ exports.addServices = async (req, res) => {
       imageUrl,
       status
     } = req.body;
-     
     //xử lí ảnh 
     const imageFile = req.file ? req.file.filename : null;
     const finalImageUrl = req.file
