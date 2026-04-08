@@ -4,7 +4,7 @@ import {
   FaLocationDot,
   FaRegEye,
   FaRegEyeSlash,
-} from "../../assets/Icons/Icons";
+} from "../assets/Icons/Icons";
 
 export default function Register() {
   const [form, setForm] = useState({

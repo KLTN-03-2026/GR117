@@ -4,8 +4,8 @@ import {
   FaLocationDot,
   FaRegEye,
   FaRegEyeSlash,
-} from "../../assets/Icons/Icons";
-import CustomApi from "../../../Server";
+} from "../assets/Icons/Icons";
+import CustomApi from "../../Server";
 
 function SignIn() {
   const navigate = useNavigate();

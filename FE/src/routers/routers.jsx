@@ -2,8 +2,8 @@
 import PublicLayout from "../layout/PublicLayout.jsx";
 import LayoutAdmin from "../layout/LayoutAdmin.jsx";
 import HomePage from "../Pages/HomePage.jsx";
-import SignIn from "../Pages/Auth/SignIn.jsx";
-import Register from "../Pages/Auth/Register.jsx";
+import SignIn from "../Pages/SignIn.jsx";
+import Register from "../Pages/Register.jsx";
 import DashboardProvider from "../Pages/provider/DashboardProvider.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import { jwt } from "../utils/jwt.js";
