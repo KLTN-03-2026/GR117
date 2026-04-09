@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { FaShield, FaHeadphones, FaHeart, FaClock, MdStar } from "../assets/Icons/Icons"
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa6";
-
+import { IoLocationOutline } from "react-icons/io5";
+import { RiCalendarScheduleLine } from "react-icons/ri";
+import { RxPeople } from "react-icons/rx";
 const comments = [
     {
         star: 5,
@@ -76,10 +78,10 @@ function HomePage() {
 
                         {/* Search box */}
                         <div className="bg-white rounded-2xl mt-4 p-4 md:p-2 shadow-2xl max-w-4xl flex flex-col md:flex-row gap-3 md:gap-0 md:items-center">
-
                             {/* Keyword */}
                             <div className="flex-1 px-4 py-2 md:border-r border-gray-100">
-                                <p className="text-gray-400 text-sm">Địa điểm</p>
+                              <IoLocationOutline />
+                                <p className="text-gray-400 text-sm">Tìm kiếm </p>
                                 <input
                                     placeholder="Địa điểm, dịch vụ..."
                                     type="text"
@@ -89,6 +91,7 @@ function HomePage() {
 
                             {/* Date */}
                             <div className="flex-1 px-4 py-2 md:border-r border-gray-100">
+                                <RiCalendarScheduleLine />
                                 <p className="text-gray-400 text-sm">Ngày đi</p>
                                 <input
                                     type="date"
@@ -98,6 +101,7 @@ function HomePage() {
 
                             {/* Guests */}
                             <div className="flex-1 px-4 py-2 md:border-r border-gray-100">
+                                <RxPeople />
                                 <p className="text-gray-400 text-sm">Số người</p>
                                 <select className="w-full outline-none bg-transparent text-[#1a1a2e]">
                                     {[1, 2, 3, 4, 5, 6].map((item) => (
