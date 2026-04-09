@@ -1,21 +1,21 @@
 const mongoose = require("mongoose");
-const { v4: uuidv4 } = require("uuid");
+
 const Account  = require("../models/account.js");
 
 const serviceSchema = new mongoose.Schema({
-  _id: {
+  provider_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Account",
+        required: true,
+        index: true,
+      },
+  nameProvider: {
     type: String,
-    default: uuidv4,
   },
   //tên dịch vụ 
   serviceName: {
     type: String,
     required: true,
-  },
-  
-  provider_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Account",
   },
    //danh mục 
   category: {

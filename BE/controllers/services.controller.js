@@ -2,12 +2,12 @@ const Services = require("../models/services.js");
 const fs = require("fs");
 const path = require("path");
 const accounts = require("../models/account.js");
+
 // ================= ADD =================
 exports.addServices = async (req, res) => {
   try {
     const {
       serviceName,
-      nameProvider,
       category,
       location,
       region,
@@ -19,31 +19,45 @@ exports.addServices = async (req, res) => {
       itinerary,
       serviceIncludes,
       status,
-    } = req.body;  
-    //  Validate cơ bản
-    if (!serviceName || !prices || !nameProvider  ) {
+    } = req.body;
+
+    // Validate required fields
+    if (!serviceName || prices == null) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu thông tin bắt buộc "
+        message: "Thiếu thông tin bắt buộc",
       });
-    } 
+    }
 
-
-    // Xử lý ảnh
+    // Handle image upload or fallback to provided URL
     const imageFile = req.file ? req.file.filename : null;
     const finalImageUrl = req.file
       ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
       : imageUrl || null;
 
+    // Find provider account
+    const userId = req.user?.id;
+    const user = await accounts.findOne({ _id: userId, role: "provider" });
+
+    if (!user || user.role !== "provider") {
+      return res.status(403).json({
+        success: false,
+        message: "Chỉ đối tác mới được thêm dịch vụ",
+      });
+    }
+    // Create new service
     const newService = new Services({
       serviceName,
       category,
+      // userId: user._id,
+      provider_id: user._id,
+      nameProvider: user.fullName || user.email || "",
       location,
       region,
-      duration: duration ? Number(duration) : undefined,
+      duration: duration != null ? Number(duration) : undefined,
       prices: Number(prices),
       highlight,
-      description, //
+      description,
       serviceIncludes,
       itinerary,
       imageFile,
@@ -51,6 +65,7 @@ exports.addServices = async (req, res) => {
       status: status || "active",
     });
 
+    // Save to database
     await newService.save();
 
     return res.status(201).json({
@@ -66,7 +81,26 @@ exports.addServices = async (req, res) => {
     });
   }
 };
+//GET MY SERVICES
+exports.getMyServices = async (req, res) => {
+  try {
+    const providerId = req.user?.id;
 
+    const services = await Services.find({
+      $or: [{ provider_id: providerId }, { userId: providerId }],
+    });
+
+    return res.json({
+      success: true,
+      data: services,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
 // ================= PUT =================
 module.exports.putServices = async (req, res) => {
   try {
