@@ -1,12 +1,23 @@
 const Schedule = require("../models/schedule.js");
 const Service = require("../models/services.js");
 
+const ALLOWED_STATUS = ["open", "full", "closed"];
+
 module.exports.registerSchedule = async (req, res) => {
   try {
-    const { serviceId, departureDate, endDate, maxPeople, note } = req.body;
+    const {
+      serviceId,
+      service_id,
+      departureDate,
+      endDate,
+      maxPeople,
+      note,
+      status,
+    } = req.body;
+    const normalizedServiceId = String(serviceId || service_id || "").trim();
 
-    if (!serviceId || !departureDate || !endDate || !maxPeople) {
-      return res.status(400).json({ message: "Thiếu dữ liệu" });
+    if (!normalizedServiceId || !departureDate || !endDate || !maxPeople) {
+      return res.status(400).json({ message: "Thieu du lieu" });
     }
 
     const depDate = new Date(departureDate);
@@ -15,24 +26,27 @@ module.exports.registerSchedule = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // check quá khứ
     if (depDate < today || end < today) {
       return res.status(400).json({
-        message: "Không được chọn ngày trong quá khứ",
+        message: "Khong duoc chon ngay trong qua khu",
       });
     }
 
-    // check logic ngày
     if (end < depDate) {
       return res.status(400).json({
-        message: "Ngày về phải sau ngày đi",
+        message: "Ngay ve phai sau ngay di",
       });
     }
 
-    //dùng ID để tìm service
-    const service = await Service.findById(serviceId);
+    if (status && !ALLOWED_STATUS.includes(status)) {
+      return res.status(400).json({
+        message: "Trang thai khong hop le",
+      });
+    }
+
+    const service = await Service.findOne({ _id: normalizedServiceId });
     if (!service) {
-      return res.status(404).json({ message: "Service không tồn tại" });
+      return res.status(404).json({ message: "Service khong ton tai" });
     }
 
     const newSchedule = await Schedule.create({
@@ -40,16 +54,18 @@ module.exports.registerSchedule = async (req, res) => {
       departureDate: depDate,
       endDate: end,
       maxPeople: Number(maxPeople),
+      bookedSlots: 0,
+      status: status || "open",
       note,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Thêm lịch thành công",
+      message: "Them lich thanh cong",
       data: newSchedule,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -57,11 +73,66 @@ module.exports.getServiceList = async (req, res) => {
   try {
     const services = await Service.find().select("_id serviceName");
 
-    res.json({
+    return res.json({
       success: true,
       data: services,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports.getSchedulesByService = async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+    const schedules = await Schedule.find({ service_id: serviceId }).sort({
+      departureDate: 1,
+      createdAt: -1,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: schedules,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports.getAllSchedules = async (req, res) => {
+  try {
+    const schedules = await Schedule.find({}).sort({
+      departureDate: 1,
+      createdAt: -1,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: schedules,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports.deleteOne = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const service = await Schedule.findById(id);
+
+    // XÓA DB
+    await Schedule.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Xóa schedule thành công",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: error.message,
+    });
   }
 };

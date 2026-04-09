@@ -50,26 +50,37 @@ const EditServices = () => {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const imagePreview = useMemo(() => splitLines(formData.images)[0] || "", [formData.images]);
+  const imagePreview = useMemo(
+    () => splitLines(formData.images)[0] || "",
+    [formData.images],
+  );
 
   useEffect(() => {
     const fetchServiceDetail = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/services/detail/${id}`);
+        const res = await fetch(
+          `http://localhost:5000/api/services/detail/${id}`,
+        );
         const result = await res.json();
         const service = result?.data || result;
 
         setFormData({
-          name: service.serviceName || service.servicesName || service.ServiceName || "",
+          name:
+            service.serviceName ||
+            service.servicesName ||
+            service.ServiceName ||
+            "",
           description: service.description || service.descriptionDetail || "",
           price: String(service.prices ?? service.price ?? ""),
           location: service.location || service.destination || "",
-          category: Array.isArray(service.category) ? service.category[0] || "" : (service.category || ""),
+          category: Array.isArray(service.category)
+            ? service.category[0] || ""
+            : service.category || "",
           duration: service.duration || "",
           images: service.imageUrl || "",
           highlights: Array.isArray(service.highlights)
             ? service.highlights.join("\n")
-            : (service.highlight || ""),
+            : service.highlight || "",
           includes: Array.isArray(service.includes)
             ? service.includes.join("\n")
             : Array.isArray(service.serviceIncludes)
@@ -77,7 +88,7 @@ const EditServices = () => {
               : "",
           itinerary: Array.isArray(service.itinerary)
             ? service.itinerary.join("\n")
-            : (service.itinerary || ""),
+            : service.itinerary || "",
         });
       } catch (error) {
         setMessage("Khong tai duoc thong tin dich vu");
@@ -99,7 +110,8 @@ const EditServices = () => {
     if (!formData.description.trim()) return "Mo ta khong duoc de trong";
     if (!formData.location.trim()) return "Dia diem khong duoc de trong";
     if (!formData.category) return "Vui long chon category";
-    if (!formData.price || Number(formData.price) <= 0) return "Gia phai lon hon 0";
+    if (!formData.price || Number(formData.price) <= 0)
+      return "Gia phai lon hon 0";
 
     const imageList = splitLines(formData.images);
     const invalidImage = imageList.find((item) => !isValidImageUrl(item));
@@ -181,7 +193,9 @@ const EditServices = () => {
         </div>
 
         {message && (
-          <p className={`mb-5 text-sm font-medium ${success ? "text-green-600" : "text-red-600"}`}>
+          <p
+            className={`mb-5 text-sm font-medium ${success ? "text-green-600" : "text-red-600"}`}
+          >
             {message}
           </p>
         )}
@@ -360,4 +374,3 @@ const EditServices = () => {
 };
 
 export default EditServices;
-

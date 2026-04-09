@@ -6,6 +6,12 @@ const ScheduleSchema = new mongoose.Schema({
     type: String,
     default: uuidv4,
   },
+  service_id: {
+    type: String,
+    ref: "services",
+    required: true,
+    index: true,
+  },
   departureDate: {
     type: Date,
     required: true,
@@ -18,12 +24,18 @@ const ScheduleSchema = new mongoose.Schema({
 
   maxPeople: {
     type: Number,
+    required: true,
+  },
+
+  bookedSlots: {
+    type: Number,
+    default: 0,
   },
 
   status: {
     type: String,
-    enum: ["active", "inactive", "cancelled"],
-    default: "active",
+    enum: ["open", "full", "closed"],
+    default: "open",
   },
 
   note: {

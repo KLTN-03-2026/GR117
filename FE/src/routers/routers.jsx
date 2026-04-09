@@ -16,7 +16,7 @@ import ServicesDetail from "../Pages/provider/ServicesDetail.jsx";
 import Destination from "../Pages/Destination.jsx";
 import About from "../Pages/About.jsx";
 import Contact from "../Pages/Contact.jsx";
-import DepartureSchedule from "../Pages/provider/DepartureSchedule.jsx";
+import ProviderSchedule from "../Pages/provider/ProviderSchedule.jsx";
 import Booking from "../Pages/provider/Booking.jsx";
 import Revenue from "../Pages/provider/Revenue.jsx";
 import PartnerProfile from "../Pages/provider/PartnerProfile.jsx";
@@ -68,7 +68,7 @@ function Routers() {
           <Route path="AddServices" element={<AddServices />} />
           <Route path="EditServices/:id" element={<EditServices />} />
           <Route path="DetailServices/:id" element={<ServicesDetail />} />
-          <Route path="Schedule" element={<DepartureSchedule />} />
+          <Route path="Schedule" element={<ProviderSchedule />} />
           <Route path="Booking" element={<Booking />} />
           <Route path="Revenue" element={<Revenue />} />
           <Route path="PartnerProfile" element={<PartnerProfile />} />
