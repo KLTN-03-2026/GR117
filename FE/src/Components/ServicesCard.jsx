@@ -1,12 +1,15 @@
-﻿import React from "react";
-import { useNavigate } from "react-router-dom";
+import React from "react";
 import { CiStar } from "react-icons/ci";
 import { IoLocationOutline } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
-import { FaEyeSlash, FaEdit, FaEye } from "react-icons/fa";
+import { FaEdit } from "react-icons/fa";
 
 const getName = (service) =>
-  service.uiName || service.servicesName || service.ServiceName || "Chua co ten";
+  service.uiName ||
+  service.serviceName ||
+  service.servicesName ||
+  service.ServiceName ||
+  "Chua co ten";
 const getLocation = (service) =>
   service.uiLocation ||
   service.destination ||
@@ -24,19 +27,16 @@ const getStatus = (service) => service.uiStatus || service.status || "pending";
 const statusClass = {
   approval: "bg-green-100 text-green-600",
   pending: "bg-yellow-100 text-amber-600",
-  hidden: "bg-slate-100 text-slate-500",
   reject: "bg-red-100 text-red-500",
 };
 
 const statusLabel = {
   approval: "Hoat dong",
   pending: "Cho duyet",
-  hidden: "Da an",
   reject: "Tu choi",
 };
 
-const ServicesCard = ({ service, viewMode = "grid" }) => {
-  const navigate = useNavigate();
+const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
   const serviceName = getName(service);
   const destination = getLocation(service);
   const price = getPrice(service);
@@ -49,32 +49,23 @@ const ServicesCard = ({ service, viewMode = "grid" }) => {
       ? `http://localhost:5000/uploads/${service.imageFile}`
       : "https://via.placeholder.com/400x250?text=No+Image");
 
-  const goDetail = () => navigate(`/provider/DetailServices/${service._id}`);
-  const goEdit = (e) => {
-    e.stopPropagation();
-    navigate(`/provider/EditServices/${service._id}`);
-  };
+  const handleEdit = () => onEdit?.(service);
+  const handleDelete = () => onDelete?.(service);
 
   const actionButtons = (
     <div className="flex gap-3 text-gray-600">
-      <button type="button" onClick={goEdit}>
+      <button type="button" onClick={handleEdit}>
         <FaEdit className="cursor-pointer text-lg hover:text-blue-500" />
       </button>
-      {status === "hidden" ? (
-        <FaEye className="cursor-pointer text-lg hover:text-emerald-500" />
-      ) : (
-        <FaEyeSlash className="cursor-pointer text-lg hover:text-gray-800" />
-      )}
-      <MdDelete className="cursor-pointer text-lg hover:text-red-500" />
+      <button type="button" onClick={handleDelete}>
+        <MdDelete className="cursor-pointer text-lg hover:text-red-500" />
+      </button>
     </div>
   );
 
   if (viewMode === "list") {
     return (
-      <div
-        onClick={goDetail}
-        className="flex cursor-pointer overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg"
-      >
+      <div className="flex overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg">
         <img src={image} alt={serviceName} className="h-44 w-52 object-cover" />
 
         <div className="flex flex-1 items-center justify-between gap-4 p-5">
@@ -104,17 +95,7 @@ const ServicesCard = ({ service, viewMode = "grid" }) => {
             <p className="text-xl font-bold text-orange-500">
               {price > 0 ? `${price.toLocaleString("vi-VN")}d` : "Lien he"}
             </p>
-            <div className="mt-3 flex justify-end gap-2 text-gray-500">
-              <button type="button" onClick={goEdit}>
-                <FaEdit className="text-lg transition hover:text-blue-500" />
-              </button>
-              {status === "hidden" ? (
-                <FaEye className="text-lg transition hover:text-emerald-500" />
-              ) : (
-                <FaEyeSlash className="text-lg transition hover:text-slate-800" />
-              )}
-              <MdDelete className="text-lg transition hover:text-red-500" />
-            </div>
+            <div className="mt-3 flex justify-end gap-2 text-gray-500">{actionButtons}</div>
           </div>
         </div>
       </div>
@@ -122,10 +103,7 @@ const ServicesCard = ({ service, viewMode = "grid" }) => {
   }
 
   return (
-    <div
-      onClick={goDetail}
-      className="cursor-pointer overflow-hidden rounded-[30px] bg-white shadow transition hover:shadow-lg"
-    >
+    <div className="overflow-hidden rounded-[30px] bg-white shadow transition hover:shadow-lg">
       <div className="relative overflow-hidden">
         <img
           src={image}

@@ -1,23 +1,24 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { IoChevronDown, IoSearch } from "react-icons/io5";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { IoSearch } from "react-icons/io5";
 import ServicesCard from "../../Components/ServicesCard";
 
 const STATUS_META = {
-  all: "Tất cả",
-  approval: "Hoạt động",
-  pending: "Chờ duyệt",
-  hidden: "Đã ẩn",
-  reject: "Bị từ chối",
+  all: "Tat ca",
+  approval: "Hoat dong",
+  pending: "Cho duyet",
+  reject: "Bi tu choi",
 };
 
 const Services = () => {
+  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("Tất cả");
+  const [category, setCategory] = useState("T?t c?");
   const [status, setStatus] = useState("all");
+  const [actionLoadingId, setActionLoadingId] = useState("");
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -28,10 +29,10 @@ const Services = () => {
         if (res.ok && result.success) {
           setServices(Array.isArray(result.data) ? result.data : []);
         } else {
-          setError(result.message || "Không thể tải dịch vụ");
+          setError(result.message || "Khong the tai dich vu");
         }
       } catch (err) {
-        setError("Lỗi kết nối tới server");
+        setError("Loi ket noi toi server");
       } finally {
         setLoading(false);
       }
@@ -46,33 +47,22 @@ const Services = () => {
 
       return {
         ...service,
-        uiName: service.servicesName || service.ServiceName || "",
-        uiLocation:
-          service.destination || service.location || service.region || "",
-        uiCategory: service.category || "Khác",
+        uiName: service.serviceName || service.servicesName || service.ServiceName || "",
+        uiLocation: service.location || service.destination || service.region || "",
+        uiCategory: Array.isArray(service.category)
+          ? service.category[0] || "Khac"
+          : (service.category || "Khac"),
         uiStatus:
           rawStatus === "active"
             ? "approval"
             : rawStatus === "rejected"
               ? "reject"
-              : rawStatus === "inactive"
-                ? "hidden"
-                : ["approval", "pending", "hidden", "reject"].includes(
-                      rawStatus,
-                    )
-                  ? rawStatus
-                  : "pending",
+              : ["approval", "pending", "reject"].includes(rawStatus)
+                ? rawStatus
+                : "pending",
       };
     });
   }, [services]);
-
-  const categories = useMemo(
-    () => [
-      "Tất cả",
-      ...new Set(normalizedServices.map((item) => item.uiCategory)),
-    ],
-    [normalizedServices],
-  );
 
   const counts = useMemo(
     () =>
@@ -86,7 +76,6 @@ const Services = () => {
           all: 0,
           approval: 0,
           pending: 0,
-          hidden: 0,
           reject: 0,
         },
       ),
@@ -104,14 +93,56 @@ const Services = () => {
 
       return (
         matchSearch &&
-        (category === "Tất cả" || item.uiCategory === category) &&
+        (category === "T?t c?" || item.uiCategory === category) &&
         (status === "all" || item.uiStatus === status)
       );
     });
   }, [normalizedServices, search, category, status]);
 
-  if (loading) return <p className="p-6">Đang tải dịch vụ...</p>;
-  if (error) return <p className="p-6 text-red-600">{error}</p>;
+  const handleEdit = (service) => {
+    navigate(`/provider/EditServices/${service._id}`);
+  };
+
+  const handleDelete = async (service) => {
+    const confirmed = window.confirm(`Ban co chac muon xoa dich vu \"${service.uiName || service.serviceName || ""}\" khong?`);
+    if (!confirmed) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      setError("Ban chua dang nhap hoac token da het han");
+      return;
+    }
+
+    try {
+      setActionLoadingId(service._id);
+      setError("");
+
+      const res = await fetch(`http://localhost:5000/api/services/deleteOne/${service._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || result.success === false) {
+        setError(result.message || "Khong the xoa dich vu");
+        return;
+      }
+
+      setServices((prev) => prev.filter((item) => item._id !== service._id));
+    } catch (deleteError) {
+      setError(`Loi xoa dich vu: ${deleteError.message}`);
+    } finally {
+      setActionLoadingId("");
+    }
+  };
+
+  if (loading) return <p className="p-6">Dang tai dich vu...</p>;
+  if (error && services.length === 0) return <p className="p-6 text-red-600">{error}</p>;
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -121,7 +152,7 @@ const Services = () => {
             <div className="mb-0.5 flex items-center gap-2 text-[12px] text-gray-400">
               <span>Dashboard</span>
               <span>{">"}</span>
-              <span className="text-[#f97316]">Dịch vụ</span>
+              <span className="text-[#f97316]">Dich vu</span>
             </div>
 
             <h1
@@ -132,7 +163,7 @@ const Services = () => {
                 color: "rgb(26, 26, 46)",
               }}
             >
-              Quản lý dịch vụ
+              Quan ly dich vu
             </h1>
           </div>
         </div>
@@ -141,7 +172,7 @@ const Services = () => {
           to="/provider/AddServices"
           className="flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-orange-600"
         >
-          + Thêm dịch vụ
+          + Them dich vu
         </Link>
       </div>
 
@@ -153,26 +184,14 @@ const Services = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm theo tên, địa điểm..."
+              placeholder="Tim kiem theo ten, dia diem..."
               className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-[15px] outline-none transition placeholder:text-slate-300 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
             />
           </div>
-
-          {/* <div className="relative">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="h-14 min-w-[140px] appearance-none rounded-2xl border border-slate-200 bg-white px-4 pr-10 text-[15px] text-slate-700 outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
-            >
-              {categories.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-            <IoChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          </div> */}
         </div>
+
+        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        {actionLoadingId && <p className="text-sm text-slate-500">Dang xu ly dich vu...</p>}
 
         <div className="flex flex-wrap gap-3">
           {Object.entries(STATUS_META).map(([key, label]) => {
@@ -199,17 +218,22 @@ const Services = () => {
         {filteredServices.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredServices.map((service) => (
-              <ServicesCard key={service._id} service={service} />
+              <ServicesCard
+                key={service._id}
+                service={service}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         ) : (
           <div className="rounded-[28px] border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
-            Không có dịch vụ phù hợp.
+            Khong co dich vu phu hop.
           </div>
         )}
       </div>
     </div>
   );
 };
-export default Services;
 
+export default Services;

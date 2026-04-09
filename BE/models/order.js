@@ -1,11 +1,8 @@
 const mongoose = require("mongoose");
-const { v4: uuidv4 } = require("uuid");
+
 const Account = require("../models/account.js")
 const OrderSchema = new mongoose.Schema({
-  _id: {
-    type: String,
-    default: uuidv4
-  },
+
     userID: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Account",

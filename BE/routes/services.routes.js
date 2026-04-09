@@ -10,7 +10,7 @@ const CheckProvider = [verifyToken, authorizeRoles('provider')];
 const CheckPU = [verifyToken, authorizeRoles('provider', 'user')];
 
 
-router.post('/add',CheckProvider, upload.single('image'), servicesController.addServices);
+router.post('/add',verifyToken, authorizeRoles('provider'), upload.single('image'), servicesController.addServices);
 
 
 router.put('/put/:id', CheckProvider, upload.single('image'), servicesController.putServices);
@@ -24,5 +24,6 @@ router.get('/all', servicesController.allServices);
 router.delete('/deleteMany', CheckProvider, servicesController.deleteServices);
 
 router.delete('/deleteOne/:id', CheckProvider, servicesController.deleteOne);
-
+//lay du lieu service theo provider
+    router.get('/my-services', CheckProvider, servicesController.getMyServices);
 module.exports = router;

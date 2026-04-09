@@ -8,6 +8,9 @@ const accountSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    codeProvider: {
+      type: String,
+    },
     email: {
       type: String,
       required: true,
@@ -29,7 +32,7 @@ const accountSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "pending", "rejected", "inactive","locked"],
+      enum: ["active", "pending", "rejected", "inactive", "blocked"],
       default: "active",
     },
     role: {

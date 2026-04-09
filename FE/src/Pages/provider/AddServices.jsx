@@ -47,6 +47,12 @@ const AddServices = () => {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  let currentUser = null;
+  try {
+    currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  } catch {
+    currentUser = null;
+  }
 
   const imagePreview = useMemo(
     () => splitLines(formData.images)[0] || "",
@@ -90,17 +96,24 @@ const AddServices = () => {
     const itinerary = splitLines(formData.itinerary);
 
     const payload = {
-      ServiceName: formData.name.trim(),
-      descriptionDetail: formData.description.trim(),
-      price: Number(formData.price),
+      serviceName: formData.name.trim(),
+      nameProvider: currentUser?.fullName || currentUser?.email || "Provider",
+      description: formData.description.trim(),
+      prices: Number(formData.price),
       location: formData.location.trim(),
       category: formData.category,
       duration: formData.duration.trim(),
       imageUrl: imageList[0] || "",
-      highlights,
-      includes,
-      itinerary,
+      highlight: highlights.join("\n"),
+      serviceIncludes: includes,
+      itinerary: itinerary.join("\n"),
     };
+
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      setMessage("Ban chua dang nhap hoac token da het han");
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -109,6 +122,7 @@ const AddServices = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
