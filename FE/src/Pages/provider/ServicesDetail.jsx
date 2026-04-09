@@ -8,12 +8,14 @@ const ServicesDetail = () => {
   const { id } = useParams();
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
- const navigate = useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/services/detail/${id}`);
+        const res = await fetch(
+          `http://localhost:5000/api/services/detail/${id}`,
+        );
         const result = await res.json();
         setService(result);
       } catch (err) {
@@ -26,18 +28,19 @@ const ServicesDetail = () => {
   }, [id]);
 
   if (loading) return <p className="p-6">Äang táº£i chi tiáº¿t...</p>;
-  if (!service) return <p className="p-6 text-red-600">KhĂ´ng tĂ¬m tháº¥y dá»‹ch vá»¥</p>;
+  if (!service)
+    return <p className="p-6 text-red-600">KhĂ´ng tĂ¬m tháº¥y dá»‹ch vá»¥</p>;
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] p-8">
       <div className="w-full max-w-6xl mx-auto bg-white shadow-xl rounded-xl p-12 border border-orange-100">
-
         {/* button back */}
         <div className="flex justify-between mb-5 ">
-
-        <h1 className="text-3xl text-center font-bold text-orange-600 "> Chi tiáº¿t dá»‹ch vá»¥</h1>
-           <ButtonBack/>
-          
+          <h1 className="text-3xl text-center font-bold text-orange-600 ">
+            {" "}
+            Chi tiáº¿t dá»‹ch vá»¥
+          </h1>
+          <ButtonBack />
         </div>
 
         <form className="space-y-6">
@@ -48,7 +51,7 @@ const ServicesDetail = () => {
             </label>
             <input
               type="text"
-              value={service.supplier}
+              value={service.nameProvider || service.supplier || ""}
               readOnly
               className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
             />
@@ -62,7 +65,7 @@ const ServicesDetail = () => {
               </label>
               <input
                 type="text"
-                value={service.servicesName}
+                value={service.serviceName || service.servicesName || ""}
                 readOnly
                 className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
               />
@@ -88,7 +91,12 @@ const ServicesDetail = () => {
               </label>
               <input
                 type="text"
-                value={service.destination}
+                value={
+                  service.location ||
+                  service.destination ||
+                  service.region ||
+                  ""
+                }
                 readOnly
                 className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
               />
@@ -99,7 +107,11 @@ const ServicesDetail = () => {
               </label>
               <input
                 type="text"
-                value={service.category}
+                value={
+                  Array.isArray(service.category)
+                    ? service.category.join(", ")
+                    : service.category || ""
+                }
                 readOnly
                 className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
               />
@@ -112,7 +124,7 @@ const ServicesDetail = () => {
               MĂ´ táº£ dá»‹ch vá»¥
             </label>
             <textarea
-              value={service.descriptionDetail}
+              value={service.description || service.descriptionDetail || ""}
               readOnly
               rows="4"
               className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
@@ -122,18 +134,20 @@ const ServicesDetail = () => {
           {/* áº¢nh Ä‘áº¡i diá»‡n */}
           <div>
             <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              áº¢nh dá»‹ch vá»¥ 
+              áº¢nh dá»‹ch vá»¥
             </label>
-             <img
-            src={
-              service.imageUrl ||
-              (service.imageFile
-                ? `http://localhost:5000/uploads/${service.imageFile}`
-                : "https://via.placeholder.com/400x250?text=No+Image")
-            }
-            alt={service.servicesName}
-            className="w-full max-w-md h-64 object-cover rounded border-2 border-orange-200 mx-auto"
-          />
+            <img
+              src={
+                service.imageUrl ||
+                (service.imageFile
+                  ? `http://localhost:5000/uploads/${service.imageFile}`
+                  : "https://via.placeholder.com/400x250?text=No+Image")
+              }
+              alt={
+                service.serviceName || service.servicesName || "service-image"
+              }
+              className="w-full max-w-md h-64 object-cover rounded border-2 border-orange-200 mx-auto"
+            />
           </div>
         </form>
       </div>

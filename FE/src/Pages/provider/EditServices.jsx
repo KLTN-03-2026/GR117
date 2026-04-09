@@ -60,22 +60,24 @@ const EditServices = () => {
         const service = result?.data || result;
 
         setFormData({
-          name: service.servicesName || service.ServiceName || "",
-          description: service.descriptionDetail || "",
+          name: service.serviceName || service.servicesName || service.ServiceName || "",
+          description: service.description || service.descriptionDetail || "",
           price: String(service.prices ?? service.price ?? ""),
-          location: service.destination || service.location || "",
-          category: service.category || "",
+          location: service.location || service.destination || "",
+          category: Array.isArray(service.category) ? service.category[0] || "" : (service.category || ""),
           duration: service.duration || "",
           images: service.imageUrl || "",
           highlights: Array.isArray(service.highlights)
             ? service.highlights.join("\n")
-            : "",
+            : (service.highlight || ""),
           includes: Array.isArray(service.includes)
             ? service.includes.join("\n")
-            : "",
+            : Array.isArray(service.serviceIncludes)
+              ? service.serviceIncludes.join("\n")
+              : "",
           itinerary: Array.isArray(service.itinerary)
             ? service.itinerary.join("\n")
-            : "",
+            : (service.itinerary || ""),
         });
       } catch (error) {
         setMessage("Khong tai duoc thong tin dich vu");
@@ -118,25 +120,32 @@ const EditServices = () => {
     }
 
     const payload = {
-      servicesName: formData.name.trim(),
-      descriptionDetail: formData.description.trim(),
+      serviceName: formData.name.trim(),
+      description: formData.description.trim(),
       prices: Number(formData.price),
-      destination: formData.location.trim(),
+      location: formData.location.trim(),
       category: formData.category,
       duration: formData.duration.trim(),
       imageUrl: splitLines(formData.images)[0] || "",
-      highlights: splitLines(formData.highlights),
-      includes: splitLines(formData.includes),
-      itinerary: splitLines(formData.itinerary),
+      highlight: splitLines(formData.highlights).join("\n"),
+      serviceIncludes: splitLines(formData.includes),
+      itinerary: splitLines(formData.itinerary).join("\n"),
     };
+
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      setMessage("Ban chua dang nhap hoac token da het han");
+      return;
+    }
 
     try {
       setSubmitting(true);
 
-      const res = await fetch(`http://localhost:5000/api/services/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/services/put/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
