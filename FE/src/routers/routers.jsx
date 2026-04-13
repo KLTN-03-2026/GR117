@@ -1,51 +1,62 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+﻿import { Routes, Route, Navigate } from "react-router-dom";
 import PublicLayout from "../layout/PublicLayout.jsx";
 import LayoutAdmin from "../layout/LayoutAdmin.jsx";
-import HomePage from "../Pages/HomePage.jsx";
-import SignIn from "../Pages/Auth/SignIn.jsx";
-import Register from "../Pages/Auth/Register.jsx";
-import DashboardProvider from "../Pages/DashboardProvider.jsx";
+import HomePage from "../Pages/client/HomePage.jsx";
+import SignIn from "../Pages/auth/SignIn.jsx";
+import Register from "../Pages/auth/Register.jsx";
+import ForgotPassword from "../Pages/ForgotPassword.jsx";
+import DashboardProvider from "../Pages/provider/DashboardProvider.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import { jwt } from "../utils/jwt.js";
-import Services from "../Pages/Services.jsx";
-import Dashboard from "../Pages/Dashboard.jsx";
-import AddServices from "../Pages/AddServices.jsx";
-import ServicesDetail from "../Pages/ServicesDetail.jsx";
-import Destination from "../Pages/Destination.jsx";
-import About from "../Pages/About.jsx";
-import Contact from "../Pages/Contact.jsx";
-import DepartureSchedule from "../Pages/DepartureSchedule.jsx";
-import Booking from "../Pages/Booking.jsx";
-import Revenue from "../Pages/Revenue.jsx";
-import PartnerProfile from "../Pages/PartnerProfile.jsx";
+import Services from "../Pages/provider/Services.jsx";
+import DashboardAdmin from "../Pages/admin/DashboardAdmin.jsx";
+import AddServices from "../Pages/provider/AddServices.jsx";
+import EditServices from "../Pages/provider/EditServices.jsx";
+import ServicesDetail from "../Pages/provider/ServicesDetail.jsx";
+import Destination from "../Pages/client/Destination.jsx";
+import About from "../Pages/client/About.jsx";
+import Contact from "../Pages/client/Contact.jsx";
+import ProviderSchedule from "../Pages/provider/ProviderSchedule.jsx";
+import Booking from "../Pages/provider/Booking.jsx";
+import Revenue from "../Pages/provider/Revenue.jsx";
+import PartnerProfile from "../Pages/provider/PartnerProfile.jsx";
 
 function Routers() {
   const user = jwt();
-  const P = []
+
   return (
     <Routes>
-
       {/* PUBLIC */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/signin" element={user ? <Navigate to="/" /> : <SignIn />} />
-        <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
+        <Route
+          path="/signin"
+          element={user ? <Navigate to="/" /> : <SignIn />}
+        />
+        <Route
+          path="/register"
+          element={user ? <Navigate to="/" /> : <Register />}
+        />
+        <Route
+          path="/forgot-password"
+          element={user ? <Navigate to="/" /> : <ForgotPassword />}
+        />
+        <Route path="/destination" element={<Destination />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
       </Route>
-      
+
       {/* USER */}
       <Route element={<ProtectedRoute roles={["user"]} />}>
         <Route path="/user" element={<PublicLayout />}>
           <Route path="dashboard" element={<div>User Dashboard</div>} />
-          <Route path="Destination" element={<Destination/>} />
-          <Route path="About" element={<About/>} />
-          <Route path="Contact" element={<Contact/>} /> 
         </Route>
       </Route>
-     
+
       {/* ADMIN */}
       <Route element={<ProtectedRoute roles={["admin"]} />}>
         <Route path="/admin" element={<LayoutAdmin />}>
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<DashboardAdmin />} />
         </Route>
       </Route>
 
@@ -53,14 +64,14 @@ function Routers() {
       <Route element={<ProtectedRoute roles={["provider"]} />}>
         <Route path="/provider" element={<LayoutAdmin />}>
           <Route path="dashboard" element={<DashboardProvider />} />
-          {/* <Route path="/DBdeatils" element={<Dashboard/>} /> */}
-          <Route path="Services" element={<Services/>}  />
-          <Route path="AddServices" element={<AddServices/>}  />
-          <Route path="DetailServices/:id" element={<ServicesDetail/>}  />
-          <Route path="Schedule" element={<DepartureSchedule/>}  />
-          <Route path="Booking" element={<Booking/>}  />
-          <Route path="Revenue" element={<Revenue/>}  />
-          <Route path="PartnerProfile" element={<PartnerProfile/>}  />
+          <Route path="Services" element={<Services />} />
+          <Route path="AddServices" element={<AddServices />} />
+          <Route path="EditServices/:id" element={<EditServices />} />
+          <Route path="DetailServices/:id" element={<ServicesDetail />} />
+          <Route path="Schedule" element={<ProviderSchedule />} />
+          <Route path="Booking" element={<Booking />} />
+          <Route path="Revenue" element={<Revenue />} />
+          <Route path="PartnerProfile" element={<PartnerProfile />} />
         </Route>
       </Route>
     </Routes>
@@ -68,3 +79,4 @@ function Routers() {
 }
 
 export default Routers;
+

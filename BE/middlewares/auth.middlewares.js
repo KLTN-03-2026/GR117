@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const accounts = require("../models/account.models.js");
+const accounts = require("../models/account.js");
 
 const verifyToken = function (req, res, next) {
   try {
@@ -67,8 +67,7 @@ const authorizeRoles = (...roles) => {
     } catch (error) {
       console.error("Lỗi khi xác minh Role trong roleMiddleware:", error);
       return res.status(500).json({ message: "Lỗi hệ thống" });
-    }
-  };
+    }};
 };
 module.exports = {
   verifyToken,

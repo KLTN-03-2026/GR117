@@ -9,8 +9,8 @@ const ButtonBack = () => {
         onClick={() => navigate(-1)}
         className="flex items-center gap-1 text-xl"
       >
-        <IoIosArrowBack className="text-black" />{" "}
-        <p className="font-bold text-black "> BACK</p>{" "}
+        <IoIosArrowBack className="text-black-600" />{" "}
+        <p className="font-bold text-black-600"> Back</p>{" "}
       </button>
     </div>
   );
