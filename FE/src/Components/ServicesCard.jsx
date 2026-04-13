@@ -1,163 +1,172 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { CiStar, CiClock2 } from "react-icons/ci";
+import { useNavigate } from "react-router-dom"; // ✅ thêm
+import { CiStar } from "react-icons/ci";
 import { IoLocationOutline } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
-import { FaEyeSlash, FaEdit, FaHeart, FaFire, FaStar } from "react-icons/fa";
-import { jwt } from "../utils/jwt";
+import { FaEdit } from "react-icons/fa";
 
-const ServicesCard = ({ service }) => {
-  const user = jwt();
+const getName = (service) =>
+  service.uiName ||
+  service.serviceName ||
+  service.servicesName ||
+  service.ServiceName ||
+  "Chưa có tên ";
+const getLocation = (service) =>
+  service.uiLocation ||
+  service.destination ||
+  service.location ||
+  service.region ||
+  "Chưa cập nhật";
+const getPrice = (service) =>
+  Number(service.uiPrice ?? service.prices ?? service.price ?? 0);
+const getRating = (service) =>
+  Number(service.rating ?? service.averageRating ?? 0);
+const getReviewCount = (service) =>
+  Number(service.total_review ?? service.totalReviews ?? 0);
+const getStatus = (service) => service.uiStatus || service.status || "pending";
 
-  console.log(user?.role);
+const statusClass = {
+  approval: "bg-green-100 text-green-600",
+  pending: "bg-yellow-100 text-amber-600",
+  reject: "bg-red-100 text-red-500",
+};
 
-  if (user.role === "user") {
+const statusLabel = {
+  approval: "Hoạt động",
+  pending: "Chờ duyệt",
+  reject: "Từ chối",
+};
+
+const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
+  const navigate = useNavigate(); // ✅ thêm
+
+  const serviceName = getName(service);
+  const destination = getLocation(service);
+  const price = getPrice(service);
+  const rating = getRating(service);
+  const totalReview = getReviewCount(service);
+  const status = getStatus(service);
+  const image =
+    service.imageUrl ||
+    (service.imageFile
+      ? `http://localhost:5000/uploads/${service.imageFile}`
+      : "https://via.placeholder.com/400x250?text=No+Image");
+
+  // ✅ click vào card
+  const handleClick = () => {
+    navigate(`/provider/DetailServices/${service._id}`);
+  };
+
+  const handleEdit = (e) => {
+    e.stopPropagation(); // ✅ chặn click lan
+    onEdit?.(service);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation(); // ✅ chặn click lan
+    onDelete?.(service);
+  };
+
+  const actionButtons = (
+    <div className="flex gap-3 text-gray-600">
+      <button type="button" onClick={handleEdit}>
+        <FaEdit className="cursor-pointer text-lg hover:text-blue-500" />
+      </button>
+      <button type="button" onClick={handleDelete}>
+        <MdDelete className="cursor-pointer text-lg hover:text-red-500" />
+      </button>
+    </div>
+  );
+
+  if (viewMode === "list") {
     return (
-      <div>
-        <Link
-          to={`/services/${service._id}`}
-          className="block bg-white rounded-2xl border border-gray-100 shadow-sm
-        hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden"
-        >
-          <div className="relative h-52 overflow-hidden">
-            <img
-              src={service.imageUrl}
-              alt=""
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-            />
+      <div
+        onClick={handleClick} // ✅ thêm
+        className="flex cursor-pointer overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg"
+      >
+        <img src={image} alt={serviceName} className="h-44 w-52 object-cover" />
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
-            {/* ❤️ Heart */}
-            <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center hover:bg-white transition z-10">
-              <FaHeart className="text-gray-500" />
-            </button>
-
-            {/* Category */}
-            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white bg-sky-500">
-              {service.category}
+        <div className="flex flex-1 items-center justify-between gap-4 p-5">
+          <div className="min-w-0 flex-1">
+            <span
+              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${statusClass[status] || statusClass.pending}`}
+            >
+              {statusLabel[status] || status}
             </span>
-
-            {/* Duration */}
-            <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-[11px]">
-              <CiClock2 />
-              {service?.duration || "Chưa có"}
-            </div>
-
-            {/* Hot */}
-            <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-[#f97316] text-white px-2.5 py-1 rounded-full text-[11px] font-semibold">
-              <FaFire />
-              Hot
-            </div>
-          </div>
-
-          <div className="p-4">
-            <h3 className="text-[15px] font-semibold text-gray-900 line-clamp-1 mb-1 group-hover:text-[#f97316] transition">
-              {service?.ServiceName}
+            <h3 className="mt-3 line-clamp-1 text-lg font-semibold text-slate-800">
+              {serviceName}
             </h3>
-
-            {/* Location */}
-            <div className="flex items-center gap-1 text-gray-400 text-[12px] mb-2">
-              <IoLocationOutline />
-              {service?.location}
-            </div>
-
-            {/* Rating */}
-            <div className="flex items-center gap-1 text-yellow-500 text-sm">
-              <FaStar />
-              {service?.rating || 0}
-              <span className="text-gray-400">
-                ({service?.total_review || 0})
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+              <span className="flex items-center gap-1">
+                <IoLocationOutline />
+                {destination}
+              </span>
+              <span>{service.category || "Khac"}</span>
+              <span className="flex items-center gap-1">
+                <CiStar className="text-base text-yellow-400" />
+                {rating} ({totalReview})
               </span>
             </div>
-
-            <div className="border-t border-gray-50 my-3" />
-
-            {/* Price */}
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] text-gray-400">Từ</div>
-                <div className="text-[18px] font-bold text-[#f97316]">
-                  {service?.prices
-                    ? `${Number(service.prices).toLocaleString("vi-VN")}đ`
-                    : "Liên hệ"}
-                </div>
-                <div className="text-[10px] text-gray-400">/ người</div>
-              </div>
-
-              {/* Button */}
-              <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white text-[12px] font-semibold group-hover:shadow-lg group-hover:shadow-orange-200 transition-all">
-                Đặt ngay
-              </div>
-            </div>
           </div>
-        </Link>
-      </div>
-    )
-  }
-  if (user.role === "provider") {
-    return (
-      <Link
-        to={`/provider/DetailServices/${service._id}`}
-        className="bg-white rounded-[30px] shadow hover:shadow-lg  h-[400px] transition overflow-hidden block"
-      >
-        {/* Hình ảnh */}
-        <div className="relative overflow-hidden ">
-          <img
-            src={
-              service.imageUrl ||
-              (service.imageFile
-                ? `http://localhost:5000/uploads/${service.imageFile}`
-                : "https://via.placeholder.com/400x250?text=No+Image")
-            }
-            alt={service.servicesName}
-            className="w-full h-60 object-cover transform transition duration-300 hover:scale-105"
-          />
-          <span
-            className={`absolute top-3 left-3 text-[14px] font-medium px-2.5 py-1 rounded-full ${service.status === "pending"
-              ? "bg-yellow-100 text-amber-600"
-              : "bg-green-100 text-green-600"
-              }`}
-          >
-            {service.status}
-          </span>
-          <span className="flex items-center gap-1 absolute top-2 right-2 bg-white/80 px-2 py-1 rounded">
-            <CiStar className="text-2xl text-yellow-400 drop-shadow-sm" />
-            <span className="text-sm font-semibold text-gray-700">
-              {service.rating} ({service.total_review})
-            </span>
-          </span>
-        </div>
 
-        {/* Nội dung */}
-        <div className="p-4 space-y-2">
-          <h2 className="text-[14px] text-left font-semibold text-gray-800 line-clamp-1 mb-1">
-            {service.servicesName}
-          </h2>
-          <div className="flex items-center gap-1 text-gray-400 text-[12px] mb-3">
-            <IoLocationOutline />
-            <p className="text-sm text-left text-gray-500 pb-1 pt-1">
-              {service.destination}
+          <div className="shrink-0 text-right">
+            <p className="text-xl font-bold text-orange-500">
+              {price > 0 ? `${price.toLocaleString("vi-VN")}d` : "Lien he"}
             </p>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-[15px] font-bold text-[#f97316]">
-              {service.prices && service.prices > 0
-                ? `${Number(service.prices).toLocaleString("vi-VN")}đ`
-                : "Liên hệ"}
-            </span>
-            <div className="flex gap-3 m-2 text-gray-600 rounded-2xl">
-              <FaEdit className="cursor-pointer text-xl hover:text-blue-500" />
-              <FaEyeSlash className="cursor-pointer text-xl hover:text-gray-800" />
-              <MdDelete className="cursor-pointer text-xl hover:text-red-500" />
+            <div className="mt-3 flex justify-end gap-2 text-gray-500">
+              {actionButtons}
             </div>
           </div>
         </div>
-      </Link>
-    )
+      </div>
+    );
   }
 
+  return (
+    <div
+      onClick={handleClick} // ✅ thêm
+      className="cursor-pointer overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg"
+    >
+      <div className="relative overflow-hidden">
+        <img
+          src={image}
+          alt={serviceName}
+          className="h-60 w-full object-cover transition duration-300 hover:scale-105"
+        />
+        <span
+          className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[13px] font-medium ${statusClass[status] || statusClass.pending}`}
+        >
+          {statusLabel[status] || status}
+        </span>
+        <span className="absolute right-2 top-2 flex items-center gap-1 rounded bg-white/80 px-2 py-1">
+          <CiStar className="text-2xl text-yellow-400" />
+          <span className="text-sm font-semibold text-gray-700">
+            {rating} ({totalReview})
+          </span>
+        </span>
+      </div>
+
+      <div className="space-y-2 p-4">
+        <h2 className="line-clamp-1 text-left text-[15px] font-semibold text-gray-800">
+          {serviceName}
+        </h2>
+
+        <div className="flex items-center gap-1 text-[13px] text-gray-400">
+          <IoLocationOutline />
+          <p className="line-clamp-1 text-left text-sm text-gray-500">
+            {destination}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[16px] font-bold text-[#f97316]">
+            {price > 0 ? `${price.toLocaleString("vi-VN")}d` : "Lien he"}
+          </span>
+          {actionButtons}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ServicesCard;

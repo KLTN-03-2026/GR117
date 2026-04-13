@@ -26,7 +26,7 @@ function SignIn() {
     const path =
       role === "admin"
         ? "/admin/dashboard"
-        : role === "provider" || role === "partner"
+        : role === "provider"
           ? "/provider/dashboard"
           : "/";
 
