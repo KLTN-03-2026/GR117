@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { FaRegEye, FaRegEyeSlash } from "../assets/Icons/Icons";
+import { FaRegEye, FaRegEyeSlash } from "../../assets/Icons/Icons";
 import { MdOutlineMailOutline, MdOutlineKey, MdArrowBack } from "react-icons/md";
 
 export default function ForgotPassword() {

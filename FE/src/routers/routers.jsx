@@ -4,7 +4,7 @@ import LayoutAdmin from "../layout/LayoutAdmin.jsx";
 import HomePage from "../Pages/client/HomePage.jsx";
 import SignIn from "../Pages/auth/SignIn.jsx";
 import Register from "../Pages/auth/Register.jsx";
-import ForgotPassword from "../Pages/ForgotPassword.jsx";
+import ForgotPassword from "../Pages/auth/ForgotPassword.jsx";
 import DashboardProvider from "../Pages/provider/DashboardProvider.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import { jwt } from "../utils/jwt.js";
@@ -23,7 +23,7 @@ import PartnerProfile from "../Pages/provider/PartnerProfile.jsx";
 
 function Routers() {
   const user = jwt();
-
+   
   return (
     <Routes>
       {/* PUBLIC */}
