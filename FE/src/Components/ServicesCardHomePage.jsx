@@ -10,7 +10,7 @@ function ServicesCardHomePage({ servers, index }) {
                 />
 
                 <div className="p-4 text-left">
-                    <h3 className="font-semibold">{servers?.ServiceName}</h3>
+                    <h3 className="font-semibold">{servers?.ServiceName || "Check"}</h3>
                     <p className="text-gray-500 text-sm">Quảng Ninh</p>
                     <p className="text-[#f97316] font-semibold mt-2">4.990.000đ</p>
                 </div>

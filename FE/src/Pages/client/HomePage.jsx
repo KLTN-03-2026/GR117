@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaShield, FaHeadphones, FaHeart, FaClock, MdStar } from "../../assets/Icons/Icons"
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 import { IoLocationOutline } from "react-icons/io5";
 import { RiCalendarScheduleLine } from "react-icons/ri";
 import { CiSearch } from "react-icons/ci";
+import ServicesCardHomePage from "../../Components/ServicesCardHomePage.jsx";
 const comments = [
     {
         star: 5,
