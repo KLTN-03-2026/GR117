@@ -19,29 +19,34 @@ exports.addServices = async (req, res) => {
       itinerary,
       serviceIncludes,
       status,
-    } = req.body;
+    } = req.body;  
     //  Validate cơ bản
-    if (!serviceName || !prices || !nameProvider) {
+    if (!serviceName || !prices || !nameProvider  ) {
       return res.status(400).json({
         success: false,
         message: "Thiếu thông tin bắt buộc "
       });
+    } 
+    const userId = req.user?.id;
+    const user = await accounts.findOne({ _id: userId, role: "provider" });
+    if (!user) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền thực hiện hành động này"
+      });
     }
-
 
     // Xử lý ảnh
     const imageFile = req.file ? req.file.filename : null;
     const finalImageUrl = req.file
       ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
       : imageUrl || null;
-    const userId = req.user?.id;
-    const user = await accounts.findOne({ _id: userId, role: "provider" });
 
     const newService = new Services({
       serviceName,
-      category,
       provider_id: user._id,
       nameProvider: user.fullName || user.email || "",
+      category,
       location,
       region,
       duration: duration ? Number(duration) : undefined,

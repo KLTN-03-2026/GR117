@@ -1,15 +1,10 @@
 ﻿import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ButtonBack from "../../Components/ButtonBack";
-
-const CATEGORY_OPTIONS = [
-  "Bien dao",
-  "Nui",
-  "Van hoa",
-  "Am thuc",
-  "Thanh pho",
-  "Mao hiem",
-];
+import {
+  FaLocationDot
+  } from "../../assets/Icons/Icons";
+const CATEGORY_OPTIONS = ["Biển đảo", "Núi", "Văn hoá", "Ẩm thực", "Thành phố", "Mạo hiểm"];
 
 const EMPTY_FORM = {
   name: "",
@@ -25,14 +20,10 @@ const EMPTY_FORM = {
 };
 
 const splitLines = (value) =>
-  value
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
+  value.split("\n").map((item) => item.trim()).filter(Boolean);
 
 const isValidImageUrl = (value) => {
   if (!value.trim()) return true;
-
   try {
     const url = new URL(value);
     return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url.pathname);
@@ -47,6 +38,7 @@ const AddServices = () => {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
   let currentUser = null;
   try {
     currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
@@ -54,10 +46,7 @@ const AddServices = () => {
     currentUser = null;
   }
 
-  const imagePreview = useMemo(
-    () => splitLines(formData.images)[0] || "",
-    [formData.images],
-  );
+  const imagePreview = useMemo(() => splitLines(formData.images)[0] || "", [formData.images]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -65,16 +54,14 @@ const AddServices = () => {
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) return "Ten dich vu khong duoc de trong";
-    if (!formData.description.trim()) return "Mo ta khong duoc de trong";
-    if (!formData.location.trim()) return "Dia diem khong duoc de trong";
-    if (!formData.category) return "Vui long chon category";
-    if (!formData.price || Number(formData.price) <= 0)
-      return "Gia phai lon hon 0";
+    if (!formData.name.trim()) return "Tên dịch vụ không được để trống";
+    if (!formData.description.trim()) return "Mô tả không được để trống";
+    if (!formData.location.trim()) return "Địa điểm không được để trống";
+    if (!formData.category) return "Vui lòng chọn danh mục";
+    if (!formData.price || Number(formData.price) <= 0) return "Giá phải lớn hơn 0";
 
-    const imageList = splitLines(formData.images);
-    const invalidImage = imageList.find((item) => !isValidImageUrl(item));
-    if (invalidImage) return "Image url khong dung dinh dang co ban";
+    const invalidImage = splitLines(formData.images).find((item) => !isValidImageUrl(item));
+    if (invalidImage) return "Image URL không đúng định dạng";
 
     return "";
   };
@@ -90,11 +77,6 @@ const AddServices = () => {
       return;
     }
 
-    const imageList = splitLines(formData.images);
-    const highlights = splitLines(formData.highlights);
-    const includes = splitLines(formData.includes);
-    const itinerary = splitLines(formData.itinerary);
-
     const payload = {
       serviceName: formData.name.trim(),
       nameProvider: currentUser?.fullName || currentUser?.email || "Provider",
@@ -103,21 +85,20 @@ const AddServices = () => {
       location: formData.location.trim(),
       category: formData.category,
       duration: formData.duration.trim(),
-      imageUrl: imageList[0] || "",
-      highlight: highlights.join("\n"),
-      serviceIncludes: includes,
-      itinerary: itinerary.join("\n"),
+      imageUrl: splitLines(formData.images)[0] || "",
+      highlight: splitLines(formData.highlights).join("\n"),
+      serviceIncludes: splitLines(formData.includes),
+      itinerary: splitLines(formData.itinerary).join("\n"),
     };
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setMessage("Ban chua dang nhap hoac token da het han");
+      setMessage("Bạn chưa đăng nhập hoặc token đã hết hạn");
       return;
     }
 
     try {
       setSubmitting(true);
-
       const res = await fetch("http://localhost:5000/api/services/add", {
         method: "POST",
         headers: {
@@ -128,203 +109,118 @@ const AddServices = () => {
       });
 
       const result = await res.json();
-
       if (res.ok && result.success) {
         setSuccess(true);
-        setMessage("Them dich vu thanh cong");
+        setMessage("Thêm dịch vụ thành công");
         setFormData(EMPTY_FORM);
       } else {
-        setMessage(result.message || "Khong the them dich vu");
+        setMessage(result.message || "Không thể thêm dịch vụ");
       }
     } catch (error) {
-      setMessage(`Loi ket noi server: ${error.message}`);
+      setMessage(`Lỗi kết nối server: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const inputClass =
-    "w-full rounded-xl border border-gray-300 bg-orange-50 p-3 focus:outline-none focus:ring-2 focus:ring-orange-400";
+  const inputClass ="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 focus:outline-none focus:ring-2 focus:ring-orange-400";
+  const labelClass = "text-left pl-1 block mb-1 pl-2 text-sm font-semibold text-black";
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] p-8">
-      <div className="mx-auto w-full max-w-5xl rounded-2xl border border-orange-100 bg-white p-8 shadow-xl">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-orange-600">Thêm dịch vụ</h1>
-          </div>
+      <div className="mx-auto max-w-5xl rounded-2xl border border-orange-100 bg-white p-8 shadow-xl">
+        <div className="mb-6 flex justify-between">
+          <div className="flex items-center text-orange-600 font-black text-2xl gap-1.5"><FaLocationDot /> 
+          <h1 className="text-3xl font-bold text-orange-600">Thêm dịch vụ</h1></div>
           <ButtonBack />
         </div>
 
         {message && (
-          <p
-            className={`mb-5 text-sm font-medium ${success ? "text-green-600" : "text-red-600"}`}
-          >
+          <p className={`mb-5 text-sm font-medium ${success ? "text-green-600" : "text-red-600"}`}>
             {message}
           </p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {/* Tên dịch vụ & Giá */}
+          <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Tên dịch vụ
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="VD: Tour Da Nang 5 ngay"
-                className={inputClass}
-              />
+              <label className={labelClass}>Tên dịch vụ</label>
+              <input type="text" name="name" value={formData.name} onChange={handleChange}
+                placeholder="Tên dịch vụ" className={inputClass} />
             </div>
-
             <div>
-              <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Giá
-              </label>
-              <input
-                type="number"
-                min="0"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                placeholder="1.000.000"
-                className={inputClass}
-              />
+              <label className={labelClass}>Giá</label>
+              <input type="number" min="0" name="price" value={formData.price} onChange={handleChange}
+                placeholder="VNĐ" className={inputClass} />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {/* Địa điểm, Danh mục, Thời lượng */}
+          <div className="grid md:grid-cols-3 gap-6">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Địa điểm
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="VD: Đà Nẵng"
-                className={inputClass}
-              />
+              <label className={labelClass}>Địa điểm</label>
+              <input type="text" name="location" value={formData.location} onChange={handleChange}
+                placeholder="" className={inputClass} />
             </div>
-
             <div>
-              <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Danh mục
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className={inputClass}
-              >
+              <label className={labelClass}>Danh mục</label>
+              <select name="category" value={formData.category} onChange={handleChange} className={inputClass}>
                 <option value=""></option>
                 {CATEGORY_OPTIONS.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Thời lượng
-              </label>
-              <input
-                type="text"
-                name="duration"
-                value={formData.duration}
-                onChange={handleChange}
-                placeholder="VD: 5 ngay 4 dem"
-                className={inputClass}
-              />
+              <label className={labelClass}>Thời lượng</label>
+              <input type="text" name="duration" value={formData.duration} onChange={handleChange}
+                placeholder="VD: 5 ngày 4 đêm" className={inputClass} />
             </div>
           </div>
 
+          {/* Mô tả */}
           <div>
-            <label className="mb-1 block text-sm font-semibold text-orange-600">
-              Mô tả
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows="4"
-              placeholder="Mo ta dich vu..."
-              className={inputClass}
-            />
+            <label className={labelClass}>Mô tả</label>
+            <textarea name="description" value={formData.description} onChange={handleChange}
+              rows="3" placeholder="Mô tả dịch vụ..." className={inputClass} />
           </div>
 
+          {/* Ảnh */}
           <div>
-            <label className="mb-1 block text-sm font-semibold text-orange-600">
-              Ảnh
-            </label>
-            <textarea
-              name="images"
-              value={formData.images}
-              onChange={handleChange}
-              rows="4"
-              placeholder={
-                "Moi image url 1 dong\nhttps://example.com/image-1.jpg"
-              }
-              className={inputClass}
-            />
+            <label className={labelClass}>Ảnh</label>
+            <textarea name="images" value={formData.images} onChange={handleChange}
+              rows="1" placeholder={"https://example.com/image-1.jpg"} className={inputClass} />
             {imagePreview && isValidImageUrl(imagePreview) && (
-              <img
-                src={imagePreview}
-                alt="preview"
-                className="mt-3 h-40 w-56 rounded-xl border border-orange-200 object-cover"
-              />
+              <img src={imagePreview} alt="preview"
+                className="mt-3 h-40 w-56 rounded-lg border border-orange-200 object-cover" />
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {/* Nổi bật & Bao gồm */}
+          <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Nổi bật
-              </label>
-              <textarea
-                name="highlights"
-                value={formData.highlights}
-                onChange={handleChange}
-                rows="5"
-                placeholder={
-                  "Moi highlight 1 dong\nCanh dep\nKhach san gan bien"
-                }
-                className={inputClass}
-              />
+              <label className={labelClass}>Điểm nổi bật</label>
+              <textarea name="highlights" value={formData.highlights} onChange={handleChange}
+                rows="3" className={inputClass} />
             </div>
-
             <div>
-              <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Bao gồm
-              </label>
-              <textarea
-                name="includes"
-                value={formData.includes}
-                onChange={handleChange}
-                rows="5"
-                placeholder={"Moi include 1 dong\nXe dua don\nAn sang"}
-                className={inputClass}
-              />
+              <label className={labelClass}>Đi kèm </label>
+              <textarea name="includes" value={formData.includes} onChange={handleChange}
+                rows="3" className={inputClass} />
             </div>
           </div>
 
+          {/* Lịch trình */}
           <div>
-            <label className="mb-1 block text-sm font-semibold text-orange-600">
-              Lịch trình
-            </label>
+            <label className={labelClass}>Lịch trình</label>
             <textarea
               name="itinerary"
               value={formData.itinerary}
               onChange={handleChange}
-              rows="6"
+              rows="3"
               placeholder={
-                "Moi dong la 1 muc lich trinh\nNgay 1: Den Da Nang\nNgay 2: Tham quan Ba Na"
+               "Ngay 1: Den Da Nang\nNgay 2: Tham quan Ba Na"
               }
               className={inputClass}
             />

@@ -31,9 +31,9 @@ export default function ProviderSchedule() {
             item.serviceName ||
             item.servicesName ||
             item.ServiceName ||
-            "Chua co ten",
+            "Chưa có tên",
           location:
-            item.location || item.destination || item.region || "Chua cap nhat",
+            item.location || item.destination || item.region || "Chưa cập nhật",
         })),
       );
       return true;
@@ -47,8 +47,8 @@ export default function ProviderSchedule() {
       setServices(
         (fallbackResult.data || []).map((item) => ({
           id: item._id,
-          name: item.serviceName || "Chua co ten",
-          location: "Chua cap nhat",
+          name: item.serviceName || "Chưa có tên",
+          location: "Chưa cập nhật",
         })),
       );
       return true;
@@ -72,7 +72,7 @@ export default function ProviderSchedule() {
         if (!serviceOk) {
           setMessage({
             type: "error",
-            text: "Khong tai duoc danh sach dich vu",
+            text: "Không tải được danh sách dịch vụ, vui lòng thử lại sau",
           });
         }
         await loadSchedules();
@@ -109,7 +109,7 @@ export default function ProviderSchedule() {
       !form.endDate ||
       Number(form.maxPeople) <= 0
     ) {
-      setMessage({ type: "error", text: "Vui long nhap day du thong tin" });
+      setMessage({ type: "error", text: "Vui lòng nhập đầy đủ thông tin" });
       return;
     }
 
@@ -134,18 +134,18 @@ export default function ProviderSchedule() {
       if (!res.ok || result.success === false) {
         setMessage({
           type: "error",
-          text: result.message || "Khong the them lich",
+          text: result.message || "Không thể thêm lịch khởi hành mới",
         });
         return;
       }
 
-      setMessage({ type: "success", text: "Them lich khoi hanh thanh cong" });
+      setMessage({ type: "success", text: "Thêm lịch khởi hành thành công" });
       await loadSchedules();
       closeModal();
     } catch (error) {
       setMessage({
         type: "error",
-        text: `Loi khi them lich: ${error.message}`,
+        text: `Lỗi khi thêm lịch: ${error.message}`,
       });
     } finally {
       setIsSubmitting(false);
@@ -162,18 +162,18 @@ export default function ProviderSchedule() {
     );
     setMessage({
       type: "success",
-      text: "Da doi trang thai lich tren giao dien",
+      text: "Đã đổi trạng thái lịch trên giao diện",
     });
   };
 
   const handleDelete = () => {
     setSchedules((prev) => prev.filter((item) => item._id !== deleteTarget));
     setDeleteTarget(null);
-    setMessage({ type: "success", text: "Da xoa lich tren giao dien" });
+    setMessage({ type: "success", text: "Đã xóa lịch trên giao diện" });
   };
 
   if (loading) {
-    return <div className="p-6 text-gray-500">Dang tai lich khoi hanh...</div>;
+    return <div className="p-4 text-gray-500">Đang tải lịch khởi hành...</div>;
   }
 
   return (

@@ -204,7 +204,7 @@ const EditServices = () => {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Ten dich vu
+                Tên dịch vụ 
               </label>
               <input
                 type="text"
@@ -217,7 +217,7 @@ const EditServices = () => {
 
             <div>
               <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Gia
+                Giá
               </label>
               <input
                 type="number"
@@ -233,7 +233,7 @@ const EditServices = () => {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Dia diem
+                Địa điểm 
               </label>
               <input
                 type="text"
@@ -246,7 +246,7 @@ const EditServices = () => {
 
             <div>
               <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Danh muc
+                Danh mục 
               </label>
               <select
                 name="category"
@@ -265,7 +265,7 @@ const EditServices = () => {
 
             <div>
               <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Thoi luong
+                Thời lượng 
               </label>
               <input
                 type="text"
@@ -279,7 +279,7 @@ const EditServices = () => {
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-orange-600">
-              Mo ta
+              Mô tả 
             </label>
             <textarea
               name="description"
@@ -292,7 +292,7 @@ const EditServices = () => {
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-orange-600">
-              Anh
+              Ảnh
             </label>
             <textarea
               name="images"
@@ -313,7 +313,7 @@ const EditServices = () => {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Noi bat
+                nổi bật
               </label>
               <textarea
                 name="highlights"
@@ -326,7 +326,7 @@ const EditServices = () => {
 
             <div>
               <label className="mb-1 block text-sm font-semibold text-orange-600">
-                Bao gom
+                Bao gồm
               </label>
               <textarea
                 name="includes"
@@ -340,7 +340,7 @@ const EditServices = () => {
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-orange-600">
-              Lich trinh
+              Lịch trình 
             </label>
             <textarea
               name="itinerary"
@@ -357,14 +357,14 @@ const EditServices = () => {
               onClick={() => navigate(-1)}
               className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-gray-700 transition hover:bg-gray-50"
             >
-              Huy
+              Hủy 
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="rounded-xl bg-orange-500 px-5 py-2.5 font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Dang luu..." : "Luu thay doi"}
+              {submitting ? "Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
         </form>

@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { FaShield, FaHeadphones, FaHeart, FaClock, MdStar } from "../assets/Icons/Icons"
+import { FaShield, FaHeadphones, FaHeart, FaClock, MdStar } from "../../assets/Icons/Icons"
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa6";
-
+import { Link } from "react-router-dom";
+import { IoLocationOutline } from "react-icons/io5";
+import { RiCalendarScheduleLine } from "react-icons/ri";
+import { CiSearch } from "react-icons/ci";
 const comments = [
     {
         star: 5,
@@ -49,7 +52,7 @@ function HomePage() {
                     {/* Background */}
                     <div className="absolute inset-0">
                         <img
-                            src="https://images.unsplash.com/photo-1682502922918-fed575428e3c"
+                            src=""
                             alt=""
                             className="w-full h-full object-cover"
                         />
@@ -78,26 +81,30 @@ function HomePage() {
                         <div className="bg-white rounded-2xl mt-4 p-4 md:p-2 shadow-2xl max-w-4xl flex flex-col md:flex-row gap-3 md:gap-0 md:items-center">
 
                             {/* Keyword */}
-                            <div className="flex-1 px-4 py-2 md:border-r border-gray-100">
-                                <p className="text-gray-400 text-sm">Địa điểm</p>
+                            <div className="flex items-center gap-3 px-4  md:border-r border-gray-100">
+                                <div><IoLocationOutline className="text-xl ml-2 text-[#F78F10]" /></div>
+                                <div><p className="text-gray-400 text-sm">Tìm kiếm </p>
                                 <input
                                     placeholder="Địa điểm, dịch vụ..."
                                     type="text"
                                     className="w-full outline-none bg-transparent text-[#1a1a2e]"
-                                />
+                                /></div>
                             </div>
 
                             {/* Date */}
-                            <div className="flex-1 px-4 py-2 md:border-r border-gray-100">
-                                <p className="text-gray-400 text-sm">Ngày đi</p>
+                            <div className="flex items-center gap-3 px-4  md:border-r border-gray-100">
+                                <div><RiCalendarScheduleLine className="text-xl ml-2 text-[#F78F10]" /></div>
+                                <div><p className="text-gray-400 text-sm">Ngày đi</p>
                                 <input
                                     type="date"
-                                    className="w-full outline-none bg-transparent text-[#1a1a2e]"
-                                />
+                                    className="w-full outline-none bg-transparent text-sm text-[#1a1a2e]"
+                                /></div>
                             </div>
 
                             {/* Guests */}
-                            <div className="flex-1 px-4 py-2 md:border-r border-gray-100">
+                            <div className="flex flex-1 items-center gap-3 px-4  md:border-r border-gray-100">
+                                <div><RiCalendarScheduleLine className="text-xl ml-2 text-[#F78F10]" /></div>
+                                <div>
                                 <p className="text-gray-400 text-sm">Số người</p>
                                 <select className="w-full outline-none bg-transparent text-[#1a1a2e]">
                                     {[1, 2, 3, 4, 5, 6].map((item) => (
@@ -106,11 +113,15 @@ function HomePage() {
                                         </option>
                                     ))}
                                 </select>
+
+                                </div>
                             </div>
 
                             {/* Button */}
-                            <button className="bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white px-8 py-4 rounded-xl hover:shadow-lg hover:shadow-orange-200 transition-all">
-                                Tìm Kiếm
+                            <button className="bg-gradient-to-r from-[#F78F10] to-[#F78F10] text-white px-8 py-4 rounded-xl hover:shadow-lg hover:shadow-orange-200 transition-all">
+                             <div className="flex items-center gap-3 ">
+                                 <CiSearch className="text-xl font-bold" />  <p className="font-bold">Tìm Kiếm</p>
+                             </div>
                             </button>
                         </div>
 
@@ -197,9 +208,9 @@ function HomePage() {
                         <p className="text-white/60 mb-8">
                             Đăng ký làm đối tác VIVU Travel để đăng tải dịch vụ và tiếp cận hàng nghìn khách hàng tiềm năng
                         </p>
-                        <a href="" className="inline-block px-8 mt-4 py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-full hover:shadow-lg transition-all">
+                        <Link to="register" className="inline-block px-8 mt-4 py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-full hover:shadow-lg transition-all">
                             Đăng ký đối tác ngay
-                        </a>
+                        </Link>
                     </div>
                 </section>
                 <section className="py-20 bg-[#f8fafc]">

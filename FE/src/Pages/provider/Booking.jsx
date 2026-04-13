@@ -24,7 +24,7 @@ const Booking = () => {
 
       <div className="p-6">
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
-          Chuc nang dat cho dang duoc hoan thien.
+          Chức năng đặt chổ đang hoàn thiện
         </div>
       </div>
     </div>

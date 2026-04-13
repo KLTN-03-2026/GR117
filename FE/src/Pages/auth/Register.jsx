@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CiLogin } from "../assets/Icons/Icons";
-
+import { CiLogin } from "../../assets/Icons/Icons";
+import { FaFacebook } from "react-icons/fa";
+import { FcGoogle } from "react-icons/fc";
+import { FaInstagram } from "react-icons/fa";
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -91,7 +93,7 @@ export default function Register() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <h1
-            className="text-[#0f172a]"
+            className="text-[#0f172a] mb-2"
             style={{
               fontFamily: "'Playfair Display', serif",
               fontSize: 32,
@@ -132,7 +134,7 @@ export default function Register() {
 
           <div>
             <label
-              className="mb-1.5 block text-slate-500"
+              className="mb-1.5 block text-slate-500 text-left pl-2 "
               style={{ fontSize: 13, fontWeight: 500 }}
             >
               Họ tên
@@ -141,14 +143,14 @@ export default function Register() {
               value={form.fullName}
               onChange={(e) => setField("fullName", e.target.value)}
               required
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-2 py-2 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
               style={{ fontSize: 14 }}
             />
           </div>
 
           <div>
             <label
-              className="mb-1.5 block text-slate-500"
+              className="mb-1.5 block text-slate-500 text-left pl-2"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
               Email
@@ -158,14 +160,14 @@ export default function Register() {
               value={form.email}
               onChange={(e) => setField("email", e.target.value)}
               required
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-2 py-2 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
               style={{ fontSize: 14 }}
             />
           </div>
 
           <div>
             <label
-              className="mb-1.5 block text-slate-500"
+              className="mb-1.5 block text-slate-500 text-left pl-2"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
               Số điện thoại
@@ -174,14 +176,14 @@ export default function Register() {
               value={form.phone}
               onChange={(e) => setField("phone", e.target.value)}
               required
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-2 py-2 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
               style={{ fontSize: 14 }}
             />
           </div>
 
           <div>
             <label
-              className="mb-1.5 block text-slate-500"
+              className="mb-1.5 block text-slate-500 text-left pl-2"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
               Mật khẩu
@@ -191,14 +193,14 @@ export default function Register() {
               value={form.password}
               onChange={(e) => setField("password", e.target.value)}
               required
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-2 py-2 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
               style={{ fontSize: 14 }}
             />
           </div>
 
           <div>
             <label
-              className="mb-1.5 block text-slate-500"
+              className="mb-1.5 block text-slate-500 text-left pl-2"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
               Xác nhận mật khẩu
@@ -208,7 +210,7 @@ export default function Register() {
               value={form.confirmPass}
               onChange={(e) => setField("confirmPass", e.target.value)}
               required
-              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
+              className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-2 py-2 text-[#0f172a] outline-none transition-colors focus:border-[#f97316]"
               style={{ fontSize: 14 }}
             />
           </div>
@@ -248,6 +250,27 @@ export default function Register() {
               Đăng nhập
             </Link>
           </p>
+          <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-[1px] bg-gray-200" />
+              <span className="text-xs text-gray-400">
+                Hoặc đăng ký với
+              </span>
+              <div className="flex-1 h-[1px] bg-gray-200" />
+            </div>
+
+          <div className="flex justify-center gap-4 mb-3">
+                        <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-gray-50 transition ">
+                          <FcGoogle className="text-2xl" />
+                        </button>
+          
+                        <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-blue-50 transition ">
+                          <FaFacebook className="text-blue-600 text-2xl" />
+                        </button>
+          
+                        <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-pink-50 transition ">
+                          <FaInstagram className="text-pink-500 text-2xl" />
+                        </button>
+                      </div>
         </form>
       </div>
     </div>

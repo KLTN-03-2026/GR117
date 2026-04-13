@@ -4,10 +4,10 @@ import { IoSearch } from "react-icons/io5";
 import ServicesCard from "../../Components/ServicesCard";
 
 const STATUS_META = {
-  all: "Tat ca",
-  approval: "Hoat dong",
-  pending: "Cho duyet",
-  reject: "Bi tu choi",
+  all: "Tất cả",
+  approval: "Hoạt động",
+  pending: "Chờ duyệt",
+  reject: "Bị từ chối",
 };
 
 const Services = () => {
@@ -104,14 +104,14 @@ const Services = () => {
   };
 
   const handleDelete = async (service) => {
-    const confirmed = window.confirm(`Ban co chac muon xoa dich vu \"${service.uiName || service.serviceName || ""}\" khong?`);
+    const confirmed = window.confirm(`Bạn có chắc muốn xóa dịch vụ  \"${service.uiName || service.serviceName || ""}\" không?`);
     if (!confirmed) {
       return;
     }
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setError("Ban chua dang nhap hoac token da het han");
+      setError("Bạn chưa đăng nhập hoặc token đã hết hạn");
       return;
     }
 
@@ -129,19 +129,19 @@ const Services = () => {
       const result = await res.json();
 
       if (!res.ok || result.success === false) {
-        setError(result.message || "Khong the xoa dich vu");
+        setError(result.message || "Không thể xóa dịch vụ");
         return;
       }
 
       setServices((prev) => prev.filter((item) => item._id !== service._id));
     } catch (deleteError) {
-      setError(`Loi xoa dich vu: ${deleteError.message}`);
+      setError(`lỗi xóa dịch vụ : ${deleteError.message}`);
     } finally {
       setActionLoadingId("");
     }
   };
 
-  if (loading) return <p className="p-6">Dang tai dich vu...</p>;
+  if (loading) return <p className="p-6">Đang tải dịch vụ ...</p>;
   if (error && services.length === 0) return <p className="p-6 text-red-600">{error}</p>;
 
   return (
@@ -152,7 +152,7 @@ const Services = () => {
             <div className="mb-0.5 flex items-center gap-2 text-[12px] text-gray-400">
               <span>Dashboard</span>
               <span>{">"}</span>
-              <span className="text-[#f97316]">Dich vu</span>
+              <span className="text-[#f97316]">Dịch vụ</span>
             </div>
 
             <h1
@@ -163,16 +163,16 @@ const Services = () => {
                 color: "rgb(26, 26, 46)",
               }}
             >
-              Quan ly dich vu
+              Quản lí dịch vụ 
             </h1>
           </div>
         </div>
 
         <Link
           to="/provider/AddServices"
-          className="flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-orange-600"
+          className="rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-4 py-2 text-[13px] font-medium text-white transition hover:shadow-lg hover:shadow-orange-200"
         >
-          + Them dich vu
+          +  Thêm dịch vụ 
         </Link>
       </div>
 
@@ -184,14 +184,14 @@ const Services = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tim kiem theo ten, dia diem..."
+              placeholder="Tìm kiếm theo tên , địa điểm"
               className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-[15px] outline-none transition placeholder:text-slate-300 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
             />
           </div>
         </div>
 
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-        {actionLoadingId && <p className="text-sm text-slate-500">Dang xu ly dich vu...</p>}
+        {actionLoadingId && <p className="text-sm text-slate-500">Đăng xử lí dịch vụ ...</p>}
 
         <div className="flex flex-wrap gap-3">
           {Object.entries(STATUS_META).map(([key, label]) => {
@@ -228,7 +228,7 @@ const Services = () => {
           </div>
         ) : (
           <div className="rounded-[28px] border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
-            Khong co dich vu phu hop.
+            Không có dịch vụ phù hợp.
           </div>
         )}
       </div>

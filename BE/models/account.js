@@ -1,47 +1,50 @@
 const mongoose = require("mongoose");
 
-const accountSchema = new mongoose.Schema(
-  {
-    fullName: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
+  const accountSchema = new mongoose.Schema(
+    {
+      fullName: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+      },
+      codeProvider: {
+        type: String,
+      },
+      email: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true,
+      },
+      password: {
+        type: String,
+        required: true,
+        minlength: 6,
+      },
+      phone: {
+        type: String,
+        sparse: true,
+      },
+      avatar: {
+        type: String,
+      },
+      status: {
+        type: String,
+        enum: ["active", "pending", "rejected", "inactive","blocked"],
+        default: "active",
+      },
+      role: {
+        type: String,
+        enum: ["user", "admin", "provider"],
+        default: "user",
+      },
     },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
+    {
+      timestamps: true,
     },
-    password: {
-      type: String,
-      required: true,
-      minlength: 6,
-    },
-    phone: {
-      type: String,
-      sparse: true,
-    },
-    avatar: {
-      type: String,
-    },
-    status: {
-      type: String,
-      enum: ["active", "pending", "rejected", "inactive"],
-      default: "active",
-    },
-    role: {
-      type: String,
-      enum: ["user", "admin", "provider"],
-      default: "user",
-    },
-  },
-  {
-    timestamps: true,
-  },
-);
+  );
 
-const accounts = mongoose.model("Account", accountSchema);
-module.exports = accounts;
+  const accounts = mongoose.model("Account", accountSchema);
+  module.exports = accounts;

@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom"; // ✅ thêm
 import { CiStar } from "react-icons/ci";
 import { IoLocationOutline } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
@@ -9,13 +10,13 @@ const getName = (service) =>
   service.serviceName ||
   service.servicesName ||
   service.ServiceName ||
-  "Chua co ten";
+  "Chưa có tên ";
 const getLocation = (service) =>
   service.uiLocation ||
   service.destination ||
   service.location ||
   service.region ||
-  "Chua cap nhat";
+  "Chưa cập nhật";
 const getPrice = (service) =>
   Number(service.uiPrice ?? service.prices ?? service.price ?? 0);
 const getRating = (service) =>
@@ -31,12 +32,14 @@ const statusClass = {
 };
 
 const statusLabel = {
-  approval: "Hoat dong",
-  pending: "Cho duyet",
-  reject: "Tu choi",
+  approval: "Hoạt động",
+  pending: "Chờ duyệt",
+  reject: "Từ chối",
 };
 
 const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
+  const navigate = useNavigate(); // ✅ thêm
+
   const serviceName = getName(service);
   const destination = getLocation(service);
   const price = getPrice(service);
@@ -49,8 +52,20 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
       ? `http://localhost:5000/uploads/${service.imageFile}`
       : "https://via.placeholder.com/400x250?text=No+Image");
 
-  const handleEdit = () => onEdit?.(service);
-  const handleDelete = () => onDelete?.(service);
+  // ✅ click vào card
+  const handleClick = () => {
+    navigate(`/provider/DetailServices/${service._id}`);
+  };
+
+  const handleEdit = (e) => {
+    e.stopPropagation(); // ✅ chặn click lan
+    onEdit?.(service);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation(); // ✅ chặn click lan
+    onDelete?.(service);
+  };
 
   const actionButtons = (
     <div className="flex gap-3 text-gray-600">
@@ -65,7 +80,10 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
 
   if (viewMode === "list") {
     return (
-      <div className="flex overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg">
+      <div
+        onClick={handleClick} // ✅ thêm
+        className="flex cursor-pointer overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg"
+      >
         <img src={image} alt={serviceName} className="h-44 w-52 object-cover" />
 
         <div className="flex flex-1 items-center justify-between gap-4 p-5">
@@ -95,7 +113,9 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
             <p className="text-xl font-bold text-orange-500">
               {price > 0 ? `${price.toLocaleString("vi-VN")}d` : "Lien he"}
             </p>
-            <div className="mt-3 flex justify-end gap-2 text-gray-500">{actionButtons}</div>
+            <div className="mt-3 flex justify-end gap-2 text-gray-500">
+              {actionButtons}
+            </div>
           </div>
         </div>
       </div>
@@ -103,7 +123,10 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
   }
 
   return (
-    <div className="overflow-hidden rounded-[30px] bg-white shadow transition hover:shadow-lg">
+    <div
+      onClick={handleClick} // ✅ thêm
+      className="cursor-pointer overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg"
+    >
       <div className="relative overflow-hidden">
         <img
           src={image}
@@ -130,7 +153,9 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
 
         <div className="flex items-center gap-1 text-[13px] text-gray-400">
           <IoLocationOutline />
-          <p className="line-clamp-1 text-left text-sm text-gray-500">{destination}</p>
+          <p className="line-clamp-1 text-left text-sm text-gray-500">
+            {destination}
+          </p>
         </div>
 
         <div className="flex items-center justify-between pt-1">

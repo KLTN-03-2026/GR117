@@ -19,7 +19,7 @@ const ServicesDetail = () => {
         const result = await res.json();
         setService(result);
       } catch (err) {
-        console.error("Lá»—i fetch chi tiáº¿t:", err);
+        console.error(":", err);
       } finally {
         setLoading(false);
       }
@@ -27,9 +27,9 @@ const ServicesDetail = () => {
     fetchDetail();
   }, [id]);
 
-  if (loading) return <p className="p-6">Äang táº£i chi tiáº¿t...</p>;
+  if (loading) return <p className="p-6">Đang tải chi tiết...</p>;
   if (!service)
-    return <p className="p-6 text-red-600">KhĂ´ng tĂ¬m tháº¥y dá»‹ch vá»¥</p>;
+    return <p className="p-6 text-red-600">không tìm thấy dịch vụ</p>;
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] p-8">
@@ -38,7 +38,7 @@ const ServicesDetail = () => {
         <div className="flex justify-between mb-5 ">
           <h1 className="text-3xl text-center font-bold text-orange-600 ">
             {" "}
-            Chi tiáº¿t dá»‹ch vá»¥
+            Chi tiết dịch vụ 
           </h1>
           <ButtonBack />
         </div>
@@ -47,7 +47,7 @@ const ServicesDetail = () => {
           {/* Supplier */}
           <div>
             <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              NhĂ  cung cáº¥p
+              Nhà cung cấp 
             </label>
             <input
               type="text"
@@ -57,11 +57,11 @@ const ServicesDetail = () => {
             />
           </div>
 
-          {/* TĂªn dá»‹ch vá»¥ + GiĂ¡ */}
+         
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                TĂªn dá»‹ch vá»¥
+                Tên dịch vụ
               </label>
               <input
                 type="text"
@@ -72,22 +72,22 @@ const ServicesDetail = () => {
             </div>
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                GiĂ¡
+                Giá
               </label>
               <input
                 type="text"
-                value={`${service.prices}Ä‘`}
+                value={`${service.prices} VNĐ`}
                 readOnly
                 className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
               />
             </div>
           </div>
 
-          {/* Äá»‹a Ä‘iá»ƒm + Danh má»¥c */}
+         
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Äá»‹a Ä‘iá»ƒm
+                Địa điểm 
               </label>
               <input
                 type="text"
@@ -103,7 +103,7 @@ const ServicesDetail = () => {
             </div>
             <div>
               <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Danh má»¥c
+                Danh mục
               </label>
               <input
                 type="text"
@@ -118,10 +118,10 @@ const ServicesDetail = () => {
             </div>
           </div>
 
-          {/* MĂ´ táº£ */}
+      
           <div>
             <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              MĂ´ táº£ dá»‹ch vá»¥
+             Mô tả
             </label>
             <textarea
               value={service.description || service.descriptionDetail || ""}
@@ -131,10 +131,10 @@ const ServicesDetail = () => {
             />
           </div>
 
-          {/* áº¢nh Ä‘áº¡i diá»‡n */}
+          
           <div>
             <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              áº¢nh dá»‹ch vá»¥
+              Hình ảnh 
             </label>
             <img
               src={

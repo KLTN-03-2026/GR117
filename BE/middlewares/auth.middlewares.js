@@ -67,8 +67,7 @@ const authorizeRoles = (...roles) => {
     } catch (error) {
       console.error("Lỗi khi xác minh Role trong roleMiddleware:", error);
       return res.status(500).json({ message: "Lỗi hệ thống" });
-    }
-  };
+    }};
 };
 module.exports = {
   verifyToken,
