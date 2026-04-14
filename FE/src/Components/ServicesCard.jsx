@@ -1,6 +1,4 @@
-import React from "react";
-import { useNavigate } from "react-router-dom"; // ✅ thêm
-import { CiStar } from "react-icons/ci";
+﻿import React from "react";
 import { IoLocationOutline } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
 import { FaEdit } from "react-icons/fa";
@@ -10,19 +8,15 @@ const getName = (service) =>
   service.serviceName ||
   service.servicesName ||
   service.ServiceName ||
-  "Chưa có tên ";
+  "Chờ cập nhật";
 const getLocation = (service) =>
   service.uiLocation ||
   service.destination ||
   service.location ||
   service.region ||
-  "Chưa cập nhật";
+  "Chờ cập nhật";
 const getPrice = (service) =>
   Number(service.uiPrice ?? service.prices ?? service.price ?? 0);
-const getRating = (service) =>
-  Number(service.rating ?? service.averageRating ?? 0);
-const getReviewCount = (service) =>
-  Number(service.total_review ?? service.totalReviews ?? 0);
 const getStatus = (service) => service.uiStatus || service.status || "pending";
 
 const statusClass = {
@@ -38,32 +32,22 @@ const statusLabel = {
 };
 
 const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
-  const navigate = useNavigate(); // ✅ thêm
-
   const serviceName = getName(service);
   const destination = getLocation(service);
   const price = getPrice(service);
-  const rating = getRating(service);
-  const totalReview = getReviewCount(service);
   const status = getStatus(service);
   const image =
     service.imageUrl ||
     (service.imageFile
       ? `http://localhost:5000/uploads/${service.imageFile}`
       : "https://via.placeholder.com/400x250?text=No+Image");
-
-  // ✅ click vào card
-  const handleClick = () => {
-    navigate(`/provider/DetailServices/${service._id}`);
-  };
-
   const handleEdit = (e) => {
-    e.stopPropagation(); // ✅ chặn click lan
+    e.preventDefault();
     onEdit?.(service);
   };
 
   const handleDelete = (e) => {
-    e.stopPropagation(); // ✅ chặn click lan
+    e.preventDefault();
     onDelete?.(service);
   };
 
@@ -80,10 +64,7 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
 
   if (viewMode === "list") {
     return (
-      <div
-        onClick={handleClick} // ✅ thêm
-        className="flex cursor-pointer overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg"
-      >
+      <div className="flex overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg">
         <img src={image} alt={serviceName} className="h-44 w-52 object-cover" />
 
         <div className="flex flex-1 items-center justify-between gap-4 p-5">
@@ -102,10 +83,6 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
                 {destination}
               </span>
               <span>{service.category || "Khac"}</span>
-              <span className="flex items-center gap-1">
-                <CiStar className="text-base text-yellow-400" />
-                {rating} ({totalReview})
-              </span>
             </div>
           </div>
 
@@ -123,10 +100,7 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
   }
 
   return (
-    <div
-      onClick={handleClick} // ✅ thêm
-      className="cursor-pointer overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg"
-    >
+    <div className="overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg">
       <div className="relative overflow-hidden">
         <img
           src={image}
@@ -138,19 +112,11 @@ const ServicesCard = ({ service, viewMode = "grid", onEdit, onDelete }) => {
         >
           {statusLabel[status] || status}
         </span>
-        <span className="absolute right-2 top-2 flex items-center gap-1 rounded bg-white/80 px-2 py-1">
-          <CiStar className="text-2xl text-yellow-400" />
-          <span className="text-sm font-semibold text-gray-700">
-            {rating} ({totalReview})
-          </span>
-        </span>
       </div>
-
       <div className="space-y-2 p-4">
         <h2 className="line-clamp-1 text-left text-[15px] font-semibold text-gray-800">
           {serviceName}
         </h2>
-
         <div className="flex items-center gap-1 text-[13px] text-gray-400">
           <IoLocationOutline />
           <p className="line-clamp-1 text-left text-sm text-gray-500">
