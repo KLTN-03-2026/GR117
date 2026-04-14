@@ -20,7 +20,12 @@ import ProviderSchedule from "../Pages/provider/ProviderSchedule.jsx";
 import Booking from "../Pages/provider/Booking.jsx";
 import Revenue from "../Pages/provider/Revenue.jsx";
 import PartnerProfile from "../Pages/provider/PartnerProfile.jsx";
+import ServiceManagement from "../Pages/admin/ServiceManagement.jsx";
+import AccountManagement from "../Pages/admin/AccountManagement.jsx";
+import BookingManagement from "../Pages/admin/BookingManagement.jsx";
 import DetailServices from "../Pages/client/DetailServers.jsx";
+
+
 function Routers() {
   const user = jwt();
 
@@ -58,6 +63,9 @@ function Routers() {
       <Route element={<ProtectedRoute roles={["admin"]} />}>
         <Route path="/admin" element={<LayoutAdmin />}>
           <Route path="dashboard" element={<DashboardAdmin />} />
+          <Route path="ServiceManager" element={<ServiceManagement />} />
+          <Route path="AccountManager" element={<AccountManagement />} />
+          <Route path="BookingManager" element={<BookingManagement />} />
         </Route>
       </Route>
 

@@ -11,12 +11,13 @@ import {
   IoTrashOutline,
 } from "react-icons/io5";
 import { HiOutlineUserPlus } from "react-icons/hi2";
+import TotalSystem from "./TotalSystem";
 
 const tabs = [
-  { id: "overview", label: "Tong quan", icon: IoBarChartOutline },
-  { id: "services", label: "Dich vu", icon: IoPricetagOutline },
-  { id: "accounts", label: "Tai khoan", icon: IoPeopleOutline },
-  { id: "bookings", label: "Booking", icon: IoTicketOutline },
+  { id: "overview", label: "Tổng quan ", icon: IoBarChartOutline },
+  { id: "services", label: "Dịch vụ", icon: IoPricetagOutline },
+  { id: "accounts", label: "Tài khoản ", icon: IoPeopleOutline },
+  { id: "bookings", label: "Đơn hàng ", icon: IoTicketOutline },
 ];
 
 const DashboardAdmin = () => {
@@ -32,19 +33,19 @@ const DashboardAdmin = () => {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-500">
             <IoShieldCheckmarkOutline className="text-xl" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-3xl font-bold text-slate-900 my-5 ">
               Admin <span className="text-orange-500">Dashboard</span>
             </h1>
           </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto rounded-2xl bg-[#eef2f7] p-1">
+        <div className="flex gap-2 overflow-x-auto rounded-2xl bg-[#eef2f7] p-1 mb-6">
           {tabs.map((item) => {
             const Icon = item.icon;
             const active = tab === item.id;
@@ -68,76 +69,15 @@ const DashboardAdmin = () => {
         </div>
 
         <div className={cardClass}>
-          {/* {tab === "overview" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">
-                  Tong quan he thong
-                </h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Khu vuc nay de hien thi cac chi so tong hop cua admin
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl bg-sky-50 p-5">
-                  <IoPricetagOutline className="text-2xl text-sky-500" />
-                  <p className="mt-4 text-3xl font-bold text-slate-900">--</p>
-                  <p className="text-sm text-slate-500">Tong dich vu</p>
-                </div>
-
-                <div className="rounded-2xl bg-emerald-50 p-5">
-                  <IoPeopleOutline className="text-2xl text-emerald-500" />
-                  <p className="mt-4 text-3xl font-bold text-slate-900">--</p>
-                  <p className="text-sm text-slate-500">Tong tai khoan</p>
-                </div>
-
-                <div className="rounded-2xl bg-orange-50 p-5">
-                  <IoTicketOutline className="text-2xl text-orange-500" />
-                  <p className="mt-4 text-3xl font-bold text-slate-900">--</p>
-                  <p className="text-sm text-slate-500">Tong booking</p>
-                </div>
-
-                <div className="rounded-2xl bg-rose-50 p-5">
-                  <IoCheckmarkCircleOutline className="text-2xl text-rose-500" />
-                  <p className="mt-4 text-3xl font-bold text-slate-900">--</p>
-                  <p className="text-sm text-slate-500">Cho duyet</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-2xl bg-slate-50 p-5">
-                  <h3 className="text-base font-semibold text-slate-900">
-                    Doanh thu
-                  </h3>
-                  <p className="mt-3 text-4xl font-bold text-orange-500">--</p>
-                  <p className="mt-2 text-sm text-slate-400">
-                    Khu vuc tong hop doanh thu booking da thanh toan
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-5">
-                  <h3 className="text-base font-semibold text-slate-900">
-                    Danh gia
-                  </h3>
-                  <p className="mt-3 text-4xl font-bold text-orange-500">--</p>
-                  <p className="mt-2 text-sm text-slate-400">
-                    Khu vuc tong hop so luong review he thong
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-sm text-slate-400">
-                Khu vuc danh sach dich vu cho duyet
-              </div>
-            </div>
-          )} */}
+          {tab === "overview" && (
+           <TotalSystem />
+          )}
 
           {tab === "services" && (
             <div className="space-y-5">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">
-                  Quan ly dich vu
+                  Quản lí dịch vụ 
                 </h2>
                 <p className="mt-1 text-sm text-slate-400">
                   Tim kiem, loc va xu ly trang thai dich vu

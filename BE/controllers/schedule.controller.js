@@ -115,11 +115,89 @@ module.exports.getAllSchedules = async (req, res) => {
   }
 };
 
+module.exports.updateOne = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      serviceId,
+      service_id,
+      departureDate,
+      endDate,
+      maxPeople,
+      note,
+      status,
+    } = req.body;
+    const normalizedServiceId = String(serviceId || service_id || "").trim();
+
+    if (!normalizedServiceId || !departureDate || !endDate || !maxPeople) {
+      return res.status(400).json({ message: "Thieu du lieu" });
+    }
+
+    const depDate = new Date(departureDate);
+    const end = new Date(endDate);
+
+    if (Number.isNaN(depDate.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ message: "Ngay khong hop le" });
+    }
+
+    if (end < depDate) {
+      return res.status(400).json({ message: "Ngay ve phai sau ngay di" });
+    }
+
+    if (status && !ALLOWED_STATUS.includes(status)) {
+      return res.status(400).json({ message: "Trang thai khong hop le" });
+    }
+
+    const service = await Service.findOne({ _id: normalizedServiceId });
+    if (!service) {
+      return res.status(404).json({ message: "Service khong ton tai" });
+    }
+
+    const schedule = await Schedule.findById(id);
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        message: "Schedule khong ton tai",
+      });
+    }
+
+    schedule.service_id = service._id;
+    schedule.departureDate = depDate;
+    schedule.endDate = end;
+    schedule.maxPeople = Number(maxPeople);
+    schedule.note = note;
+
+    if (status) {
+      schedule.status = status;
+    }
+
+    await schedule.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cap nhat schedule thanh cong",
+      data: schedule,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Loi server",
+      error: error.message,
+    });
+  }
+};
+
 module.exports.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
 
     const service = await Schedule.findById(id);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: "Schedule khong ton tai",
+      });
+    }
 
     // XÓA DB
     await Schedule.findByIdAndDelete(id);
