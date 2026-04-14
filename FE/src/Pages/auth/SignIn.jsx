@@ -21,14 +21,15 @@ function SignIn() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
+  // ✅ Nếu đã login thì redirect luôn theo role
   if (currentUser) {
     const role = String(currentUser.role || "").toLowerCase();
     const path =
       role === "admin"
         ? "/admin/dashboard"
         : role === "provider"
-          ? "/provider/dashboard"
-          : "/";
+        ? "/provider/dashboard"
+        : "/";
 
     return <Navigate to={path} replace />;
   }
@@ -48,11 +49,23 @@ function SignIn() {
       const accessToken = res.data?.accessToken;
       const user = res.data?.user;
 
+      // ✅ Lưu localStorage
       if (accessToken) localStorage.setItem("accessToken", accessToken);
       if (user) localStorage.setItem("currentUser", JSON.stringify(user));
 
-      navigate("/");
-      window.location.reload();
+      // ✅ Redirect theo role
+      const role = String(user?.role || "").toLowerCase();
+
+      const path =
+        role === "admin"
+          ? "/admin/dashboard"
+          : role === "provider"
+          ? "/provider/dashboard"
+          : "/";
+
+      navigate(path);
+      window.location.reload(); // (giữ nguyên theo cách bạn đang dùng)
+
     } catch (err) {
       setMessage({
         type: "error",
@@ -80,7 +93,9 @@ function SignIn() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
-            <label className="text-left pl-2 mb-1.5 block text-slate-500 font-medium text-sm" > Email </label>
+            <label className="text-left pl-2 mb-1.5 block text-slate-500 font-medium text-sm">
+              Email
+            </label>
             <input
               type="email"
               placeholder="Email của bạn"
@@ -111,7 +126,11 @@ function SignIn() {
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 hover:text-orange-500 transition"
                 >
-                  {showPw ? <FaRegEyeSlash size={18} /> : <FaRegEye size={18} />}
+                  {showPw ? (
+                    <FaRegEyeSlash size={18} />
+                  ) : (
+                    <FaRegEye size={18} />
+                  )}
                 </button>
               </div>
             </div>
@@ -161,24 +180,24 @@ function SignIn() {
               <div className="flex-1 h-[1px] bg-gray-200" />
             </div>
 
-            {/* Social Login */}
+            {/* Social */}
             <div className="flex justify-center gap-4 mb-3">
-              <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-gray-50 transition ">
+              <button className="flex items-center justify-center w-11 h-11 rounded-full hover:bg-gray-50 transition">
                 <FcGoogle className="text-2xl" />
               </button>
 
-              <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-blue-50 transition ">
+              <button className="flex items-center justify-center w-11 h-11 rounded-full hover:bg-blue-50 transition">
                 <FaFacebook className="text-blue-600 text-2xl" />
               </button>
 
-              <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-pink-50 transition ">
+              <button className="flex items-center justify-center w-11 h-11 rounded-full hover:bg-pink-50 transition">
                 <FaInstagram className="text-pink-500 text-2xl" />
               </button>
             </div>
           </form>
 
           {/* Register */}
-          <p className="text-center text-sm text-gray-500 mt-6 mb-6 ">
+          <p className="text-center text-sm text-gray-500 mt-6 mb-6">
             Chưa có tài khoản?{" "}
             <Link
               to="/register"

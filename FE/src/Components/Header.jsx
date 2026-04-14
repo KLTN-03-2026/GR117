@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   FaLocationDot,
-  FaRegStar,
   FaPhone,
   FaUser,
   MdOutlineDashboard,

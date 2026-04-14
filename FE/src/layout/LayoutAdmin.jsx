@@ -3,6 +3,7 @@ import Footer from "../Components/Footer.jsx";
 import Sidebar from "../Components/Sidebar.jsx";
 import { Outlet } from "react-router-dom";
 import { jwt } from "../utils/jwt.js";
+import HeadrAdmin from "../Pages/admin/HeadrAdmin.jsx";
 
 function LayoutAdmin() {
   const user = jwt();
@@ -10,8 +11,8 @@ function LayoutAdmin() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
-
+     {/* <HeadrAdmin/> */}
+     <Header/>
       <main className="flex flex-1 w-full">
         {showSidebar && <Sidebar />}
 

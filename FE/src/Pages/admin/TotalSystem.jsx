@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { FiBox } from "react-icons/fi";
 import {IoCheckmarkCircleOutline,IoPeopleOutline,IoTicketOutline} from "react-icons/io5";
 const TotalSystem = () => {
+  // const [total,setTal] = useState([])
   return (
     <div className="space-y-6">
                   <div>

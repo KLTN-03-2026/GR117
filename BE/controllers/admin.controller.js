@@ -1,5 +1,5 @@
 const accounts = require("../models/account.js");
-
+const Service = require("../models/services.js")
 module.exports.getPendingProviders = async (req, res) => {
   try {
     const providers = await accounts
@@ -96,3 +96,5 @@ module.exports.rejectProvider = async (req, res) => {
     });
   }
 };
+
+
