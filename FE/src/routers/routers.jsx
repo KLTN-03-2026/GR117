@@ -20,10 +20,10 @@ import ProviderSchedule from "../Pages/provider/ProviderSchedule.jsx";
 import Booking from "../Pages/provider/Booking.jsx";
 import Revenue from "../Pages/provider/Revenue.jsx";
 import PartnerProfile from "../Pages/provider/PartnerProfile.jsx";
-
+import DetailServices from "../Pages/client/DetailServers.jsx";
 function Routers() {
   const user = jwt();
-   
+
   return (
     <Routes>
       {/* PUBLIC */}
@@ -44,6 +44,7 @@ function Routers() {
         <Route path="/destination" element={<Destination />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/DetailServices" element={<DetailServices />} />
       </Route>
 
       {/* USER */}

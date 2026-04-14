@@ -179,7 +179,9 @@ const Destination = () => {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-4 gap-5">
           {Data.map((props, index) => (
-            <ServicesCard service={props} key={index} />
+            <Link to="/DetailServices" state={{ props }}>
+              <ServicesCard service={props} key={index} />
+            </Link>
           ))}
         </div>
       </div>
