@@ -2,6 +2,48 @@ const mongoose = require("mongoose");
 
 const Account  = require("../models/account.js");
 
+const activitySchema = new mongoose.Schema(
+  {
+    time: { type: String, default: "" },
+    title: { type: String, default: "" },
+    description: { type: String, default: "" },
+    icon: {
+      type: String,
+      enum: ["transport", "hotel", "food", "sightseeing", "activity", "photo"],
+      default: "activity",
+      set: (value) => {
+        const normalized = String(value || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[`"' ]+/g, "");
+
+        return ["transport", "hotel", "food", "sightseeing", "activity", "photo"].includes(normalized)
+          ? normalized
+          : "activity";
+      },
+    },
+  },
+  { _id: false },
+);
+
+const itineraryDaySchema = new mongoose.Schema(
+  {
+    day: { type: Number, required: true },
+    title: { type: String, default: "" },
+    description: { type: String, default: "" },
+    meals: {
+      type: [String],
+      default: [],
+    },
+    accommodation: { type: String, default: "" },
+    activities: {
+      type: [activitySchema],
+      default: [],
+    },
+  },
+  { _id: false },
+);
+
 const serviceSchema = new mongoose.Schema({
   provider_id: {
         type: mongoose.Schema.Types.ObjectId,
@@ -34,7 +76,10 @@ const serviceSchema = new mongoose.Schema({
     required: true,
   },
    // điểm nổi bật của tour
-  highlight: String,
+  highlight: {
+    type: [String],
+    default: [],
+  },
  
   //mô tả 
   description: String,
@@ -46,7 +91,10 @@ const serviceSchema = new mongoose.Schema({
    
 
   //lịch trình chi tiết của tour
-  itinerary: String,
+  itinerary: {
+    type: [itineraryDaySchema],
+    default: [],
+  },
   
   //bao gồm buổi ăn , phương tiện 
   serviceIncludes : {

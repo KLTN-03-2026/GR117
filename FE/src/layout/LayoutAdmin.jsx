@@ -10,7 +10,7 @@ function LayoutAdmin() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header variant="dashboard" />
 
       <main className="flex flex-1 w-full">
         {showSidebar && <Sidebar />}

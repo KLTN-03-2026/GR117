@@ -10,10 +10,11 @@ import {
 import { SiGmail } from "react-icons/si";
 import { NavLink, Link } from "react-router-dom";
 
-function Header() {
+function Header({ variant = "default" }) {
   const accessToken = localStorage.getItem("accessToken");
   const user = JSON.parse(localStorage.getItem("currentUser") || "null");
   const isCheck = !!accessToken;
+  const isDashboardHeader = variant === "dashboard";
 
   console.log(user);
 
@@ -27,10 +28,15 @@ function Header() {
     isActive
       ? "text-[#f97316] font-semibold border-b-2 border-[#f97316] pb-1"
       : "hover:text-[#f97316] transition-colors";
+  const logoPath = isDashboardHeader
+    ? user?.role === "admin"
+      ? "/admin/dashboard"
+      : "/provider/dashboard"
+    : "/";
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
-      {/* Top bar */}
+      {!isDashboardHeader && (
       <div className="bg-[#1a1a2e] text-white/80 hidden md:block text-[15px]">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-6 px-2">
@@ -59,12 +65,13 @@ function Header() {
           )}
         </div>
       </div>
+      )}
 
       {/* Main header */}
       <header className="flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 justify-between">
         {/* Logo */}
         <div className="flex h-16 items-center">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to={logoPath} className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#f97316] to-[#f59e0b] flex items-center justify-center text-white">
               <FaLocationDot />
             </div>
@@ -76,7 +83,7 @@ function Header() {
           </Link>
         </div>
 
-        {/* Menu */}
+        {!isDashboardHeader && (
         <div className="hidden md:flex items-center gap-6">
           <NavLink to="/" end className={navClass}>
             Trang Chủ
@@ -94,6 +101,7 @@ function Header() {
             Liên Hệ
           </NavLink>
         </div>
+        )}
 
         {/* Auth */}
         <div className="hidden md:flex items-center gap-3">
@@ -123,7 +131,7 @@ function Header() {
             </>
           ) : (
             <>
-              {["provider", "admin"].includes(user?.role) && (
+              {!isDashboardHeader && ["provider", "admin"].includes(user?.role) && (
                 <NavLink
                   to={
                     user.role === "admin"

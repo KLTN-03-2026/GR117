@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { IoLocationOutline } from "react-icons/io5";
 import { RiCalendarScheduleLine } from "react-icons/ri";
 import { CiSearch } from "react-icons/ci";
-import ServicesCardHomePage from "../../Components/ServicesCardHomePage.jsx";
+import ServicesCard from "../../Components/ServicesCard.jsx";
 const comments = [
     {
         star: 5,
@@ -193,9 +193,15 @@ function HomePage() {
                         </h2>
                     </div>
 
-                    {Service.map((props, index) => {
-                        return ServicesCardHomePage(props, index);
-                    })}
+                    <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto">
+                        {Service.map((service) => (
+                            <ServicesCard
+                                key={service._id || service.serviceName}
+                                service={service}
+                                variant="customer"
+                            />
+                        ))}
+                    </div>
                 </section>
 
                 <section className="relative py-24 overflow-hidden">

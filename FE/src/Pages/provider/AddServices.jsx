@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import ButtonBack from "../../Components/ButtonBack";
 import { FaLocationDot } from "../../assets/Icons/Icons";
+import { parseServiceByAI } from "../../services/aiService";
 const CATEGORY_OPTIONS = [
   "Biển đảo",
   "Núi",
@@ -30,6 +31,11 @@ const splitLines = (value) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const parseItineraryInput = (value) => {
+  const parsed = JSON.parse(value);
+  return Array.isArray(parsed) ? parsed : [];
+};
+
 const isValidImageUrl = (value) => {
   if (!value.trim()) return true;
   try {
@@ -46,6 +52,7 @@ const AddServices = () => {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
 
   let currentUser = null;
@@ -73,6 +80,35 @@ const AddServices = () => {
     }
   };
 
+  const handleGenerateByAI = async () => {
+    if (!formData.itinerary.trim()) {
+      setSuccess(false);
+      setMessage("Vui lòng nhập nội dung vào ô lịch trình để AI phân tích");
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      setSuccess(false);
+      setMessage("");
+
+      const aiData = await parseServiceByAI(formData.itinerary);
+
+      setFormData((prev) => ({
+        ...prev,
+        itinerary: JSON.stringify(aiData.itinerary || [], null, 2),
+      }));
+
+      setSuccess(true);
+      setMessage("AI đã chuẩn hóa nội dung lịch trình");
+    } catch (error) {
+      setSuccess(false);
+      setMessage(error.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const validateForm = () => {
     if (!formData.name.trim()) return "Tên dịch vụ không được để trống";
     if (!formData.description.trim()) return "Mô tả không được để trống";
@@ -80,6 +116,12 @@ const AddServices = () => {
     if (!formData.category) return "Vui lòng chọn danh mục";
     if (!formData.price || Number(formData.price) <= 0)
       return "Giá phải lớn hơn 0";
+
+    try {
+      parseItineraryInput(formData.itinerary);
+    } catch (error) {
+      return "Lịch trình phải là JSON hợp lệ. Bạn có thể bấm 'Tạo bằng AI' để chuẩn hóa.";
+    }
 
     if (!imageFile) {
       const invalidImage = splitLines(formData.images).find(
@@ -103,6 +145,7 @@ const AddServices = () => {
     }
 
     const payload = new FormData();
+    const parsedItinerary = parseItineraryInput(formData.itinerary);
     payload.append("serviceName", formData.name.trim());
     payload.append(
       "nameProvider",
@@ -113,11 +156,9 @@ const AddServices = () => {
     payload.append("location", formData.location.trim());
     payload.append("category", formData.category);
     payload.append("duration", formData.duration.trim());
-    payload.append("highlight", splitLines(formData.highlights).join("\n"));
-    payload.append("itinerary", splitLines(formData.itinerary).join("\n"));
-    splitLines(formData.includes).forEach((item) => {
-      payload.append("serviceIncludes", item);
-    });
+    payload.append("highlight", JSON.stringify(splitLines(formData.highlights)));
+    payload.append("itinerary", JSON.stringify(parsedItinerary));
+    payload.append("serviceIncludes", JSON.stringify(splitLines(formData.includes)));
 
     if (imageFile) {
       payload.append("image", imageFile);
@@ -321,10 +362,20 @@ const AddServices = () => {
                       onChange={handleChange}
                       rows="4"
                       placeholder={
-                        "Ngay 1: Den Da Nang\nNgay 2: Tham quan Ba Na"
+                        'Dán mô tả thô để AI chuẩn hóa, hoặc nhập JSON itinerary hợp lệ'
                       }
                       className={inputClass}
                     />
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleGenerateByAI}
+                        disabled={aiLoading}
+                        className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {aiLoading ? "AI đang phân tích..." : "Tạo bằng AI"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -13,6 +13,13 @@ import CustomApi from "../../../Server";
 function SignIn() {
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  const getRedirectPath = (role) => {
+    const normalizedRole = String(role || "").toLowerCase();
+
+    if (normalizedRole === "admin") return "/admin/dashboard";
+    if (normalizedRole === "provider") return "/provider/dashboard";
+    return "/";
+  };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,15 +29,7 @@ function SignIn() {
   const [message, setMessage] = useState({ type: "", text: "" });
 
   if (currentUser) {
-    const role = String(currentUser.role || "").toLowerCase();
-    const path =
-      role === "admin"
-        ? "/admin/dashboard"
-        : role === "provider"
-          ? "/provider/dashboard"
-          : "/";
-
-    return <Navigate to={path} replace />;
+    return <Navigate to={getRedirectPath(currentUser.role)} replace />;
   }
 
   const handleSubmit = async (e) => {
@@ -47,11 +46,12 @@ function SignIn() {
 
       const accessToken = res.data?.accessToken;
       const user = res.data?.user;
+      const redirectPath = getRedirectPath(user?.role);
 
       if (accessToken) localStorage.setItem("accessToken", accessToken);
       if (user) localStorage.setItem("currentUser", JSON.stringify(user));
 
-      navigate("/");
+      navigate(redirectPath, { replace: true });
       window.location.reload();
     } catch (err) {
       setMessage({

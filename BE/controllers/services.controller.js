@@ -2,6 +2,76 @@ const Services = require("../models/services.js");
 const fs = require("fs");
 const path = require("path");
 const accounts = require("../models/account.js");
+
+const splitLines = (value) =>
+  String(value || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const parseStringArrayField = (value) => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item).trim()).filter(Boolean);
+    }
+  } catch (error) {
+    // Fallback to newline parsing.
+  }
+
+  return splitLines(value);
+};
+
+const parseItineraryField = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const ALLOWED_ACTIVITY_ICONS = new Set([
+  "transport",
+  "hotel",
+  "food",
+  "sightseeing",
+  "activity",
+  "photo",
+]);
+
+const normalizeItineraryField = (value) =>
+  parseItineraryField(value)
+    .map((dayItem, index) => ({
+      day:
+        Number(dayItem?.day) > 0
+          ? Number(dayItem.day)
+          : index + 1,
+      title: String(dayItem?.title || "").trim(),
+      description: String(dayItem?.description || "").trim(),
+      meals: Array.isArray(dayItem?.meals)
+        ? dayItem.meals.map((item) => String(item).trim()).filter(Boolean)
+        : [],
+      accommodation: String(dayItem?.accommodation || "").trim(),
+      activities: Array.isArray(dayItem?.activities)
+        ? dayItem.activities.map((activity) => {
+            const icon = String(activity?.icon || "activity").trim().toLowerCase();
+            return {
+              time: String(activity?.time || "").trim(),
+              title: String(activity?.title || "").trim(),
+              description: String(activity?.description || "").trim(),
+              icon: ALLOWED_ACTIVITY_ICONS.has(icon) ? icon : "activity",
+            };
+          })
+        : [],
+    }))
+    .filter((dayItem) => dayItem.title || dayItem.description || dayItem.activities.length);
 // ================= ADD =================
 exports.addServices = async (req, res) => {
   try {
@@ -46,15 +116,15 @@ exports.addServices = async (req, res) => {
       serviceName,
       provider_id: user._id,
       nameProvider: user.fullName || user.email || "",
-      category,
+      category: Array.isArray(category) ? category : [category].filter(Boolean),
       location,
       region,
-      duration: duration ? Number(duration) : undefined,
+      duration: duration ? String(duration) : undefined,
       prices: Number(prices),
-      highlight,
+      highlight: parseStringArrayField(highlight),
       description, //
-      serviceIncludes,
-      itinerary,
+      serviceIncludes: parseStringArrayField(serviceIncludes),
+      itinerary: normalizeItineraryField(itinerary),
       imageFile,
       imageUrl: finalImageUrl,
       status: status || "active",
@@ -84,7 +154,21 @@ module.exports.putServices = async (req, res) => {
     let updateData = { ...req.body };
 
     if (updateData.prices) updateData.prices = Number(updateData.prices);
-    if (updateData.duration) updateData.duration = Number(updateData.duration);
+    if (updateData.duration) updateData.duration = String(updateData.duration);
+    if (updateData.highlight !== undefined) {
+      updateData.highlight = parseStringArrayField(updateData.highlight);
+    }
+    if (updateData.serviceIncludes !== undefined) {
+      updateData.serviceIncludes = parseStringArrayField(updateData.serviceIncludes);
+    }
+    if (updateData.itinerary !== undefined) {
+      updateData.itinerary = normalizeItineraryField(updateData.itinerary);
+    }
+    if (updateData.category !== undefined) {
+      updateData.category = Array.isArray(updateData.category)
+        ? updateData.category
+        : [updateData.category].filter(Boolean);
+    }
 
     // ảnh
     if (req.file) {
@@ -127,7 +211,17 @@ module.exports.patchServices = async (req, res) => {
       updateFields.prices = Number(updateFields.prices);
 
     if (updateFields.duration !== undefined)
-      updateFields.duration = Number(updateFields.duration);
+      updateFields.duration = String(updateFields.duration);
+    if (updateFields.highlight !== undefined)
+      updateFields.highlight = parseStringArrayField(updateFields.highlight);
+    if (updateFields.serviceIncludes !== undefined)
+      updateFields.serviceIncludes = parseStringArrayField(updateFields.serviceIncludes);
+    if (updateFields.itinerary !== undefined)
+      updateFields.itinerary = normalizeItineraryField(updateFields.itinerary);
+    if (updateFields.category !== undefined)
+      updateFields.category = Array.isArray(updateFields.category)
+        ? updateFields.category
+        : [updateFields.category].filter(Boolean);
 
     // 🔹 xử lý ảnh
     if (req.file) {
