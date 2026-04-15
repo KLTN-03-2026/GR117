@@ -1,4 +1,4 @@
-const Services = require("../models/services.js");
+﻿const Services = require("../models/services.js");
 const fs = require("fs");
 const path = require("path");
 const accounts = require("../models/account.js");
@@ -49,10 +49,7 @@ const ALLOWED_ACTIVITY_ICONS = new Set([
 const normalizeItineraryField = (value) =>
   parseItineraryField(value)
     .map((dayItem, index) => ({
-      day:
-        Number(dayItem?.day) > 0
-          ? Number(dayItem.day)
-          : index + 1,
+      day: Number(dayItem?.day) > 0 ? Number(dayItem.day) : index + 1,
       title: String(dayItem?.title || "").trim(),
       description: String(dayItem?.description || "").trim(),
       meals: Array.isArray(dayItem?.meals)
@@ -61,7 +58,10 @@ const normalizeItineraryField = (value) =>
       accommodation: String(dayItem?.accommodation || "").trim(),
       activities: Array.isArray(dayItem?.activities)
         ? dayItem.activities.map((activity) => {
-            const icon = String(activity?.icon || "activity").trim().toLowerCase();
+            const icon = String(activity?.icon || "activity")
+              .trim()
+              .toLowerCase();
+
             return {
               time: String(activity?.time || "").trim(),
               title: String(activity?.title || "").trim(),
@@ -71,8 +71,16 @@ const normalizeItineraryField = (value) =>
           })
         : [],
     }))
-    .filter((dayItem) => dayItem.title || dayItem.description || dayItem.activities.length);
-// ================= ADD =================
+    .filter((dayItem) =>
+      dayItem.title || dayItem.description || dayItem.activities.length,
+    );
+
+const isOwnerOrAdmin = (service, user) => {
+  if (!service || !user) return false;
+  if (user.role === "admin") return true;
+  return String(service.provider_id || "") === String(user.id || "");
+};
+
 exports.addServices = async (req, res) => {
   try {
     const {
@@ -88,46 +96,45 @@ exports.addServices = async (req, res) => {
       imageUrl,
       itinerary,
       serviceIncludes,
-      status,
-    } = req.body;  
-    //  Validate cơ bản
-    if (!serviceName || !prices || !nameProvider  ) {
+    } = req.body;
+
+    if (!serviceName || !prices || !nameProvider) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu thông tin bắt buộc "
+        message: "Thiếu thông tin bắt buộc",
       });
-    } 
+    }
+
     const userId = req.user?.id;
     const user = await accounts.findOne({ _id: userId, role: "provider" });
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: "Bạn không có quyền thực hiện hành động này"
+        message: "Bạn không có quyền thực hiện hành động này",
       });
     }
 
-    // Xử lý ảnh
     const imageFile = req.file ? req.file.filename : null;
     const finalImageUrl = req.file
       ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
       : imageUrl || null;
 
     const newService = new Services({
-      serviceName,
       provider_id: user._id,
       nameProvider: user.fullName || user.email || "",
+      serviceName,
       category: Array.isArray(category) ? category : [category].filter(Boolean),
       location,
       region,
       duration: duration ? String(duration) : undefined,
       prices: Number(prices),
       highlight: parseStringArrayField(highlight),
-      description, //
+      description,
       serviceIncludes: parseStringArrayField(serviceIncludes),
       itinerary: normalizeItineraryField(itinerary),
       imageFile,
       imageUrl: finalImageUrl,
-      status: status || "active",
+      status: "pending",
     });
 
     await newService.save();
@@ -146,12 +153,53 @@ exports.addServices = async (req, res) => {
   }
 };
 
-// ================= PUT =================
-module.exports.putServices = async (req, res) => {
+exports.publicServices = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 6;
+    const skip = (page - 1) * limit;
+
+    const data = await Services.find({ status: "active" })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Services.countDocuments({ status: "active" });
+
+    return res.status(200).json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPage: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.putServices = async (req, res) => {
   try {
     const { id } = req.params;
+    const service = await Services.findById(id);
+
+    if (!service) {
+      return res.status(404).json({ message: "Không tìm thấy service" });
+    }
+
+    if (!isOwnerOrAdmin(service, req.user)) {
+      return res.status(403).json({ message: "Bạn không có quyền sửa dịch vụ này" });
+    }
 
     let updateData = { ...req.body };
+    delete updateData.provider_id;
+    delete updateData.nameProvider;
 
     if (updateData.prices) updateData.prices = Number(updateData.prices);
     if (updateData.duration) updateData.duration = String(updateData.duration);
@@ -170,82 +218,92 @@ module.exports.putServices = async (req, res) => {
         : [updateData.category].filter(Boolean);
     }
 
-    // ảnh
     if (req.file) {
       updateData.imageFile = req.file.filename;
       updateData.imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
     }
 
-    // xoá field rỗng
     Object.keys(updateData).forEach(
-      (k) => updateData[k] === undefined && delete updateData[k]
+      (key) => updateData[key] === undefined && delete updateData[key],
     );
 
     const updated = await Services.findByIdAndUpdate(id, updateData, {
       new: true,
     });
 
-    if (!updated) {
-      return res.status(404).json({ message: "Không tìm thấy service" });
-    }
-
-    res.json({
+    return res.json({
       success: true,
       message: "Update thành công",
       data: updated,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: err.message });
   }
 };
 
-// ================= PATCH =================
-module.exports.patchServices = async (req, res) => {
+exports.patchServices = async (req, res) => {
   try {
     const { id } = req.params;
+    const service = await Services.findById(id);
 
-    let updateFields = { ...req.body };
-
-    // 🔹 convert số
-    if (updateFields.prices !== undefined)
-      updateFields.prices = Number(updateFields.prices);
-
-    if (updateFields.duration !== undefined)
-      updateFields.duration = String(updateFields.duration);
-    if (updateFields.highlight !== undefined)
-      updateFields.highlight = parseStringArrayField(updateFields.highlight);
-    if (updateFields.serviceIncludes !== undefined)
-      updateFields.serviceIncludes = parseStringArrayField(updateFields.serviceIncludes);
-    if (updateFields.itinerary !== undefined)
-      updateFields.itinerary = normalizeItineraryField(updateFields.itinerary);
-    if (updateFields.category !== undefined)
-      updateFields.category = Array.isArray(updateFields.category)
-        ? updateFields.category
-        : [updateFields.category].filter(Boolean);
-
-    // 🔹 xử lý ảnh
-    if (req.file) {
-      updateFields.imageFile = req.file.filename;
-      updateFields.imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-    }
-
-    // 🔹 xoá field undefined
-    Object.keys(updateFields).forEach(
-      (k) => updateFields[k] === undefined && delete updateFields[k]
-    );
-
-    const updatedService = await Services.findByIdAndUpdate(
-      id,
-      { $set: updateFields },
-      { new: true }
-    );
-
-    if (!updatedService) {
+    if (!service) {
       return res.status(404).json({
         success: false,
         message: "Service không tồn tại",
       });
     }
+
+    if (!isOwnerOrAdmin(service, req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền cập nhật dịch vụ này",
+      });
+    }
+
+    let updateFields = { ...req.body };
+    delete updateFields.provider_id;
+    delete updateFields.nameProvider;
+
+    if (updateFields.prices !== undefined) {
+      updateFields.prices = Number(updateFields.prices);
+    }
+
+    if (updateFields.duration !== undefined) {
+      updateFields.duration = String(updateFields.duration);
+    }
+
+    if (updateFields.highlight !== undefined) {
+      updateFields.highlight = parseStringArrayField(updateFields.highlight);
+    }
+
+    if (updateFields.serviceIncludes !== undefined) {
+      updateFields.serviceIncludes = parseStringArrayField(updateFields.serviceIncludes);
+    }
+
+    if (updateFields.itinerary !== undefined) {
+      updateFields.itinerary = normalizeItineraryField(updateFields.itinerary);
+    }
+
+    if (updateFields.category !== undefined) {
+      updateFields.category = Array.isArray(updateFields.category)
+        ? updateFields.category
+        : [updateFields.category].filter(Boolean);
+    }
+
+    if (req.file) {
+      updateFields.imageFile = req.file.filename;
+      updateFields.imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    }
+
+    Object.keys(updateFields).forEach(
+      (key) => updateFields[key] === undefined && delete updateFields[key],
+    );
+
+    const updatedService = await Services.findByIdAndUpdate(
+      id,
+      { $set: updateFields },
+      { new: true },
+    );
 
     return res.status(200).json({
       success: true,
@@ -260,11 +318,10 @@ module.exports.patchServices = async (req, res) => {
     });
   }
 };
-// ================= DELETE ONE =================
-module.exports.deleteOne = async (req, res) => {
+
+exports.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
-
     const service = await Services.findById(id);
 
     if (!service) {
@@ -273,16 +330,20 @@ module.exports.deleteOne = async (req, res) => {
       });
     }
 
-    //  XÓA FILE ẢNH
+    if (!isOwnerOrAdmin(service, req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền xóa dịch vụ này",
+      });
+    }
+
     if (service.imageFile) {
       const filePath = path.join(__dirname, "..", "uploads", service.imageFile);
-
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
     }
 
-    // XÓA DB
     await Services.findByIdAndDelete(id);
 
     return res.status(200).json({
@@ -298,14 +359,22 @@ module.exports.deleteOne = async (req, res) => {
   }
 };
 
-// ================= DELETE MANY =================
-module.exports.deleteServices = async (req, res) => {
+exports.deleteServices = async (req, res) => {
   try {
     const { ids } = req.body;
 
     if (!Array.isArray(ids)) {
       return res.status(400).json({
         message: "Danh sách ID không hợp lệ",
+      });
+    }
+
+    const services = await Services.find({ _id: { $in: ids } });
+    const unauthorized = services.find((service) => !isOwnerOrAdmin(service, req.user));
+
+    if (unauthorized) {
+      return res.status(403).json({
+        message: "Bạn không có quyền xóa một số dịch vụ trong danh sách này",
       });
     }
 
@@ -322,14 +391,19 @@ module.exports.deleteServices = async (req, res) => {
   }
 };
 
-// ================= DETAIL =================
-module.exports.servicesDetail = async (req, res) => {
+exports.servicesDetail = async (req, res) => {
   try {
     const service = await Services.findById(req.params.id);
 
     if (!service) {
       return res.status(404).json({
         message: "Không tìm thấy dịch vụ",
+      });
+    }
+
+    if (req.user && req.user.role === "provider" && !isOwnerOrAdmin(service, req.user)) {
+      return res.status(403).json({
+        message: "Bạn không có quyền xem dịch vụ này",
       });
     }
 
@@ -341,19 +415,20 @@ module.exports.servicesDetail = async (req, res) => {
   }
 };
 
-// ================= LIST + PAGINATION =================
-module.exports.allServices = async (req, res) => {
+exports.allServices = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 6;
     const skip = (page - 1) * limit;
 
-    const data = await Services.find({})
+    const filter = req.user?.role === "provider" ? { provider_id: req.user.id } : {};
+
+    const data = await Services.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const total = await Services.countDocuments();
+    const total = await Services.countDocuments(filter);
 
     return res.status(200).json({
       success: true,

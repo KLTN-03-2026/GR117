@@ -1,20 +1,28 @@
-const Schedule = require("../models/schedule.js");
+﻿const Schedule = require("../models/schedule.js");
 const Service = require("../models/services.js");
 
 const ALLOWED_STATUS = ["open", "full", "closed"];
 
+const resolveServiceId = (reqBody) =>
+  String(reqBody.serviceId || reqBody.service_id || "").trim();
+
+const canAccessService = (service, user) => {
+  if (!service || !user) return false;
+  if (user.role === "admin") return true;
+  return String(service.provider_id || "") === String(user.id || "");
+};
+
+const buildServiceFilter = (user) => {
+  if (user?.role === "provider") {
+    return { provider_id: user.id };
+  }
+  return {};
+};
+
 module.exports.registerSchedule = async (req, res) => {
   try {
-    const {
-      serviceId,
-      service_id,
-      departureDate,
-      endDate,
-      maxPeople,
-      note,
-      status,
-    } = req.body;
-    const normalizedServiceId = String(serviceId || service_id || "").trim();
+    const { departureDate, endDate, maxPeople, note, status } = req.body;
+    const normalizedServiceId = resolveServiceId(req.body);
 
     if (!normalizedServiceId || !departureDate || !endDate || !maxPeople) {
       return res.status(400).json({ message: "Thieu du lieu" });
@@ -22,31 +30,28 @@ module.exports.registerSchedule = async (req, res) => {
 
     const depDate = new Date(departureDate);
     const end = new Date(endDate);
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     if (depDate < today || end < today) {
-      return res.status(400).json({
-        message: "Khong duoc chon ngay trong qua khu",
-      });
+      return res.status(400).json({ message: "Khong duoc chon ngay trong qua khu" });
     }
 
     if (end < depDate) {
-      return res.status(400).json({
-        message: "Ngay ve phai sau ngay di",
-      });
+      return res.status(400).json({ message: "Ngay ve phai sau ngay di" });
     }
 
     if (status && !ALLOWED_STATUS.includes(status)) {
-      return res.status(400).json({
-        message: "Trang thai khong hop le",
-      });
+      return res.status(400).json({ message: "Trang thai khong hop le" });
     }
 
-    const service = await Service.findOne({ _id: normalizedServiceId });
+    const service = await Service.findById(normalizedServiceId);
     if (!service) {
       return res.status(404).json({ message: "Service khong ton tai" });
+    }
+
+    if (!canAccessService(service, req.user)) {
+      return res.status(403).json({ message: "Ban khong co quyen tao lich cho dich vu nay" });
     }
 
     const newSchedule = await Schedule.create({
@@ -71,7 +76,8 @@ module.exports.registerSchedule = async (req, res) => {
 
 module.exports.getServiceList = async (req, res) => {
   try {
-    const services = await Service.find().select("_id serviceName");
+    const filter = buildServiceFilter(req.user);
+    const services = await Service.find(filter).select("_id serviceName location region provider_id");
 
     return res.json({
       success: true,
@@ -85,6 +91,16 @@ module.exports.getServiceList = async (req, res) => {
 module.exports.getSchedulesByService = async (req, res) => {
   try {
     const { serviceId } = req.params;
+    const service = await Service.findById(serviceId);
+
+    if (!service) {
+      return res.status(404).json({ message: "Service khong ton tai" });
+    }
+
+    if (req.user && req.user.role === "provider" && !canAccessService(service, req.user)) {
+      return res.status(403).json({ message: "Ban khong co quyen xem lich nay" });
+    }
+
     const schedules = await Schedule.find({ service_id: serviceId }).sort({
       departureDate: 1,
       createdAt: -1,
@@ -101,7 +117,15 @@ module.exports.getSchedulesByService = async (req, res) => {
 
 module.exports.getAllSchedules = async (req, res) => {
   try {
-    const schedules = await Schedule.find({}).sort({
+    const serviceFilter = buildServiceFilter(req.user);
+    const services = await Service.find(serviceFilter).select("_id");
+    const serviceIds = services.map((item) => String(item._id));
+
+    const schedules = await Schedule.find(
+      req.user?.role === "provider"
+        ? { service_id: { $in: serviceIds } }
+        : {},
+    ).sort({
       departureDate: 1,
       createdAt: -1,
     });
@@ -118,16 +142,8 @@ module.exports.getAllSchedules = async (req, res) => {
 module.exports.updateOne = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      serviceId,
-      service_id,
-      departureDate,
-      endDate,
-      maxPeople,
-      note,
-      status,
-    } = req.body;
-    const normalizedServiceId = String(serviceId || service_id || "").trim();
+    const { departureDate, endDate, maxPeople, note, status } = req.body;
+    const normalizedServiceId = resolveServiceId(req.body);
 
     if (!normalizedServiceId || !departureDate || !endDate || !maxPeople) {
       return res.status(400).json({ message: "Thieu du lieu" });
@@ -148,9 +164,13 @@ module.exports.updateOne = async (req, res) => {
       return res.status(400).json({ message: "Trang thai khong hop le" });
     }
 
-    const service = await Service.findOne({ _id: normalizedServiceId });
+    const service = await Service.findById(normalizedServiceId);
     if (!service) {
       return res.status(404).json({ message: "Service khong ton tai" });
+    }
+
+    if (!canAccessService(service, req.user)) {
+      return res.status(403).json({ message: "Ban khong co quyen cap nhat lich nay" });
     }
 
     const schedule = await Schedule.findById(id);
@@ -190,26 +210,30 @@ module.exports.updateOne = async (req, res) => {
 module.exports.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
+    const schedule = await Schedule.findById(id);
 
-    const service = await Schedule.findById(id);
-    if (!service) {
+    if (!schedule) {
       return res.status(404).json({
         success: false,
         message: "Schedule khong ton tai",
       });
     }
 
-    // XÓA DB
+    const service = await Service.findById(schedule.service_id);
+    if (!canAccessService(service, req.user)) {
+      return res.status(403).json({ message: "Ban khong co quyen xoa lich nay" });
+    }
+
     await Schedule.findByIdAndDelete(id);
 
     return res.status(200).json({
       success: true,
-      message: "Xóa schedule thành công",
+      message: "Xoa schedule thanh cong",
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Lỗi server",
+      message: "Loi server",
       error: error.message,
     });
   }

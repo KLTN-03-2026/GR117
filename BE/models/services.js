@@ -107,8 +107,8 @@ const serviceSchema = new mongoose.Schema({
    // trạng thái 
   status: {
     type: String,
-    enum: ["active", "inactive"],
-    default: "active",
+    enum: ["active", "inactive", "pending", "rejected"],
+    default: "pending",
   },
   deleted : Boolean,
   deletedAt : Date, 

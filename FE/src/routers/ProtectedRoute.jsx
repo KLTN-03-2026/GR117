@@ -10,6 +10,9 @@ export default function ProtectedRoute({ roles }) {
     roles &&
     !roles.some((role) => role.toLowerCase() === String(user.role).toLowerCase())
   ) {
+    const normalizedRole = String(user.role || "").toLowerCase();
+    if (normalizedRole === "admin") return <Navigate to="/admin" replace />;
+    if (normalizedRole === "provider") return <Navigate to="/provider" replace />;
     return <Navigate to="/" replace />;
   }
 

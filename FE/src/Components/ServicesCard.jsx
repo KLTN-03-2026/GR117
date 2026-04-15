@@ -42,6 +42,8 @@ const getReviewCount = (service) => {
   const value = Number(service.reviewCount ?? 0);
   return Number.isFinite(value) ? value : 0;
 };
+const formatPrice = (value) =>
+  Number(value || 0).toLocaleString("vi-VN") + " VNĐ";
 const FALLBACK_IMAGE = "https://via.placeholder.com/400x250?text=No+Image";
 
 const statusClass = {
@@ -100,7 +102,7 @@ const ServicesCard = ({
 
   if (variant === "destination") {
     return (
-      <div className="group mx-auto w-full max-w-[218px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+      <div className="group w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
         <div className="relative h-52 overflow-hidden">
             <img
               src={image}
@@ -129,11 +131,6 @@ const ServicesCard = ({
                 <RiCalendarScheduleLine className="text-[10px]" />
                 {duration}
               </span>
-
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#f97316] px-2.5 py-1 text-[11px] font-semibold text-white">
-                <FaFire className="text-xs" />
-                Hot
-              </span>
             </div>
         </div>
 
@@ -150,13 +147,19 @@ const ServicesCard = ({
           </div>
 
           <div className="flex items-center gap-1">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <FaStar key={index} className="text-[12px] text-[#f59e0b]" />
-            ))}
-            <span className="ml-1 text-[12px] text-gray-500">
-              {rating.toFixed(1)}{" "}
-              {reviewCount > 0 ? <span className="text-gray-400">({reviewCount})</span> : null}
-            </span>
+            {reviewCount > 0 ? (
+              <>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <FaStar key={index} className="text-[12px] text-[#f59e0b]" />
+                ))}
+                <span className="ml-1 text-[12px] text-gray-500">
+                  {rating.toFixed(1)}{" "}
+                  <span className="text-gray-400">({reviewCount})</span>
+                </span>
+              </>
+            ) : (
+              <span className="text-[12px] text-gray-400">Chưa có đánh giá</span>
+            )}
           </div>
 
           <div className="my-3 border-t border-gray-50" />
@@ -167,7 +170,7 @@ const ServicesCard = ({
                   Từ
                 </p>
                 <p className="text-[18px] font-bold text-[#f97316]">
-                  {price > 0 ? `${price.toLocaleString("vi-VN")}d` : "Lien he"}
+                  {price > 0 ? formatPrice(price) : "Liên hệ"}
                 </p>
                 <p className="text-[10px] text-gray-400">/ người</p>
               </div>
@@ -218,7 +221,7 @@ const ServicesCard = ({
 
           <div className="pt-1">
             <span className="text-[16px] font-bold text-[#f97316]">
-              {price > 0 ? `${price.toLocaleString("vi-VN")}d / nguoi` : "Lien he"}
+              {price > 0 ? `${formatPrice(price)} / người` : "Liên hệ"}
             </span>
           </div>
         </div>
@@ -261,7 +264,7 @@ const ServicesCard = ({
 
           <div className="shrink-0 text-right">
             <p className="text-xl font-bold text-orange-500">
-              {price > 0 ? `${price.toLocaleString("vi-VN")}d` : "Lien he"}
+              {price > 0 ? formatPrice(price) : "Liên hệ"}
             </p>
             <div className="mt-3 flex justify-end gap-2 text-gray-500">
               {actionButtons}
@@ -306,7 +309,7 @@ const ServicesCard = ({
 
         <div className="flex items-center justify-between pt-1">
           <span className="text-[16px] font-bold text-[#f97316]">
-            {price > 0 ? `${price.toLocaleString("vi-VN")}d` : "Lien he"}
+            {price > 0 ? formatPrice(price) : "Liên hệ"}
           </span>
           {actionButtons}
         </div>

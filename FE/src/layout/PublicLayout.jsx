@@ -1,8 +1,14 @@
 import Header from '../Components/Header.jsx';
 import Footer from '../Components/Footer.jsx';
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
+import { jwt } from "../utils/jwt.js";
 
 function PublicLayout() {
+    const user = jwt();
+
+    if (user?.role === "admin") return <Navigate to="/admin" replace />;
+    if (user?.role === "provider") return <Navigate to="/provider" replace />;
+
     return (
         <div className="min-h-screen flex flex-col">
             <Header />

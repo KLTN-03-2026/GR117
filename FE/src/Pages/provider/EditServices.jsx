@@ -1,15 +1,8 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ButtonBack from "../../Components/ButtonBack";
 
-const CATEGORY_OPTIONS = [
-  "Biển đảo",
-  "Núi",
-  "Văn hoá",
-  "Ẩm thực",
-  "Thành phố",
-  "Mạo hiểm",
-];
+const CATEGORY_OPTIONS = ["Biển đảo", "Núi", "Văn hoá", "Ẩm thực", "Thành phố", "Mạo hiểm"];
 
 const EMPTY_FORM = {
   name: "",
@@ -50,30 +43,32 @@ const EditServices = () => {
   const [submitting, setSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState(null);
 
-  const imagePreview = useMemo(() => {
-    if (imageFile) return URL.createObjectURL(imageFile);
-    return splitLines(formData.images)[0] || "";
-  }, [formData.images, imageFile]);
-
   useEffect(() => {
     const fetchServiceDetail = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/services/detail/${id}`);
+        const accessToken = localStorage.getItem("accessToken");
+        const res = await fetch(`http://localhost:5000/api/services/detail/${id}`, {
+          headers: accessToken
+            ? {
+                Authorization: `Bearer ${accessToken}`,
+              }
+            : {},
+        });
         const result = await res.json();
+
+        if (!res.ok) {
+          setMessage(result?.message || "Không tải được thông tin dịch vụ");
+          return;
+        }
+
         const service = result?.data || result;
 
         setFormData({
-          name:
-            service.serviceName ||
-            service.servicesName ||
-            service.ServiceName ||
-            "",
+          name: service.serviceName || service.servicesName || service.ServiceName || "",
           description: service.description || service.descriptionDetail || "",
           price: String(service.prices ?? service.price ?? ""),
           location: service.location || service.destination || "",
-          category: Array.isArray(service.category)
-            ? service.category[0] || ""
-            : service.category || "",
+          category: Array.isArray(service.category) ? service.category[0] || "" : service.category || "",
           duration: String(service.duration || ""),
           images: service.imageUrl || "",
           highlights: Array.isArray(service.highlights)
@@ -84,9 +79,7 @@ const EditServices = () => {
             : Array.isArray(service.serviceIncludes)
               ? service.serviceIncludes.join("\n")
               : "",
-          itinerary: Array.isArray(service.itinerary)
-            ? service.itinerary.join("\n")
-            : service.itinerary || "",
+          itinerary: Array.isArray(service.itinerary) ? service.itinerary.join("\n") : service.itinerary || "",
         });
       } catch (error) {
         setMessage("Không tải được thông tin dịch vụ");
@@ -103,6 +96,14 @@ const EditServices = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleImagesChange = (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, images: value }));
+    if (value.trim()) {
+      setImageFile(null);
+    }
+  };
+
   const handleImageChange = (e) => {
     const file = e.target.files?.[0] || null;
     setImageFile(file);
@@ -116,14 +117,10 @@ const EditServices = () => {
     if (!formData.description.trim()) return "Mô tả không được để trống";
     if (!formData.location.trim()) return "Địa điểm không được để trống";
     if (!formData.category) return "Vui lòng chọn danh mục";
-    if (!formData.price || Number(formData.price) <= 0) {
-      return "Giá phải lớn hơn 0";
-    }
+    if (!formData.price || Number(formData.price) <= 0) return "Giá phải lớn hơn 0";
 
     if (!imageFile) {
-      const invalidImage = splitLines(formData.images).find(
-        (item) => !isValidImageUrl(item),
-      );
+      const invalidImage = splitLines(formData.images).find((item) => !isValidImageUrl(item));
       if (invalidImage) return "Image URL không đúng định dạng";
     }
 
@@ -210,13 +207,7 @@ const EditServices = () => {
         <div className="flex justify-center">
           <div className="w-full rounded-[28px] border border-orange-100 bg-white p-6 shadow-sm md:p-8">
             {message && (
-              <div
-                className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${
-                  success
-                    ? "border-green-200 bg-green-50 text-green-600"
-                    : "border-red-200 bg-red-50 text-red-600"
-                }`}
-              >
+              <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${success ? "border-green-200 bg-green-50 text-green-600" : "border-red-200 bg-red-50 text-red-600"}`}>
                 {message}
               </div>
             )}
@@ -226,26 +217,11 @@ const EditServices = () => {
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <label className={labelClass}>Tên dịch vụ</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="Tên dịch vụ"
-                      className={inputClass}
-                    />
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Tên dịch vụ" className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>Giá</label>
-                    <input
-                      type="number"
-                      min="0"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleChange}
-                      placeholder="VNĐ"
-                      className={inputClass}
-                    />
+                    <input type="number" min="0" name="price" value={formData.price} onChange={handleChange} placeholder="VNĐ" className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -254,40 +230,20 @@ const EditServices = () => {
                 <div className="grid gap-6 md:grid-cols-3">
                   <div>
                     <label className={labelClass}>Địa điểm</label>
-                    <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      className={inputClass}
-                    />
+                    <input type="text" name="location" value={formData.location} onChange={handleChange} className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>Danh mục</label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      className={inputClass}
-                    >
+                    <select name="category" value={formData.category} onChange={handleChange} className={inputClass}>
                       <option value="">Chọn danh mục</option>
                       {CATEGORY_OPTIONS.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
+                        <option key={item} value={item}>{item}</option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className={labelClass}>Thời lượng</label>
-                    <input
-                      type="text"
-                      name="duration"
-                      value={formData.duration}
-                      onChange={handleChange}
-                      placeholder="VD: 5 ngày 4 đêm"
-                      className={inputClass}
-                    />
+                    <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="VD: 5 ngày 4 đêm" className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -296,94 +252,46 @@ const EditServices = () => {
                 <div className="space-y-6">
                   <div>
                     <label className={labelClass}>Mô tả</label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      rows="4"
-                      placeholder="Mô tả dịch vụ..."
-                      className={inputClass}
-                    />
+                    <textarea name="description" value={formData.description} onChange={handleChange} rows="4" placeholder="Mô tả dịch vụ..." className={inputClass} />
                   </div>
                   <div>
                     <label className={labelClass}>Ảnh</label>
                     <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-4">
-                      <input
-                        id="service-image-upload-edit"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="service-image-upload-edit"
-                        className="inline-flex cursor-pointer items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-md"
-                      >
-                        Upload file
-                      </label>
-                      <p className="mt-3 text-sm text-gray-500">
-                        {imageFile ? imageFile.name : "Giữ ảnh hiện tại nếu không chọn ảnh mới"}
-                      </p>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">Ảnh từ máy</p>
+                          <input id="service-image-upload-edit" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                          <label htmlFor="service-image-upload-edit" className="mt-3 inline-flex cursor-pointer items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-md">Upload file</label>
+                          <p className="mt-3 text-sm text-gray-500">{imageFile ? imageFile.name : "Giữ ảnh hiện tại nếu không chọn ảnh mới"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">Ảnh từ link</p>
+                          <textarea name="images" value={formData.images} onChange={handleImagesChange} rows="3" placeholder="Dán link ảnh (mỗi dòng 1 link)" className={`${inputClass} mt-3`} />
+                          <p className="mt-2 text-xs text-gray-500">Nếu bạn nhập link ảnh thì hệ thống sẽ dùng link, không dùng file.</p>
+                        </div>
+                      </div>
                     </div>
-                    {imagePreview && (imageFile || isValidImageUrl(imagePreview)) && (
-                      <img
-                        src={imagePreview}
-                        alt="preview"
-                        className="mt-4 h-44 w-full rounded-2xl border border-orange-100 object-cover md:h-56"
-                      />
-                    )}
                   </div>
                   <div className="grid gap-6 md:grid-cols-2">
                     <div>
                       <label className={labelClass}>Điểm nổi bật</label>
-                      <textarea
-                        name="highlights"
-                        value={formData.highlights}
-                        onChange={handleChange}
-                        rows="4"
-                        className={inputClass}
-                      />
+                      <textarea name="highlights" value={formData.highlights} onChange={handleChange} rows="4" className={inputClass} />
                     </div>
                     <div>
                       <label className={labelClass}>Bao gồm</label>
-                      <textarea
-                        name="includes"
-                        value={formData.includes}
-                        onChange={handleChange}
-                        rows="4"
-                        className={inputClass}
-                      />
+                      <textarea name="includes" value={formData.includes} onChange={handleChange} rows="4" className={inputClass} />
                     </div>
                   </div>
                   <div>
                     <label className={labelClass}>Lịch trình</label>
-                    <textarea
-                      name="itinerary"
-                      value={formData.itinerary}
-                      onChange={handleChange}
-                      rows="4"
-                      placeholder={"Ngay 1: Den Da Nang\nNgay 2: Tham quan Ba Na"}
-                      className={inputClass}
-                    />
+                    <textarea name="itinerary" value={formData.itinerary} onChange={handleChange} rows="4" placeholder={"Ngay 1: Den Da Nang\nNgay 2: Tham quan Ba Na"} className={inputClass} />
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-4 border-t border-gray-100 pt-2">
-                <button
-                  type="button"
-                  onClick={() => navigate("/provider/services")}
-                  className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-gray-700 transition hover:bg-gray-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {submitting ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
+                <button type="button" onClick={() => navigate("/provider/services")} className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-gray-700 transition hover:bg-gray-50">Hủy</button>
+                <button type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60">{submitting ? "Đang lưu..." : "Lưu thay đổi"}</button>
               </div>
             </form>
           </div>

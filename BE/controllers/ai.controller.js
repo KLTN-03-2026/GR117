@@ -1,37 +1,121 @@
 ﻿const buildInstructions = () =>
   [
-    "Ban la AI ho tro he thong quan ly dich vu du lich.",
-    "Nhiem vu cua ban la doc noi dung lich trinh tho do provider nhap va trich xuat thong tin de tu dien form them dich vu.",
-    "Chi tra ve JSON hop le theo dung schema duoc yeu cau.",
-    "Khong them giai thich, khong markdown, khong them chu ngoai JSON.",
-    'Truong "category" chi duoc la mot trong cac gia tri: "Biển đảo", "Núi", "Văn hoá", "Ẩm thực", "Thành phố", "Mạo hiểm", hoac chuoi rong neu khong du du lieu.',
-    'Truong "price" phai la chuoi so, vi du "4990000". Neu khong chac thi tra chuoi rong.',
-    'Truong "highlights" phai la mang string.',
-    'Truong "includes" phai la mang string.',
-    'Truong "itinerary" phai la mang object.',
-    'Moi phan tu trong "itinerary" gom: "day" la number, "title" la string, "description" la string, "meals" la mang string, "accommodation" la string, "activities" la mang object.',
-    'Moi phan tu trong "activities" gom: "time" la string theo dinh dang HH:mm neu co the, "title" la string, "description" la string, "icon" la string.',
-    'Chi duoc dung cac gia tri icon sau: "transport", "hotel", "food", "sightseeing", "activity", "photo".',
-    "Neu thieu du lieu thi dung chuoi rong hoac mang rong.",
-  ].join(" ");
+    "Bạn là chuyên gia phân tích dữ liệu du lịch.",
+    "Tôi sẽ cung cấp lịch trình 1 tour du lịch dưới dạng text tự do, có thể copy từ website, PDF hoặc tự viết.",
+    "Hãy phân tích và chuyển đổi thành JSON theo đúng cấu trúc được yêu cầu.",
+    "Chỉ trả về JSON hợp lệ.",
+    "Không thêm giải thích.",
+    "Không thêm markdown.",
+    "Không thêm chữ nào ngoài JSON.",
+
+    "Cấu trúc JSON bắt buộc:",
+    "{",
+    '  "service": {',
+    '    "name": "string — Tên tour",',
+    '    "description": "string — Mô tả chi tiết tour (2-3 đoạn, dùng \\\\n\\\\n ngăn đoạn)",',
+    '    "price": 0,',
+    '    "location": "string — Tỉnh/thành hoặc vùng",',
+    '    "category": "string — 1 trong: Biển đảo | Văn hóa | Trekking | Ẩm thực | Nghỉ dưỡng | Khám phá",',
+    '    "duration": "string — ví dụ: 3 ngày 2 đêm",',
+    '    "mapQuery": "string — Google Maps query, dùng + thay dấu cách",',
+    '    "highlights": ["string"],',
+    '    "includes": ["string"]',
+    "  },",
+    '  "itinerary": [',
+    "    {",
+    '      "day": 1,',
+    '      "title": "string — format: Điểm A — Điểm B — Điểm C",',
+    '      "description": "string — Tóm tắt ngắn 1-2 câu về ngày này",',
+    '      "accommodation": "string — Tên khách sạn/resort + hạng sao, hoặc Kết thúc tour nếu ngày cuối",',
+    '      "meals": ["string — format: Bữa: Tên món"],',
+    '      "activities": [',
+    "        {",
+    '          "time": "HH:mm",',
+    '          "title": "string — Tên hoạt động ngắn gọn dưới 40 ký tự",',
+    '          "description": "string — Mô tả chi tiết 1-3 câu",',
+    '          "icon": "string — 1 trong 6 giá trị: transport | sightseeing | food | hotel | activity | photo"',
+    "        }",
+    "      ]",
+    "    }",
+    "  ]",
+    "}",
+
+    "Quy tắc phân loại icon:",
+    "transport = di chuyển: bay, xe bus, tàu, taxi, đón/trả khách, ra sân bay.",
+    "sightseeing = tham quan: điểm đến, di tích, bảo tàng, chùa, thác, hang động.",
+    "food = ăn uống: bữa sáng, trưa, tối, quán ăn, ẩm thực địa phương.",
+    "hotel = lưu trú: check-in, nhận phòng, nghỉ tại khách sạn hoặc resort.",
+    "activity = trải nghiệm: kayak, lặn, trekking, workshop, cồng chiêng, chợ, hoạt động thực tế.",
+    "photo = chụp ảnh: bình minh, hoàng hôn, điểm check-in, view đẹp.",
+
+    "Quy tắc quan trọng:",
+    "1. Luôn dùng thời gian format 24h HH:mm.",
+    "2. Nếu text không ghi giờ cụ thể, hãy tự ước lượng hợp lý theo thứ tự hoạt động trong ngày: sáng 06:00-11:00, trưa 11:00-13:00, chiều 13:00-17:00, tối 17:00-21:00.",
+    "3. Mỗi ngày nên có từ 4 đến 8 activities.",
+    "4. Nếu text gộp nhiều việc vào 1 mục, hãy tách ra thành nhiều activities.",
+    "5. Nếu text quá sơ sài, hãy bổ sung thêm hoạt động hợp lý như di chuyển, ăn uống, check-in.",
+    '6. Meals luôn là mảng riêng, mỗi phần tử theo format: "Bữa: Tên món".',
+    "7. Mỗi ngày thường có 2 đến 3 bữa nếu dữ liệu cho phép.",
+    "8. Description của tour và description của từng activity phải tự nhiên, hấp dẫn, rõ ràng.",
+    "9. Mỗi activity description nên dài từ 1 đến 3 câu.",
+    '10. Title của ngày phải đúng format "Điểm A — Điểm B — Điểm C", dùng dấu —.',
+    "11. Price phải là số nguyên, đơn vị VNĐ, không dấu chấm, không dấu phẩy.",
+    "12. Nếu không có thông tin giá thì để 0.",
+    '13. category chỉ được là 1 trong các giá trị: "Biển đảo", "Văn hóa", "Trekking", "Ẩm thực", "Nghỉ dưỡng", "Khám phá". Nếu không đủ dữ liệu thì chọn giá trị gần nhất dựa trên nội dung tour, không để rỗng.',
+    "14. highlights là mảng string, tối đa 6 mục.",
+    "15. includes là mảng string, tối đa 7 mục.",
+    "16. highlights và includes cần trích từ text hoặc suy ra hợp lý từ lịch trình.",
+    "17. Nếu thiếu dữ liệu ở field text thì dùng chuỗi rỗng, nếu thiếu danh sách thì dùng mảng rỗng.",
+    "18. Không được thêm field ngoài schema đã yêu cầu.",
+    "19. JSON trả về phải parse được bằng JSON.parse.",
+  ].join("");
 
 const responseSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    name: { type: "string" },
-    description: { type: "string" },
-    price: { type: "string" },
-    location: { type: "string" },
-    category: { type: "string" },
-    duration: { type: "string" },
-    highlights: {
-      type: "array",
-      items: { type: "string" },
-    },
-    includes: {
-      type: "array",
-      items: { type: "string" },
+    service: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        name: { type: "string" },
+        description: { type: "string" },
+        price: { type: "number" },
+        location: { type: "string" },
+        category: {
+          type: "string",
+          enum: [
+            "Biển đảo",
+            "Văn hóa",
+            "Trekking",
+            "Ẩm thực",
+            "Nghỉ dưỡng",
+            "Khám phá",
+          ],
+        },
+        duration: { type: "string" },
+        mapQuery: { type: "string" },
+        highlights: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 6,
+        },
+        includes: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 7,
+        },
+      },
+      required: [
+        "name",
+        "description",
+        "price",
+        "location",
+        "category",
+        "duration",
+        "highlights",
+        "includes",
+      ],
     },
     itinerary: {
       type: "array",
@@ -42,11 +126,11 @@ const responseSchema = {
           day: { type: "number" },
           title: { type: "string" },
           description: { type: "string" },
+          accommodation: { type: "string" },
           meals: {
             type: "array",
             items: { type: "string" },
           },
-          accommodation: { type: "string" },
           activities: {
             type: "array",
             items: {
@@ -56,7 +140,17 @@ const responseSchema = {
                 time: { type: "string" },
                 title: { type: "string" },
                 description: { type: "string" },
-                icon: { type: "string" },
+                icon: {
+                  type: "string",
+                  enum: [
+                    "transport",
+                    "sightseeing",
+                    "food",
+                    "hotel",
+                    "activity",
+                    "photo",
+                  ],
+                },
               },
               required: ["time", "title", "description", "icon"],
             },
@@ -66,37 +160,215 @@ const responseSchema = {
           "day",
           "title",
           "description",
-          "meals",
           "accommodation",
+          "meals",
           "activities",
         ],
       },
     },
   },
-  required: [
-    "name",
-    "description",
-    "price",
-    "location",
-    "category",
-    "duration",
-    "highlights",
-    "includes",
-    "itinerary",
-  ],
+  required: ["service", "itinerary"],
 };
 
-const normalizeParsedData = (parsed) => ({
-  name: parsed.name || "",
-  description: parsed.description || "",
-  price: parsed.price || "",
-  location: parsed.location || "",
-  category: parsed.category || "",
-  duration: parsed.duration || "",
-  highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
-  includes: Array.isArray(parsed.includes) ? parsed.includes : [],
-  itinerary: Array.isArray(parsed.itinerary) ? parsed.itinerary : [],
+const normalizeTime = (value) => {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{1,2})[:.](\d{2})$/);
+  if (!match) return raw;
+
+  const hours = String(Math.min(23, Math.max(0, Number(match[1])))).padStart(2, "0");
+  const minutes = String(Math.min(59, Math.max(0, Number(match[2])))).padStart(2, "0");
+  return `${hours}:${minutes}`;
+};
+
+const normalizeIcon = (value) => {
+  const allowed = new Set([
+    "transport",
+    "sightseeing",
+    "food",
+    "hotel",
+    "activity",
+    "photo",
+  ]);
+
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[`"' ]+/g, "");
+
+  return allowed.has(normalized) ? normalized : "activity";
+};
+
+const parseMealsLine = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+
+  return raw
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const parseItineraryFromText = (rawText) => {
+  const text = String(rawText || "").replace(/\r/g, "");
+  const lines = text.split("\n");
+
+  const stripDiacritics = (value) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+  const normalizeForMatch = (value) =>
+    stripDiacritics(value).toUpperCase().trim();
+
+  const dayHeaderNormalizedRegex = /^\s*NG.?Y\s*(\d+)\s*:\s*(.+?)\s*$/i;
+  const dayIndexes = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const normalizedLine = normalizeForMatch(lines[index]);
+    if (dayHeaderNormalizedRegex.test(normalizedLine)) {
+      dayIndexes.push(index);
+    }
+  }
+
+  if (dayIndexes.length === 0) return null;
+
+  const dayBlocks = dayIndexes.map((startIndex, index) => {
+    const endIndex = index < dayIndexes.length - 1 ? dayIndexes[index + 1] : lines.length;
+    return lines.slice(startIndex, endIndex);
+  });
+
+  const itinerary = dayBlocks
+    .map((block) => {
+      const headerLine = String(block[0] || "");
+      const headerNormalized = normalizeForMatch(headerLine);
+      const headerMatch = headerNormalized.match(dayHeaderNormalizedRegex);
+      if (!headerMatch) return null;
+
+      const day = Number(headerMatch[1]);
+      const title = headerLine.split(":").slice(1).join(":").trim();
+
+      const findMetaLine = (predicate) =>
+        block.find((line) => predicate(normalizeForMatch(line)));
+
+      const descriptionLine = findMetaLine(
+        (normalized) => normalized.includes(":") && normalized.startsWith("MO"),
+      );
+      const accommodationLine = findMetaLine(
+        (normalized) => normalized.includes(":") && normalized.startsWith("CH"),
+      );
+      const mealsLine = findMetaLine(
+        (normalized) => normalized.includes(":") && normalized.startsWith("BU"),
+      );
+
+      const separatorIndexInBlock = block.findIndex((line) => /^\s*\|\s*-{3,}/.test(line));
+      const metaScanEnd = separatorIndexInBlock !== -1 ? separatorIndexInBlock : Math.min(block.length, 12);
+      const metaCandidates = block
+        .slice(1, metaScanEnd)
+        .map((line) => String(line || "").trim())
+        .filter((line) => Boolean(line) && line.includes(":"));
+
+      const pickMetaValue = (line) =>
+        String(line || "").split(":").slice(1).join(":").trim();
+
+      const byKeyword = (keyword) =>
+        metaCandidates.find((line) => normalizeForMatch(line).includes(keyword));
+
+      const fallbackDescriptionLine = byKeyword("MO") || metaCandidates[0];
+      const fallbackAccommodationLine = byKeyword("CHO") || metaCandidates[1];
+      const fallbackMealsLine = byKeyword("BUA") || metaCandidates[2];
+
+      const description = descriptionLine
+        ? String(descriptionLine.split(":").slice(1).join(":")).trim()
+        : fallbackDescriptionLine
+          ? pickMetaValue(fallbackDescriptionLine)
+        : "";
+      const accommodation = accommodationLine
+        ? String(accommodationLine.split(":").slice(1).join(":")).trim()
+        : fallbackAccommodationLine
+          ? pickMetaValue(fallbackAccommodationLine)
+        : "";
+      const meals = mealsLine
+        ? parseMealsLine(String(mealsLine.split(":").slice(1).join(":")).trim())
+        : fallbackMealsLine
+          ? parseMealsLine(pickMetaValue(fallbackMealsLine))
+        : [];
+
+      const activities = [];
+
+      if (separatorIndexInBlock !== -1) {
+        const tableLines = block.slice(separatorIndexInBlock + 1);
+        for (const line of tableLines) {
+          const trimmed = String(line || "").trim();
+          if (!trimmed) continue;
+          if (!trimmed.startsWith("|")) break;
+          if (/^\s*\|\s*-{3,}/.test(trimmed)) continue;
+
+          const cells = trimmed
+            .replace(/^\|/, "")
+            .replace(/\|$/, "")
+            .split("|")
+            .map((cell) => cell.trim())
+            .filter((cell) => cell !== "");
+
+          if (cells.length < 4) continue;
+
+          const time = normalizeTime(cells[0]);
+          const actTitle = cells[1] || "";
+          const icon = normalizeIcon(cells[cells.length - 1]);
+          const detail = cells.slice(2, cells.length - 1).join(" | ").trim();
+
+          activities.push({
+            time,
+            title: actTitle,
+            description: detail,
+            icon,
+          });
+        }
+      }
+
+      if (!Number.isFinite(day) || !title || activities.length === 0) {
+        return null;
+      }
+
+      return {
+        day,
+        title,
+        description,
+        accommodation,
+        meals,
+        activities,
+      };
+    })
+    .filter(Boolean);
+
+  return itinerary.length > 0 ? itinerary : null;
+};
+
+const normalizeService = (service) => ({
+  name: String(service?.name || ""),
+  description: String(service?.description || ""),
+  price: Number(service?.price || 0),
+  location: String(service?.location || ""),
+  category: String(service?.category || "Khám phá"),
+  duration: String(service?.duration || ""),
+  mapQuery: String(service?.mapQuery || ""),
+  highlights: Array.isArray(service?.highlights) ? service.highlights : [],
+  includes: Array.isArray(service?.includes) ? service.includes : [],
 });
+
+const normalizeParsedData = (parsed) => {
+  if (!parsed || typeof parsed !== "object") {
+    return { service: normalizeService({}), itinerary: [] };
+  }
+
+  const service = parsed.service || parsed;
+  const itinerary = Array.isArray(parsed.itinerary) ? parsed.itinerary : [];
+
+  return {
+    service: normalizeService(service),
+    itinerary,
+  };
+};
 
 const parseJsonOutput = (rawText) => {
   try {
@@ -199,6 +471,18 @@ module.exports.parseServiceDraft = async (req, res) => {
       });
     }
 
+    const parsedItinerary = parseItineraryFromText(rawText);
+    if (parsedItinerary) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          service: normalizeService({}),
+          itinerary: parsedItinerary,
+          source: "rule_parser",
+        },
+      });
+    }
+
     const provider = (process.env.AI_PROVIDER || "openai").toLowerCase();
     const rawResult =
       provider === "ollama"
@@ -209,7 +493,10 @@ module.exports.parseServiceDraft = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: normalizeParsedData(parsed),
+      data: {
+        ...normalizeParsedData(parsed),
+        source: "llm",
+      },
     });
   } catch (error) {
     const isOllamaError =
@@ -222,4 +509,10 @@ module.exports.parseServiceDraft = async (req, res) => {
         : error.message || "Loi server",
     });
   }
+};
+
+module.exports._internal = {
+  parseItineraryFromText,
+  normalizeIcon,
+  normalizeTime,
 };

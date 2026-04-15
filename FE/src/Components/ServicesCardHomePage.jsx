@@ -1,4 +1,6 @@
-function ServicesCardHomePage({ servers, index }) {
+﻿function ServicesCardHomePage({ servers, index }) {
+    const price = Number(servers?.prices || servers?.price || 0);
+
     return (
         <div id={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto px-6">
 
@@ -12,7 +14,9 @@ function ServicesCardHomePage({ servers, index }) {
                 <div className="p-4 text-left">
                     <h3 className="font-semibold">{servers?.ServiceName || "Check"}</h3>
                     <p className="text-gray-500 text-sm">Quảng Ninh</p>
-                    <p className="text-[#f97316] font-semibold mt-2">4.990.000đ</p>
+                    <p className="text-[#f97316] font-semibold mt-2">
+                        {price > 0 ? `${price.toLocaleString("vi-VN")} VNĐ` : "Liên hệ"}
+                    </p>
                 </div>
             </div>
 

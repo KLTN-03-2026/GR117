@@ -23,7 +23,17 @@ const Services = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/services/all");
+        const accessToken = localStorage.getItem("accessToken");
+        if (!accessToken) {
+          setError("Bạn chưa đăng nhập hoặc token đã hết hạn");
+          return;
+        }
+
+        const res = await fetch("http://localhost:5000/api/services/all", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
         const result = await res.json();
 
         if (res.ok && result.success) {
@@ -100,7 +110,7 @@ const Services = () => {
   }, [normalizedServices, search, category, status]);
 
   const handleEdit = (service) => {
-    navigate(`/provider/EditServices/${service._id}`);
+    navigate(`/provider/editservices/${service._id}`);
   };
 
   const handleDelete = async (service) => {
@@ -169,7 +179,7 @@ const Services = () => {
         </div>
 
         <Link
-          to="/provider/AddServices"
+          to="/provider/addservices"
           className="rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-4 py-2 text-[13px] font-medium text-white transition hover:shadow-lg hover:shadow-orange-200"
         >
           +  Thêm dịch vụ 
@@ -216,7 +226,7 @@ const Services = () => {
         </div>
 
         {filteredServices.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredServices.map((service) => (
               <ServicesCard
                 key={service._id}

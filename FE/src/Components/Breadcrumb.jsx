@@ -1,13 +1,13 @@
-import { Link, useLocation } from "react-router-dom";
+﻿import { Link, useLocation } from "react-router-dom";
 
 const ROOT_ROUTES = {
   admin: {
     label: "Dashboard",
-    to: "/admin/dashboard",
+    to: "/admin",
   },
   provider: {
     label: "Dashboard",
-    to: "/provider/dashboard",
+    to: "/provider",
   },
   user: {
     label: "Dashboard",
@@ -22,7 +22,6 @@ const PAGE_LABELS = {
   schedule: "Lịch khởi hành",
   booking: "Đặt chỗ",
   revenue: "Doanh thu",
-  partnerprofile: "Hồ sơ đối tác",
 };
 
 function Breadcrumb() {
@@ -31,11 +30,7 @@ function Breadcrumb() {
   const [scope, section] = segments;
   const rootRoute = ROOT_ROUTES[scope];
 
-  if (
-    !rootRoute ||
-    !section ||
-    pathname.toLowerCase() === rootRoute.to.toLowerCase()
-  ) {
+  if (!rootRoute || !section || pathname.toLowerCase() === rootRoute.to.toLowerCase()) {
     return null;
   }
 

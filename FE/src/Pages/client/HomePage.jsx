@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FaShield, FaHeadphones, FaHeart, FaClock, MdStar } from "../../assets/Icons/Icons"
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { IoLocationOutline } from "react-icons/io5";
 import { RiCalendarScheduleLine } from "react-icons/ri";
 import { CiSearch } from "react-icons/ci";
@@ -31,7 +31,11 @@ const comments = [
 ];
 
 function HomePage() {
+    const navigate = useNavigate();
     const [Service, setService] = useState([]);
+    const [searchKeyword, setSearchKeyword] = useState("");
+    const [searchCategory, setSearchCategory] = useState("all");
+    const [searchBudget, setSearchBudget] = useState("all");
 
     const [index, setIndex] = useState(0);
 
@@ -49,7 +53,7 @@ function HomePage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch("http://localhost:5000/api/services/all");
+                const res = await fetch("http://localhost:5000/api/services/public");
                 const data = await res.json();
                 setService(data.data || []);
             } catch (error) {
@@ -59,7 +63,49 @@ function HomePage() {
 
         fetchData();
     }, []);
-    console.log(Service[0]?.ServiceName)
+
+    const filteredServices = useMemo(() => {
+        const keyword = searchKeyword.trim().toLowerCase();
+
+        return Service.filter((service) => {
+            const name = String(service?.serviceName || service?.servicesName || "").toLowerCase();
+            const location = String(service?.location || service?.destination || service?.region || "").toLowerCase();
+            const provider = String(service?.nameProvider || "").toLowerCase();
+            const categories = Array.isArray(service?.category)
+                ? service.category
+                : service?.category
+                  ? [service.category]
+                  : [];
+            const matchKeyword =
+                !keyword ||
+                name.includes(keyword) ||
+                location.includes(keyword) ||
+                provider.includes(keyword);
+
+            const matchCategory =
+                searchCategory === "all" ||
+                categories.some((item) =>
+                    String(item || "").toLowerCase() === searchCategory,
+                );
+
+            const price = Number(service?.prices || service?.price || 0);
+            const matchBudget =
+                searchBudget === "all" ||
+                (searchBudget === "under2" && price > 0 && price < 2000000) ||
+                (searchBudget === "2to5" && price >= 2000000 && price <= 5000000) ||
+                (searchBudget === "over5" && price > 5000000);
+
+            return matchKeyword && matchCategory && matchBudget;
+        });
+    }, [Service, searchBudget, searchCategory, searchKeyword]);
+
+    const handleSearch = () => {
+        const params = new URLSearchParams();
+        if (searchKeyword.trim()) params.set("q", searchKeyword.trim());
+        if (searchCategory !== "all") params.set("category", searchCategory);
+        if (searchBudget !== "all") params.set("budget", searchBudget);
+        navigate(`/destination${params.toString() ? `?${params.toString()}` : ""}`);
+    };
 
     return (
         <main className="flex-1">
@@ -69,7 +115,7 @@ function HomePage() {
                     {/* Background */}
                     <div className="absolute inset-0">
                         <img
-                            src=""
+                            src="https://images.unsplash.com/photo-1682502922918-fed575428e3c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cm9waWNhbCUyMGJlYWNoJTIwcGFyYWRpc2UlMjBzdW5zZXR8ZW58MXx8fHwxNzc0Mjc0MjcxfDA&ixlib=rb-4.1.0&q=80&w=1080"
                             alt=""
                             className="w-full h-full object-cover"
                         />
@@ -95,47 +141,66 @@ function HomePage() {
                         </div>
 
                         {/* Search box */}
-                        <div className="bg-white rounded-2xl mt-4 p-4 md:p-2 shadow-2xl max-w-4xl flex flex-col md:flex-row gap-3 md:gap-0 md:items-center">
+                        <div className="bg-white rounded-2xl mt-4 p-4 md:p-2 shadow-2xl max-w-5xl flex flex-col md:flex-row gap-3 md:gap-0 md:items-center">
 
                             {/* Keyword */}
-                            <div className="flex items-center gap-3 px-4  md:border-r border-gray-100">
+                            <div className="flex items-center gap-3 px-4 md:border-r border-gray-100">
                                 <div><IoLocationOutline className="text-xl ml-2 text-[#F78F10]" /></div>
-                                <div><p className="text-gray-400 text-sm">Tìm kiếm </p>
+                                <div><p className="text-gray-400 text-sm">Tên điểm đến / dịch vụ</p>
                                     <input
+                                        value={searchKeyword}
+                                        onChange={(e) => setSearchKeyword(e.target.value)}
                                         placeholder="Địa điểm, dịch vụ..."
                                         type="text"
                                         className="w-full outline-none bg-transparent text-[#1a1a2e]"
                                     /></div>
                             </div>
 
-                            {/* Date */}
-                            <div className="flex items-center gap-3 px-4  md:border-r border-gray-100">
-                                <div><RiCalendarScheduleLine className="text-xl ml-2 text-[#F78F10]" /></div>
-                                <div><p className="text-gray-400 text-sm">Ngày đi</p>
-                                    <input
-                                        type="date"
-                                        className="w-full outline-none bg-transparent text-sm text-[#1a1a2e]"
-                                    /></div>
-                            </div>
-
-                            {/* Guests */}
-                            <div className="flex flex-1 items-center gap-3 px-4  md:border-r border-gray-100">
+                            {/* Tour type */}
+                            <div className="flex items-center gap-3 px-4 md:border-r border-gray-100">
                                 <div><RiCalendarScheduleLine className="text-xl ml-2 text-[#F78F10]" /></div>
                                 <div>
-                                    <p className="text-gray-400 text-sm">Số người</p>
-                                    <select className="w-full outline-none bg-transparent text-[#1a1a2e]">
-                                        {[1, 2, 3, 4, 5, 6].map((item) => (
-                                            <option key={item} value={item}>
-                                                {item} người
-                                            </option>
-                                        ))}
+                                    <p className="text-gray-400 text-sm">Loại tour</p>
+                                    <select
+                                        value={searchCategory}
+                                        onChange={(e) => setSearchCategory(e.target.value)}
+                                        className="w-full outline-none bg-transparent text-sm text-[#1a1a2e]"
+                                    >
+                                        <option value="all">Tất cả</option>
+                                        <option value="biển đảo">Biển đảo</option>
+                                        <option value="núi">Núi</option>
+                                        <option value="văn hoá">Văn hoá</option>
+                                        <option value="ẩm thực">Ẩm thực</option>
+                                        <option value="thành phố">Thành phố</option>
+                                        <option value="mạo hiểm">Mạo hiểm</option>
                                     </select>
+                                </div>
+                            </div>
 
+                            {/* Budget */}
+                            <div className="flex flex-1 items-center gap-3 px-4 md:border-r border-gray-100">
+                                <div><RiCalendarScheduleLine className="text-xl ml-2 text-[#F78F10]" /></div>
+                                <div>
+                                    <p className="text-gray-400 text-sm">Ngân sách</p>
+                                    <select
+                                        value={searchBudget}
+                                        onChange={(e) => setSearchBudget(e.target.value)}
+                                        className="w-full outline-none bg-transparent text-[#1a1a2e]"
+                                    >
+                                        <option value="all">Tất cả</option>
+                                        <option value="under2">Dưới 2 triệu</option>
+                                        <option value="2to5">2 - 5 triệu</option>
+                                        <option value="over5">Trên 5 triệu</option>
+                                    </select>
                                 </div>
                             </div>
 
                             {/* Button */}
-                            <button className="bg-gradient-to-r from-[#F78F10] to-[#F78F10] text-white px-8 py-4 rounded-xl hover:shadow-lg hover:shadow-orange-200 transition-all">
+                            <button
+                                type="button"
+                                onClick={handleSearch}
+                                className="bg-gradient-to-r from-[#F78F10] to-[#F78F10] text-white px-8 py-4 rounded-xl hover:shadow-lg hover:shadow-orange-200 transition-all"
+                            >
                                 <div className="flex items-center gap-3 ">
                                     <CiSearch className="text-xl font-bold" />  <p className="font-bold">Tìm Kiếm</p>
                                 </div>
@@ -194,7 +259,7 @@ function HomePage() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto">
-                        {Service.map((service) => (
+                        {filteredServices.map((service) => (
                             <ServicesCard
                                 key={service._id || service.serviceName}
                                 service={service}

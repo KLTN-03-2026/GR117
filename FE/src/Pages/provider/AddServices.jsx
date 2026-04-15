@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ButtonBack from "../../Components/ButtonBack";
 import { FaLocationDot } from "../../assets/Icons/Icons";
@@ -62,14 +62,17 @@ const AddServices = () => {
     currentUser = null;
   }
 
-  const imagePreview = useMemo(() => {
-    if (imageFile) return URL.createObjectURL(imageFile);
-    return splitLines(formData.images)[0] || "";
-  }, [formData.images, imageFile]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleImagesChange = (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, images: value }));
+    if (value.trim()) {
+      setImageFile(null);
+    }
   };
 
   const handleImageChange = (e) => {
@@ -314,22 +317,47 @@ const AddServices = () => {
                   <div>
                     <label className={labelClass}>Ảnh</label>
                     <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-4">
-                      <input
-                        id="service-image-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="service-image-upload"
-                        className="inline-flex cursor-pointer items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-md"
-                      >
-                        Upload file
-                      </label>
-                      <p className="mt-3 text-sm text-gray-500">
-                        {imageFile ? imageFile.name : "Chưa chọn ảnh nào"}
-                      </p>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">
+                            Ảnh từ máy
+                          </p>
+                          <input
+                            id="service-image-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="service-image-upload"
+                            className="mt-3 inline-flex cursor-pointer items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-md"
+                          >
+                            Upload file
+                          </label>
+                          <p className="mt-3 text-sm text-gray-500">
+                            {imageFile ? imageFile.name : "Chưa chọn ảnh nào"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">
+                            Ảnh từ link
+                          </p>
+                          <textarea
+                            name="images"
+                            value={formData.images}
+                            onChange={handleImagesChange}
+                            rows="3"
+                            placeholder="Dán link ảnh (mỗi dòng 1 link)"
+                            className={`${inputClass} mt-3`}
+                          />
+                          <p className="mt-2 text-xs text-gray-500">
+                            Nếu bạn nhập link ảnh thì hệ thống sẽ dùng link, không
+                            dùng file.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="grid gap-6 md:grid-cols-2">
@@ -405,3 +433,6 @@ const AddServices = () => {
 };
 
 export default AddServices;
+
+
+

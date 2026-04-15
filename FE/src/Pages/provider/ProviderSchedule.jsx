@@ -59,6 +59,11 @@ export default function ProviderSchedule() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getAuthHeaders = () => {
+    const accessToken = localStorage.getItem("accessToken");
+    return accessToken ? { Authorization: `Bearer ${accessToken}` } : null;
+  };
+
   const mapService = (item) => ({
     id: item._id,
     name:
@@ -71,7 +76,12 @@ export default function ProviderSchedule() {
   });
 
   const loadServices = async () => {
-    const res = await fetch("http://localhost:5000/api/services/all");
+    const headers = getAuthHeaders();
+    if (!headers) return false;
+
+    const res = await fetch("http://localhost:5000/api/schedules/getServiceList", {
+      headers,
+    });
     const result = await res.json();
 
     if (res.ok && result.success) {
@@ -79,27 +89,16 @@ export default function ProviderSchedule() {
       return true;
     }
 
-    const fallback = await fetch(
-      "http://localhost:5000/api/schedules/getServiceList",
-    );
-    const fallbackResult = await fallback.json();
-
-    if (fallback.ok && fallbackResult.success) {
-      setServices(
-        (fallbackResult.data || []).map((item) => ({
-          id: item._id,
-          name: item.serviceName || "Chưa có tên",
-          location: "Chưa cập nhật",
-        })),
-      );
-      return true;
-    }
-
     return false;
   };
 
   const loadSchedules = async () => {
-    const res = await fetch("http://localhost:5000/api/schedules/all");
+    const headers = getAuthHeaders();
+    if (!headers) return;
+
+    const res = await fetch("http://localhost:5000/api/schedules/all", {
+      headers,
+    });
     const result = await res.json();
 
     if (!res.ok || result.success === false) {
@@ -198,7 +197,10 @@ export default function ProviderSchedule() {
 
       const res = await fetch("http://localhost:5000/api/schedules/add", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({
           serviceId: form.serviceId,
           service_id: form.serviceId,
@@ -243,7 +245,10 @@ export default function ProviderSchedule() {
         `http://localhost:5000/api/schedules/update/${editingSchedule._id}`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
           body: JSON.stringify({
             serviceId: form.serviceId,
             service_id: form.serviceId,
@@ -302,7 +307,10 @@ export default function ProviderSchedule() {
         `http://localhost:5000/api/schedules/update/${schedule._id}`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
           body: JSON.stringify({
             serviceId: normalizeId(schedule.service_id || schedule.serviceId),
             service_id: normalizeId(schedule.service_id || schedule.serviceId),
@@ -360,7 +368,12 @@ export default function ProviderSchedule() {
 
       const res = await fetch(
         `http://localhost:5000/api/schedules/delete/${deleteTarget._id}`,
-        { method: "DELETE" },
+        {
+          method: "DELETE",
+          headers: {
+            ...getAuthHeaders(),
+          },
+        },
       );
 
       const result = await res.json();

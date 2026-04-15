@@ -4,7 +4,6 @@ import {
   FaRegStar,
   FaPhone,
   FaUser,
-  MdOutlineDashboard,
   CiLogin,
 } from "../assets/Icons/Icons";
 import { SiGmail } from "react-icons/si";
@@ -15,8 +14,6 @@ function Header({ variant = "default" }) {
   const user = JSON.parse(localStorage.getItem("currentUser") || "null");
   const isCheck = !!accessToken;
   const isDashboardHeader = variant === "dashboard";
-
-  console.log(user);
 
   const Logout = () => {
     localStorage.removeItem("accessToken");
@@ -30,8 +27,8 @@ function Header({ variant = "default" }) {
       : "hover:text-[#f97316] transition-colors";
   const logoPath = isDashboardHeader
     ? user?.role === "admin"
-      ? "/admin/dashboard"
-      : "/provider/dashboard"
+      ? "/admin"
+      : "/provider"
     : "/";
 
   return (
@@ -131,24 +128,6 @@ function Header({ variant = "default" }) {
             </>
           ) : (
             <>
-              {!isDashboardHeader && ["provider", "admin"].includes(user?.role) && (
-                <NavLink
-                  to={
-                    user.role === "admin"
-                      ? "/admin/dashboard"
-                      : "/provider/dashboard"
-                  }
-                  className={({ isActive }) =>
-                    isActive
-                      ? "flex items-center gap-1.5 px-4 py-2 bg-[#f97316]/10 text-[#f97316] rounded-full"
-                      : "flex items-center gap-1.5 px-4 py-2 bg-[#f0f4f8] text-[#1a1a2e] rounded-full hover:bg-[#f97316]/10 transition-colors"
-                  }
-                >
-                  <MdOutlineDashboard />
-                  Dashboard
-                </NavLink>
-              )}
-
               <button
                 onClick={Logout}
                 className="flex items-center gap-1.5 px-2 py-2 text-muted-foreground hover:text-[#ef4444] transition-colors"

@@ -16,8 +16,8 @@ function SignIn() {
   const getRedirectPath = (role) => {
     const normalizedRole = String(role || "").toLowerCase();
 
-    if (normalizedRole === "admin") return "/admin/dashboard";
-    if (normalizedRole === "provider") return "/provider/dashboard";
+    if (normalizedRole === "admin") return "/admin";
+    if (normalizedRole === "provider") return "/provider";
     return "/";
   };
 
