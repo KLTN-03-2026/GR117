@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { FaCircleCheck, MdOutlineDateRange } from "../assets/Icons/Icons"
-import axios from "axios";
 
-function DetailContentServices({ view, props, highlight = "null" }) {
+import { formatDate } from "../utils/formatDate";
+
+function DetailContentServices({ view,
+    highlight = [],
+    schedules,
+    setSelectedSchedule,
+    selectedSchedule }) {
 
     return (
         <div className="space-y-6 text-left">
@@ -60,68 +65,52 @@ function DetailContentServices({ view, props, highlight = "null" }) {
                 </>
             }
             {view === 1 && <div>Lịch trình từng ngày...</div>}
-            {view === 2 && <LichKhoiHanh servicesID={props._id} />}
+            {view === 2 && (
+                <LichKhoiHanh
+                    schedules={schedules}
+                    setSelectedSchedule={setSelectedSchedule}
+                    selectedSchedule={selectedSchedule}
+                />
+            )}
             {view === 3 && <div>Đánh giá khách hàng...</div>}
         </div>
     );
 }
-function LichKhoiHanh({ servicesID }) {
-    const [schedules, setSchedules] = useState([]);
-    const [selectedId, setSelectedId] = useState(null);
 
-    useEffect(() => {
-        if (!servicesID) return;
-
-        const fetchSchedules = async () => {
-            try {
-                const res = await axios.get(
-                    `http://localhost:5000/api/schedules/service/${servicesID}`
-                );
-                setSchedules(res.data.data);
-            } catch (err) {
-                console.log(err);
-            }
-        };
-
-        fetchSchedules();
-    }, [servicesID]);
-
-    const formatDate = (date) => {
-        return new Date(date).toLocaleDateString("vi-VN", {
-            weekday: "long",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        });
-    };
-
+function LichKhoiHanh({ schedules, selectedSchedule, setSelectedSchedule }) {
     return (
-
         <div className="bg-white rounded-2xl p-6 shadow-sm border">
             <h3 className="mb-4 font-semibold text-lg">
                 Lịch khởi hành
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {schedules.map((item) => {
                     const remain = item.maxPeople - item.bookedSlots;
                     const isFull = remain <= 0;
+                    const isSelected = selectedSchedule?._id === item._id;
 
                     return (
                         <div
                             key={item._id}
-                            onClick={() => setSelectedId(item._id)}
-                            className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between
-                                ${selectedId === item._id
-                                    ? "border-orange-500 bg-orange-50"
+                            onClick={() => {
+                                if (!isFull) setSelectedSchedule(item);
+                            }}
+                            className={`p-4 rounded-2xl border flex items-center justify-between transition-all
+                                ${isSelected
+                                    ? "border-orange-500 bg-orange-50 shadow-sm"
                                     : "border-gray-200"
+                                }
+                                ${isFull
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "cursor-pointer hover:border-orange-400"
                                 }
                             `}
                         >
                             {/* LEFT */}
                             <div className="flex items-start gap-3">
                                 <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-orange-100 text-orange-500">
-                                    <MdOutlineDateRange className="text-lg" />
+                                    <MdOutlineDateRange className="w-[14px] h-[14px]" />
                                 </div>
 
                                 <div>
@@ -130,7 +119,9 @@ function LichKhoiHanh({ servicesID }) {
                                     </p>
 
                                     <p className="text-sm text-gray-500">
-                                        Còn {remain}/{item.maxPeople} chỗ
+                                        {isFull
+                                            ? "Đã hết chỗ"
+                                            : `Còn ${remain}/${item.maxPeople} chỗ`}
                                     </p>
                                 </div>
                             </div>
@@ -138,11 +129,11 @@ function LichKhoiHanh({ servicesID }) {
                             {/* RIGHT */}
                             <div>
                                 {isFull ? (
-                                    <span className="px-3 py-1 text-sm rounded-full bg-red-100 text-red-500">
+                                    <span className="px-3 py-1 text-xs rounded-full bg-red-100 text-red-500">
                                         Hết chỗ
                                     </span>
                                 ) : (
-                                    <span className="px-3 py-1 text-sm rounded-full bg-green-100 text-green-600">
+                                    <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-600">
                                         Còn chỗ
                                     </span>
                                 )}
