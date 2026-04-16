@@ -1,10 +1,9 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
-import { FiCalendar, FiUpload } from "react-icons/fi";
+import { FiCalendar, FiPlus } from "react-icons/fi";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import ProviderScheduleTable from "./ProviderScheduleTable.jsx";
 import ScheduleFormModal from "./ScheduleFormModal.jsx";
 import DeleteScheduleModal from "./DeleteScheduleModal.jsx";
-import ScheduleImportModal from "./ScheduleImportModal.jsx";
 
 const STATUS_CONFIG = {
   open: { label: "Mở đăng ký", cls: "bg-green-50 text-green-700" },
@@ -47,7 +46,6 @@ export default function ProviderSchedule() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showModal, setShowModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [form, setForm] = useState({
     serviceId: "",
@@ -167,21 +165,18 @@ export default function ProviderSchedule() {
     setShowModal(true);
   };
 
+  const openAddModal = () => {
+    resetForm();
+    setMessage({ type: "", text: "" });
+    setShowModal(true);
+  };
+
   const closeModal = () => {
     setShowModal(false);
     resetForm();
     setMessage((prev) =>
       prev.type === "error" ? { type: "", text: "" } : prev,
     );
-  };
-
-  const openImportModal = () => {
-    setMessage({ type: "", text: "" });
-    setShowImportModal(true);
-  };
-
-  const closeImportModal = () => {
-    setShowImportModal(false);
   };
 
   const validateForm = () => {
@@ -197,59 +192,61 @@ export default function ProviderSchedule() {
     return true;
   };
 
-  const handleEditSchedule = async () => {
-    if (!validateForm() || !editingSchedule?._id) return;
+  const handleSaveSchedule = async () => {
+    if (!validateForm()) return;
 
     try {
       setIsSubmitting(true);
       setMessage({ type: "", text: "" });
 
-      const res = await fetch(
-        `http://localhost:5000/api/schedules/update/${editingSchedule._id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-          },
-          body: JSON.stringify({
-            serviceId: form.serviceId,
-            service_id: form.serviceId,
-            departureDate: form.departureDate,
-            endDate: form.endDate,
-            maxPeople: Number(form.maxPeople),
-            note: form.note.trim(),
-          }),
+      const isEdit = Boolean(editingSchedule?._id);
+      const endpoint = isEdit
+        ? `http://localhost:5000/api/schedules/update/${editingSchedule._id}`
+        : "http://localhost:5000/api/schedules/add";
+
+      const res = await fetch(endpoint, {
+        method: isEdit ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
         },
-      );
+        body: JSON.stringify({
+          serviceId: form.serviceId,
+          service_id: form.serviceId,
+          departureDate: form.departureDate,
+          endDate: form.endDate,
+          maxPeople: Number(form.maxPeople),
+          note: form.note.trim(),
+        }),
+      });
 
       const result = await res.json();
 
       if (!res.ok || result.success === false) {
         setMessage({
           type: "error",
-          text: result.message || "Không thể cập nhật lịch khởi hành",
+          text: result.message || (isEdit ? "Không thể cập nhật lịch khởi hành" : "Không thể thêm lịch khởi hành"),
         });
         return;
       }
 
       setMessage({
         type: "success",
-        text: "Cập nhật lịch khởi hành thành công",
+        text: isEdit ? "Cập nhật lịch khởi hành thành công" : "Thêm lịch khởi hành thành công",
       });
       await loadSchedules();
       closeModal();
     } catch (error) {
       setMessage({
         type: "error",
-        text: `Lỗi khi cập nhật lịch: ${error.message}`,
+        text: `Lỗi khi lưu lịch: ${error.message}`,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSubmit = () => handleEditSchedule();
+  const handleSubmit = () => handleSaveSchedule();
 
   const handleToggleStatus = async (schedule) => {
     if (!schedule?._id) {
@@ -358,66 +355,6 @@ export default function ProviderSchedule() {
     }
   };
 
-  const handleImportSchedules = async (file) => {
-    if (!file) {
-      setMessage({ type: "error", text: "Vui lòng chọn file Excel để import" });
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setMessage({ type: "", text: "" });
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("http://localhost:5000/api/schedules/import", {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-        },
-        body: formData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok || result.success === false) {
-        const errorLines = Array.isArray(result?.data?.errors)
-          ? result.data.errors
-              .map((item) => `Dòng ${item.row}: ${item.errors.join(", ")}`)
-              .join(" | ")
-          : "";
-
-        setMessage({
-          type: "error",
-          text: result.message || errorLines || "Không thể import file Excel",
-        });
-        return;
-      }
-
-      const importedCount = result?.data?.importedCount || 0;
-      const errorCount = result?.data?.errorCount || 0;
-
-      setMessage({
-        type: errorCount > 0 ? "error" : "success",
-        text:
-          errorCount > 0
-            ? `Import xong ${importedCount} lịch, còn ${errorCount} dòng lỗi`
-            : `Import thành công ${importedCount} lịch`,
-      });
-
-      await loadSchedules();
-      closeImportModal();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: `Lỗi khi import Excel: ${error.message}`,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const deleteScheduleName = useMemo(() => {
     if (!deleteTarget) return "Lịch khởi hành";
     const service = getService(deleteTarget.service_id);
@@ -449,12 +386,12 @@ export default function ProviderSchedule() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={openImportModal}
+            onClick={openAddModal}
             type="button"
-            className="rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-4 py-2 text-[13px] font-medium text-white transition hover:shadow-lg hover:shadow-orange-200"
+            className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-[13px] font-medium text-[#f97316] transition hover:bg-orange-100"
           >
             <span className="inline-flex items-center gap-2">
-              <FiUpload size={16} /> Upload file Excel
+              <FiPlus size={16} /> Thêm lịch khởi hành
             </span>
           </button>
         </div>
@@ -503,13 +440,6 @@ export default function ProviderSchedule() {
         onClose={closeModal}
         onChange={updateForm}
         onSubmit={handleSubmit}
-      />
-
-      <ScheduleImportModal
-        open={showImportModal}
-        isSubmitting={isSubmitting}
-        onClose={closeImportModal}
-        onSubmit={handleImportSchedules}
       />
 
       <DeleteScheduleModal

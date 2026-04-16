@@ -88,9 +88,6 @@ export default function ProviderScheduleTable({
                       </p>
                     </div>
 
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#f97316]/10 px-2.5 py-1 text-[11px] font-semibold text-[#f97316]">
-                      {service?.duration || "Ch?a c?p nh?t"}
-                    </span>
                   </div>
                 </td>
 
