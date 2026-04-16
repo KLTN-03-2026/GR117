@@ -1,8 +1,9 @@
 ﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ButtonBack from "../../Components/ButtonBack";
+import ButtonBack from "../../Components/shared/ButtonBack";
 import { FaLocationDot } from "../../assets/Icons/Icons";
 import { parseServiceByAI } from "../../services/aiService";
+import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 const CATEGORY_OPTIONS = [
   "Biển đảo",
   "Núi",
@@ -25,25 +26,21 @@ const EMPTY_FORM = {
   itinerary: "",
 };
 
-const splitLines = (value) =>
-  value
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
 const parseItineraryInput = (value) => {
-  const parsed = JSON.parse(value);
-  return Array.isArray(parsed) ? parsed : [];
-};
+  const raw = String(value || "").trim();
+  if (!raw) return [];
 
-const isValidImageUrl = (value) => {
-  if (!value.trim()) return true;
-  try {
-    const url = new URL(value);
-    return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url.pathname);
-  } catch {
-    return false;
+  const normalized = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  const parsed = JSON.parse(normalized);
+  if (!Array.isArray(parsed)) {
+    throw new Error("Lịch trình phải là mảng JSON");
   }
+
+  return parsed;
 };
 
 const AddServices = () => {
@@ -433,6 +430,10 @@ const AddServices = () => {
 };
 
 export default AddServices;
+
+
+
+
 
 
 

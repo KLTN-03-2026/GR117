@@ -1,86 +1,56 @@
 ﻿const Services = require("../models/services.js");
-const fs = require("fs");
-const path = require("path");
 const accounts = require("../models/account.js");
+const Reviews = require("../models/reviews.js");
+const {
+  parseStringArrayField,
+  normalizeItineraryField,
+  isOwnerOrAdmin,
+} = require("../utils/serviceHelpers.js");
 
-const splitLines = (value) =>
-  String(value || "")
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
+const attachReviewStats = async (services) => {
+  const list = Array.isArray(services) ? services : [];
+  const ids = list.map((service) => service._id);
 
-const parseStringArrayField = (value) => {
-  if (Array.isArray(value)) return value.filter(Boolean);
-  if (!value) return [];
-
-  try {
-    const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) {
-      return parsed.map((item) => String(item).trim()).filter(Boolean);
-    }
-  } catch (error) {
-    // Fallback to newline parsing.
+  if (ids.length === 0) {
+    return list;
   }
 
-  return splitLines(value);
+  const reviewStats = await Reviews.aggregate([
+    { $match: { serviceID: { $in: ids } } },
+    {
+      $group: {
+        _id: "$serviceID",
+        rating: { $avg: "$rating" },
+        reviewCount: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const reviewMap = new Map(
+    reviewStats.map((item) => [
+      String(item._id),
+      {
+        rating: Number(item.rating || 0),
+        reviewCount: Number(item.reviewCount || 0),
+      },
+    ]),
+  );
+
+  return list.map((service) => {
+    const stats = reviewMap.get(String(service._id)) || {
+      rating: 0,
+      reviewCount: 0,
+    };
+
+    return {
+      ...(service.toObject ? service.toObject() : service),
+      rating: stats.rating,
+      reviewCount: stats.reviewCount,
+    };
+  });
 };
 
-const parseItineraryField = (value) => {
-  if (Array.isArray(value)) return value;
-  if (!value) return [];
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    return [];
-  }
-};
-
-const ALLOWED_ACTIVITY_ICONS = new Set([
-  "transport",
-  "hotel",
-  "food",
-  "sightseeing",
-  "activity",
-  "photo",
-]);
-
-const normalizeItineraryField = (value) =>
-  parseItineraryField(value)
-    .map((dayItem, index) => ({
-      day: Number(dayItem?.day) > 0 ? Number(dayItem.day) : index + 1,
-      title: String(dayItem?.title || "").trim(),
-      description: String(dayItem?.description || "").trim(),
-      meals: Array.isArray(dayItem?.meals)
-        ? dayItem.meals.map((item) => String(item).trim()).filter(Boolean)
-        : [],
-      accommodation: String(dayItem?.accommodation || "").trim(),
-      activities: Array.isArray(dayItem?.activities)
-        ? dayItem.activities.map((activity) => {
-            const icon = String(activity?.icon || "activity")
-              .trim()
-              .toLowerCase();
-
-            return {
-              time: String(activity?.time || "").trim(),
-              title: String(activity?.title || "").trim(),
-              description: String(activity?.description || "").trim(),
-              icon: ALLOWED_ACTIVITY_ICONS.has(icon) ? icon : "activity",
-            };
-          })
-        : [],
-    }))
-    .filter((dayItem) =>
-      dayItem.title || dayItem.description || dayItem.activities.length,
-    );
-
-const isOwnerOrAdmin = (service, user) => {
-  if (!service || !user) return false;
-  if (user.role === "admin") return true;
-  return String(service.provider_id || "") === String(user.id || "");
-};
-
+// Tạo dịch vụ mới.
 exports.addServices = async (req, res) => {
   try {
     const {
@@ -153,18 +123,20 @@ exports.addServices = async (req, res) => {
   }
 };
 
+// Lấy danh sách dịch vụ công khai.
 exports.publicServices = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 6;
     const skip = (page - 1) * limit;
 
-    const data = await Services.find({ status: "active" })
+    const services = await Services.find({ status: "active" })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
     const total = await Services.countDocuments({ status: "active" });
+    const data = await attachReviewStats(services);
 
     return res.status(200).json({
       success: true,
@@ -184,6 +156,7 @@ exports.publicServices = async (req, res) => {
   }
 };
 
+// Cập nhật dịch vụ.
 exports.putServices = async (req, res) => {
   try {
     const { id } = req.params;
@@ -241,6 +214,7 @@ exports.putServices = async (req, res) => {
   }
 };
 
+// Cập nhật một phần dịch vụ.
 exports.patchServices = async (req, res) => {
   try {
     const { id } = req.params;
@@ -319,6 +293,7 @@ exports.patchServices = async (req, res) => {
   }
 };
 
+// Xóa một dịch vụ cùng ảnh hoặc bản ghi liên quan.
 exports.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -359,6 +334,7 @@ exports.deleteOne = async (req, res) => {
   }
 };
 
+// Xóa dịch vụ.
 exports.deleteServices = async (req, res) => {
   try {
     const { ids } = req.body;
@@ -391,6 +367,7 @@ exports.deleteServices = async (req, res) => {
   }
 };
 
+// Lấy chi tiết dịch vụ.
 exports.servicesDetail = async (req, res) => {
   try {
     const service = await Services.findById(req.params.id);
@@ -407,7 +384,8 @@ exports.servicesDetail = async (req, res) => {
       });
     }
 
-    return res.json(service);
+    const [withStats] = await attachReviewStats([service]);
+    return res.json(withStats);
   } catch (error) {
     return res.status(500).json({
       error: error.message,
@@ -415,6 +393,7 @@ exports.servicesDetail = async (req, res) => {
   }
 };
 
+// Lấy tất cả dịch vụ cho admin hoặc provider.
 exports.allServices = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -423,12 +402,13 @@ exports.allServices = async (req, res) => {
 
     const filter = req.user?.role === "provider" ? { provider_id: req.user.id } : {};
 
-    const data = await Services.find(filter)
+    const services = await Services.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
     const total = await Services.countDocuments(filter);
+    const data = await attachReviewStats(services);
 
     return res.status(200).json({
       success: true,
@@ -447,3 +427,11 @@ exports.allServices = async (req, res) => {
     });
   }
 };
+
+
+
+
+
+
+
+

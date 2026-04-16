@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { FaShield, FaHeadphones, FaHeart, FaClock, MdStar } from "../../assets/Icons/Icons"
-import { FaArrowLeft, FaArrowRight } from "react-icons/fa6";
+import { FaArrowLeft, FaArrowRight, FaStar, FaArrowRightLong } from "react-icons/fa6";
 import { Link, useNavigate } from "react-router-dom";
 import { IoLocationOutline } from "react-icons/io5";
 import { RiCalendarScheduleLine } from "react-icons/ri";
 import { CiSearch } from "react-icons/ci";
-import ServicesCard from "../../Components/ServicesCard.jsx";
+import { normalizeText } from "../../utils/stringHelpers.js";
+
 const comments = [
     {
         star: 5,
@@ -38,6 +40,7 @@ function HomePage() {
     const [searchBudget, setSearchBudget] = useState("all");
 
     const [index, setIndex] = useState(0);
+    const currentComment = comments[index] || comments[0];
 
     const handlePrev = () => {
         setIndex((prev) =>
@@ -55,7 +58,7 @@ function HomePage() {
             try {
                 const res = await fetch("http://localhost:5000/api/services/public");
                 const data = await res.json();
-                setService(data.data || []);
+                setService(Array.isArray(data?.data) ? data.data : []);
             } catch (error) {
                 console.log(error);
             }
@@ -65,12 +68,16 @@ function HomePage() {
     }, []);
 
     const filteredServices = useMemo(() => {
-        const keyword = searchKeyword.trim().toLowerCase();
+        if (!Array.isArray(Service)) {
+            return [];
+        }
+
+        const keyword = normalizeText(searchKeyword);
 
         return Service.filter((service) => {
-            const name = String(service?.serviceName || service?.servicesName || "").toLowerCase();
-            const location = String(service?.location || service?.destination || service?.region || "").toLowerCase();
-            const provider = String(service?.nameProvider || "").toLowerCase();
+            const name = normalizeText(service?.serviceName || service?.servicesName || "");
+            const location = normalizeText(service?.location || service?.destination || service?.region || "");
+            const provider = normalizeText(service?.nameProvider || "");
             const categories = Array.isArray(service?.category)
                 ? service.category
                 : service?.category
@@ -85,7 +92,7 @@ function HomePage() {
             const matchCategory =
                 searchCategory === "all" ||
                 categories.some((item) =>
-                    String(item || "").toLowerCase() === searchCategory,
+                    normalizeText(item) === normalizeText(searchCategory),
                 );
 
             const price = Number(service?.prices || service?.price || 0);
@@ -141,51 +148,51 @@ function HomePage() {
                         </div>
 
                         {/* Search box */}
-                        <div className="bg-white rounded-2xl mt-4 p-4 md:p-2 shadow-2xl max-w-5xl flex flex-col md:flex-row gap-3 md:gap-0 md:items-center">
+                        <div className="mt-4 flex max-w-4xl flex-col gap-3 rounded-2xl bg-white p-3 shadow-2xl md:flex-row md:items-center md:gap-2 md:p-2">
 
                             {/* Keyword */}
-                            <div className="flex items-center gap-3 px-4 md:border-r border-gray-100">
-                                <div><IoLocationOutline className="text-xl ml-2 text-[#F78F10]" /></div>
-                                <div><p className="text-gray-400 text-sm">Tên điểm đến / dịch vụ</p>
+                            <div className="flex items-center gap-2 px-2 md:flex-1 md:border-r border-gray-100">
+                                <div><IoLocationOutline className="ml-1 text-lg text-[#F78F10]" /></div>
+                                <div className="min-w-0"><p className="text-gray-400 text-[12px]">Tên điểm đến / dịch vụ</p>
                                     <input
                                         value={searchKeyword}
                                         onChange={(e) => setSearchKeyword(e.target.value)}
                                         placeholder="Địa điểm, dịch vụ..."
                                         type="text"
-                                        className="w-full outline-none bg-transparent text-[#1a1a2e]"
+                                        className="w-full bg-transparent text-[#1a1a2e] outline-none text-[14px]"
                                     /></div>
                             </div>
 
                             {/* Tour type */}
-                            <div className="flex items-center gap-3 px-4 md:border-r border-gray-100">
-                                <div><RiCalendarScheduleLine className="text-xl ml-2 text-[#F78F10]" /></div>
+                            <div className="flex items-center gap-2 px-2 md:flex-1 md:border-r border-gray-100">
+                                <div><RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" /></div>
                                 <div>
-                                    <p className="text-gray-400 text-sm">Loại tour</p>
+                                    <p className="text-gray-400 text-[12px]">Loại tour</p>
                                     <select
                                         value={searchCategory}
                                         onChange={(e) => setSearchCategory(e.target.value)}
-                                        className="w-full outline-none bg-transparent text-sm text-[#1a1a2e]"
+                                        className="w-full bg-transparent text-[14px] text-[#1a1a2e] outline-none"
                                     >
                                         <option value="all">Tất cả</option>
                                         <option value="biển đảo">Biển đảo</option>
-                                        <option value="núi">Núi</option>
-                                        <option value="văn hoá">Văn hoá</option>
-                                        <option value="ẩm thực">Ẩm thực</option>
-                                        <option value="thành phố">Thành phố</option>
-                                        <option value="mạo hiểm">Mạo hiểm</option>
+                                        <option value="nui">Núi</option>
+                                        <option value="van hoa">Văn hoá</option>
+                                        <option value="am thuc">Ẩm thực</option>
+                                        <option value="thanh pho">Thành phố</option>
+                                        <option value="mao hiem">Mạo hiểm</option>
                                     </select>
                                 </div>
                             </div>
 
                             {/* Budget */}
-                            <div className="flex flex-1 items-center gap-3 px-4 md:border-r border-gray-100">
-                                <div><RiCalendarScheduleLine className="text-xl ml-2 text-[#F78F10]" /></div>
+                            <div className="flex items-center gap-2 px-2 md:flex-1 md:border-r border-gray-100">
+                                <div><RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" /></div>
                                 <div>
-                                    <p className="text-gray-400 text-sm">Ngân sách</p>
+                                    <p className="text-gray-400 text-[12px]">Ngân sách</p>
                                     <select
                                         value={searchBudget}
                                         onChange={(e) => setSearchBudget(e.target.value)}
-                                        className="w-full outline-none bg-transparent text-[#1a1a2e]"
+                                        className="w-full bg-transparent text-[14px] text-[#1a1a2e] outline-none"
                                     >
                                         <option value="all">Tất cả</option>
                                         <option value="under2">Dưới 2 triệu</option>
@@ -199,10 +206,10 @@ function HomePage() {
                             <button
                                 type="button"
                                 onClick={handleSearch}
-                                className="bg-gradient-to-r from-[#F78F10] to-[#F78F10] text-white px-8 py-4 rounded-xl hover:shadow-lg hover:shadow-orange-200 transition-all"
+                                className="rounded-xl bg-gradient-to-r from-[#F78F10] to-[#F78F10] px-6 py-3.5 text-white transition-all hover:shadow-lg hover:shadow-orange-200"
                             >
-                                <div className="flex items-center gap-3 ">
-                                    <CiSearch className="text-xl font-bold" />  <p className="font-bold">Tìm Kiếm</p>
+                                <div className="flex items-center gap-2">
+                                    <CiSearch className="text-lg font-bold" /> <p className="font-bold text-[14px]">Tìm kiếm</p>
                                 </div>
                             </button>
                         </div>
@@ -216,12 +223,12 @@ function HomePage() {
 
                             <div className="text-white/90">
                                 <p className="text-2xl font-bold">50k+</p>
-                                <p className="text-white/50">Khách Hàng</p>
+                                <p className="text-white/50">Khách hàng</p>
                             </div>
 
                             <div className="text-white/90">
                                 <p className="text-2xl font-bold">4.9</p>
-                                <p className="text-white/50">Đánh Giá</p>
+                                <p className="text-white/50">Đánh giá</p>
                             </div>
                         </div>
                     </div>
@@ -249,7 +256,7 @@ function HomePage() {
                 </section>
                 <section className="py-20">
                     <div className="max-w-7xl mx-auto px-6 text-center mb-10">
-                        <span className="text-[#f97316] text-sm font-semibold tracking-widest">
+                            <span className="text-[#f97316] text-sm font-semibold tracking-widest">
                             KHÁM PHÁ
                         </span>
 
@@ -258,14 +265,87 @@ function HomePage() {
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto">
-                        {filteredServices.map((service) => (
-                            <ServicesCard
-                                key={service._id || service.serviceName}
-                                service={service}
-                                variant="customer"
-                            />
-                        ))}
+                    <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-5 max-w-7xl mx-auto">
+                        {filteredServices.map((service, index) => {
+                            const serviceId = service?._id || service?.id;
+                            const serviceName = service?.serviceName || service?.servicesName || service?.ServiceName || "Chờ cập nhật";
+                            const serviceLocation = service?.location || service?.destination || service?.region || "Chờ cập nhật";
+                            const servicePrice = Number(service?.prices ?? service?.price ?? 0);
+                            const serviceRating = Number(service?.rating ?? 0);
+                            const reviewCount = Number(service?.reviewCount ?? 0);
+                            const partnerName = service?.partnerName || service?.nameProvider || "VIVU";
+                            const terrainLabel = Array.isArray(service?.category)
+                                ? service.category[0]
+                                : service?.category || service?.region || "Khám phá";
+                            const serviceImage =
+                                service?.images?.[0] ||
+                                service?.imageUrl ||
+                                (service?.imageFile ? `http://localhost:5000/uploads/${service.imageFile}` : "") ||
+                                "https://via.placeholder.com/400x250?text=No+Image";
+
+                            return (
+                                <motion.div
+                                    key={serviceId || serviceName || index}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.1 }}
+                                >
+                                    <Link to={serviceId ? `/services/${serviceId}` : "/destination"} className="group block">
+                                        <div className="relative overflow-hidden rounded-2xl">
+                                            <img
+                                                src={serviceImage}
+                                                alt={serviceName}
+                                                onError={(event) => {
+                                                    event.currentTarget.onerror = null;
+                                                    event.currentTarget.src = "https://via.placeholder.com/400x250?text=No+Image";
+                                                }}
+                                                className="h-72 w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                            <div className="absolute left-4 top-4 rounded-full bg-black/40 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+                                                {terrainLabel}
+                                            </div>
+                                            {reviewCount > 0 && serviceRating > 0 && (
+                                                <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 backdrop-blur-sm">
+                                                    <FaStar size={14} className="fill-[#f59e0b] text-[#f59e0b]" />
+                                                    <span style={{ fontSize: 13, fontWeight: 600 }}>
+                                                        {serviceRating.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="absolute bottom-4 left-4 right-4 text-white">
+                                                <h3 className="line-clamp-1" style={{ fontSize: 18, fontWeight: 600 }}>{serviceName}</h3>
+                                                <p className="text-white/70 flex items-center gap-1 mt-1" style={{ fontSize: 13 }}>
+                                                    <IoLocationOutline size={14} /> {serviceLocation}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 flex items-center justify-between">
+                                            <div className="text-left">
+                                                <p className="text-[#f97316]" style={{ fontSize: 18, fontWeight: 700 }}>
+                                                    {servicePrice.toLocaleString("vi-VN")}đ
+                                                </p>
+                                                <p className="text-muted-foreground" style={{ fontSize: 12 }}>bởi {partnerName}</p>
+                                            </div>
+                                            <div className="w-10 h-10 rounded-full bg-[#f97316]/10 flex items-center justify-center hover:bg-[#f97316] hover:text-white text-[#f97316] transition-colors">
+                                                <FaArrowRightLong size={18} />
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="text-center mt-10">
+                        <Link
+                            to="/destination"
+                            className="inline-flex items-center gap-2 rounded-full border-2 border-[#f97316] px-8 py-3 text-[#f97316] transition-all hover:bg-[#f97316] hover:text-white"
+                            style={{ fontSize: 15, fontWeight: 600 }}
+                        >
+                            Xem tất cả dịch vụ <FaArrowRight size={18} />
+                        </Link>
                     </div>
                 </section>
 
@@ -276,15 +356,15 @@ function HomePage() {
                         </div>
                     </div>
                     <div className="relative z-10 max-w-3xl mx-auto text-center px-6">
-                        <h2 className="text-white mb-4 text-[48px]">
+                            <h2 className="text-white mb-4 text-[48px]">
                             Bạn là nhà cung cấp dịch vụ du lịch?
-                        </h2>
-                        <p className="text-white/60 mb-8">
+                            </h2>
+                            <p className="text-white/60 mb-8">
                             Đăng ký làm đối tác VIVU Travel để đăng tải dịch vụ và tiếp cận hàng nghìn khách hàng tiềm năng
-                        </p>
-                        <Link to="register" className="inline-block px-8 mt-4 py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-full hover:shadow-lg transition-all">
+                            </p>
+                            <Link to="register" className="inline-block px-8 mt-4 py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-full hover:shadow-lg transition-all">
                             Đăng ký đối tác ngay
-                        </Link>
+                            </Link>
                     </div>
                 </section>
                 <section className="py-20 bg-[#f8fafc]">
@@ -306,10 +386,10 @@ function HomePage() {
                         <div className="max-w-2xl mx-auto">
                             <div className="bg-white rounded-3xl p-10 shadow-lg text-center">
                                 <div className="flex justify-center gap-1 mb-4">
-                                    {[...Array(5)].map((_, i) => (
+                                {[...Array(5)].map((_, i) => (
                                         <MdStar
                                             key={i}
-                                            className={`w-6 h-6 ${i < comments[index].star
+                                            className={`w-6 h-6 ${i < currentComment.star
                                                 ? "text-[#f59e0b]"
                                                 : "text-gray-300"
                                                 }`}
@@ -317,13 +397,13 @@ function HomePage() {
                                     ))}
                                 </div>
                                 <p>
-                                    {comments[index].comment}
+                                    {currentComment.comment}
                                 </p>
                                 <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-br from-[#f97316] to-[#f59e0b] flex items-center justify-center text-white mb-3">
-                                    {comments[index].short}
+                                    {currentComment.short}
                                 </div>
                                 <p>
-                                    {comments[index].name}
+                                    {currentComment.name}
                                 </p>
                             </div>
                         </div>
@@ -350,3 +430,6 @@ function HomePage() {
 }
 
 export default HomePage;
+
+
+

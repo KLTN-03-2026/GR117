@@ -10,7 +10,7 @@ export async function parseServiceByAI(rawText) {
   const result = await res.json();
 
   if (!res.ok || result.success === false) {
-    throw new Error(result.message || "Khong the phan tich noi dung bang AI");
+    throw new Error(result.message || "Không thể phân tích nội dung bằng AI");
   }
 
   return result.data;

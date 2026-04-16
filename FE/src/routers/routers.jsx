@@ -26,14 +26,15 @@ import DetailServices from "../Pages/client/DetailServers.jsx";
 
 function Routers() {
   const user = jwt();
+  const homePath = user?.role === "admin" ? "/admin" : user?.role === "provider" ? "/provider" : "/";
 
   return (
     <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/signin" element={user ? <Navigate to="/" /> : <SignIn />} />
-        <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
-        <Route path="/forgot-password" element={user ? <Navigate to="/" /> : <ForgotPassword />} />
+        <Route path="/signin" element={user ? <Navigate to={homePath} replace /> : <SignIn />} />
+        <Route path="/register" element={user ? <Navigate to={homePath} replace /> : <Register />} />
+        <Route path="/forgot-password" element={user ? <Navigate to={homePath} replace /> : <ForgotPassword />} />
         <Route path="/destination" element={<Destination />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />

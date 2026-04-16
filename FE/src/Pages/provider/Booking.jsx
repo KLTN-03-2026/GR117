@@ -1,5 +1,5 @@
 import React from "react";
-import Breadcrumb from "../../Components/Breadcrumb.jsx";
+import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 
 const Booking = () => {
   return (
@@ -16,7 +16,7 @@ const Booking = () => {
                 color: "rgb(26, 26, 46)",
               }}
             >
-              Quan ly dat cho
+              Quản lý đặt chỗ
             </h1>
           </div>
         </div>
@@ -24,7 +24,7 @@ const Booking = () => {
 
       <div className="p-6">
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
-          Chức năng đặt chổ đang hoàn thiện
+          Chức năng đặt chỗ đang hoàn thiện
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { IoSearch } from "react-icons/io5";
-import ServicesCard from "../../Components/ServicesCard";
+import ServicesCard from "../../Components/services/ServicesCard";
 
 const STATUS_META = {
   all: "Tất cả",
@@ -16,7 +16,7 @@ const Services = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("T?t c?");
+  const [category, setCategory] = useState("Tất cả");
   const [status, setStatus] = useState("all");
   const [actionLoadingId, setActionLoadingId] = useState("");
 
@@ -39,10 +39,10 @@ const Services = () => {
         if (res.ok && result.success) {
           setServices(Array.isArray(result.data) ? result.data : []);
         } else {
-          setError(result.message || "Khong the tai dich vu");
+          setError(result.message || "Không thể tải dịch vụ");
         }
       } catch (err) {
-        setError("Loi ket noi toi server");
+        setError("Lỗi kết nối tới server");
       } finally {
         setLoading(false);
       }
@@ -60,8 +60,8 @@ const Services = () => {
         uiName: service.serviceName || service.servicesName || service.ServiceName || "",
         uiLocation: service.location || service.destination || service.region || "",
         uiCategory: Array.isArray(service.category)
-          ? service.category[0] || "Khac"
-          : (service.category || "Khac"),
+          ? service.category[0] || "Khác"
+          : (service.category || "Khác"),
         uiStatus:
           rawStatus === "active"
             ? "approval"
@@ -103,7 +103,7 @@ const Services = () => {
 
       return (
         matchSearch &&
-        (category === "T?t c?" || item.uiCategory === category) &&
+        (category === "Tất cả" || item.uiCategory === category) &&
         (status === "all" || item.uiStatus === status)
       );
     });
@@ -114,7 +114,7 @@ const Services = () => {
   };
 
   const handleDelete = async (service) => {
-    const confirmed = window.confirm(`Bạn có chắc muốn xóa dịch vụ  \"${service.uiName || service.serviceName || ""}\" không?`);
+    const confirmed = window.confirm(`Bạn có chắc muốn xóa dịch vụ "${service.uiName || service.serviceName || ""}" không?`);
     if (!confirmed) {
       return;
     }
@@ -145,7 +145,7 @@ const Services = () => {
 
       setServices((prev) => prev.filter((item) => item._id !== service._id));
     } catch (deleteError) {
-      setError(`lỗi xóa dịch vụ : ${deleteError.message}`);
+      setError(`Lỗi xóa dịch vụ: ${deleteError.message}`);
     } finally {
       setActionLoadingId("");
     }
@@ -173,7 +173,7 @@ const Services = () => {
                 color: "rgb(26, 26, 46)",
               }}
             >
-              Quản lí dịch vụ 
+              Quản lý dịch vụ
             </h1>
           </div>
         </div>
@@ -182,7 +182,7 @@ const Services = () => {
           to="/provider/addservices"
           className="rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-4 py-2 text-[13px] font-medium text-white transition hover:shadow-lg hover:shadow-orange-200"
         >
-          +  Thêm dịch vụ 
+          + Thêm dịch vụ
         </Link>
       </div>
 
@@ -194,14 +194,14 @@ const Services = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm theo tên , địa điểm"
+              placeholder="Tìm kiếm theo tên, địa điểm"
               className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-[15px] outline-none transition placeholder:text-slate-300 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
             />
           </div>
         </div>
 
         {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-        {actionLoadingId && <p className="text-sm text-slate-500">Đăng xử lí dịch vụ ...</p>}
+        {actionLoadingId && <p className="text-sm text-slate-500">Đang xử lý dịch vụ ...</p>}
 
         <div className="flex flex-wrap gap-3">
           {Object.entries(STATUS_META).map(([key, label]) => {

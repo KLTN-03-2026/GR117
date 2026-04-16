@@ -1,6 +1,8 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import ButtonBack from "../../Components/ButtonBack";
+import ButtonBack from "../../Components/shared/ButtonBack";
+import { parseServiceByAI } from "../../services/aiService";
+import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 
 const CATEGORY_OPTIONS = ["Biển đảo", "Núi", "Văn hoá", "Ẩm thực", "Thành phố", "Mạo hiểm"];
 
@@ -17,20 +19,21 @@ const EMPTY_FORM = {
   itinerary: "",
 };
 
-const splitLines = (value) =>
-  value
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
+const parseItineraryInput = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return [];
 
-const isValidImageUrl = (value) => {
-  if (!value.trim()) return true;
-  try {
-    const url = new URL(value);
-    return /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url.pathname);
-  } catch {
-    return false;
+  const normalized = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  const parsed = JSON.parse(normalized);
+  if (!Array.isArray(parsed)) {
+    throw new Error("Lịch trình phải là mảng JSON");
   }
+
+  return parsed;
 };
 
 const EditServices = () => {
@@ -41,6 +44,7 @@ const EditServices = () => {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
 
   useEffect(() => {
@@ -73,13 +77,17 @@ const EditServices = () => {
           images: service.imageUrl || "",
           highlights: Array.isArray(service.highlights)
             ? service.highlights.join("\n")
-            : service.highlight || "",
+            : Array.isArray(service.highlight)
+              ? service.highlight.join("\n")
+              : service.highlight || "",
           includes: Array.isArray(service.includes)
             ? service.includes.join("\n")
             : Array.isArray(service.serviceIncludes)
               ? service.serviceIncludes.join("\n")
               : "",
-          itinerary: Array.isArray(service.itinerary) ? service.itinerary.join("\n") : service.itinerary || "",
+          itinerary: Array.isArray(service.itinerary)
+            ? JSON.stringify(service.itinerary, null, 2)
+            : service.itinerary || "",
         });
       } catch (error) {
         setMessage("Không tải được thông tin dịch vụ");
@@ -112,12 +120,47 @@ const EditServices = () => {
     }
   };
 
+  const handleGenerateByAI = async () => {
+    if (!formData.itinerary.trim()) {
+      setSuccess(false);
+      setMessage("Vui lòng nhập nội dung vào ô lịch trình để AI phân tích");
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      setSuccess(false);
+      setMessage("");
+
+      const aiData = await parseServiceByAI(formData.itinerary);
+
+      setFormData((prev) => ({
+        ...prev,
+        itinerary: JSON.stringify(aiData.itinerary || [], null, 2),
+      }));
+
+      setSuccess(true);
+      setMessage("AI đã chuẩn hóa nội dung lịch trình");
+    } catch (error) {
+      setSuccess(false);
+      setMessage(error.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const validateForm = () => {
     if (!formData.name.trim()) return "Tên dịch vụ không được để trống";
     if (!formData.description.trim()) return "Mô tả không được để trống";
     if (!formData.location.trim()) return "Địa điểm không được để trống";
     if (!formData.category) return "Vui lòng chọn danh mục";
     if (!formData.price || Number(formData.price) <= 0) return "Giá phải lớn hơn 0";
+
+    try {
+      parseItineraryInput(formData.itinerary);
+    } catch (error) {
+      return "Lịch trình phải là JSON hợp lệ. Bạn có thể bấm 'Tạo bằng AI' để chuẩn hóa.";
+    }
 
     if (!imageFile) {
       const invalidImage = splitLines(formData.images).find((item) => !isValidImageUrl(item));
@@ -145,14 +188,15 @@ const EditServices = () => {
     }
 
     const payload = new FormData();
+    const parsedItinerary = parseItineraryInput(formData.itinerary);
     payload.append("serviceName", formData.name.trim());
     payload.append("description", formData.description.trim());
     payload.append("prices", String(Number(formData.price)));
     payload.append("location", formData.location.trim());
     payload.append("category", formData.category);
     payload.append("duration", formData.duration.trim());
-    payload.append("highlight", splitLines(formData.highlights).join("\n"));
-    payload.append("itinerary", splitLines(formData.itinerary).join("\n"));
+    payload.append("highlight", JSON.stringify(splitLines(formData.highlights)));
+    payload.append("itinerary", JSON.stringify(parsedItinerary));
     splitLines(formData.includes).forEach((item) => {
       payload.append("serviceIncludes", item);
     });
@@ -207,7 +251,9 @@ const EditServices = () => {
         <div className="flex justify-center">
           <div className="w-full rounded-[28px] border border-orange-100 bg-white p-6 shadow-sm md:p-8">
             {message && (
-              <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${success ? "border-green-200 bg-green-50 text-green-600" : "border-red-200 bg-red-50 text-red-600"}`}>
+              <div
+                className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${success ? "border-green-200 bg-green-50 text-green-600" : "border-red-200 bg-red-50 text-red-600"}`}
+              >
                 {message}
               </div>
             )}
@@ -284,7 +330,24 @@ const EditServices = () => {
                   </div>
                   <div>
                     <label className={labelClass}>Lịch trình</label>
-                    <textarea name="itinerary" value={formData.itinerary} onChange={handleChange} rows="4" placeholder={"Ngay 1: Den Da Nang\nNgay 2: Tham quan Ba Na"} className={inputClass} />
+                    <textarea
+                      name="itinerary"
+                      value={formData.itinerary}
+                      onChange={handleChange}
+                      rows="4"
+                      placeholder={"Dán mô tả thô để AI chuẩn hóa, hoặc nhập JSON itinerary hợp lệ"}
+                      className={inputClass}
+                    />
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleGenerateByAI}
+                        disabled={aiLoading}
+                        className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {aiLoading ? "AI đang phân tích..." : "Tạo bằng AI"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

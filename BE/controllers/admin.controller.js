@@ -1,8 +1,9 @@
-const accounts = require("../models/account.js");
+﻿const accounts = require("../models/account.js");
 const Services = require("../models/services.js");
 const fs = require("fs");
 const path = require("path");
 
+// Lấy danh sách provider chờ duyệt.
 module.exports.getPendingProviders = async (req, res) => {
   try {
     const providers = await accounts
@@ -11,15 +12,16 @@ module.exports.getPendingProviders = async (req, res) => {
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
-      message: "Lấy danh sách đối tác chờ duyệt thành công",
+      message: "Láº¥y danh sĂ¡ch Ä‘á»‘i tĂ¡c chá» duyá»‡t thĂ nh cĂ´ng",
       data: providers,
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách provider pending:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lá»—i khi láº¥y danh sĂ¡ch provider pending:", error);
+    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
   }
 };
 
+// Duyệt provider.
 module.exports.approveProvider = async (req, res) => {
   try {
     const { id } = req.params;
@@ -27,19 +29,19 @@ module.exports.approveProvider = async (req, res) => {
 
     if (!provider) {
       return res.status(404).json({
-        message: "Nhà cung cấp không tồn tại",
+        message: "NhĂ  cung cáº¥p khĂ´ng tá»“n táº¡i",
       });
     }
 
     if (provider.role !== "provider") {
       return res.status(400).json({
-        message: "Tài khoản này không phải provider",
+        message: "TĂ i khoáº£n nĂ y khĂ´ng pháº£i provider",
       });
     }
 
     if (provider.status === "active") {
       return res.status(400).json({
-        message: "Nhà cung cấp đã được duyệt",
+        message: "NhĂ  cung cáº¥p Ä‘Ă£ Ä‘Æ°á»£c duyá»‡t",
       });
     }
 
@@ -47,7 +49,7 @@ module.exports.approveProvider = async (req, res) => {
     await provider.save();
 
     return res.status(200).json({
-      message: "Duyệt nhà cung cấp thành công",
+      message: "Duyá»‡t nhĂ  cung cáº¥p thĂ nh cĂ´ng",
       data: {
         id: provider._id,
         fullName: provider.fullName,
@@ -56,13 +58,14 @@ module.exports.approveProvider = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Lỗi khi duyệt nhà cung cấp:", error);
+    console.error("Lá»—i khi duyá»‡t nhĂ  cung cáº¥p:", error);
     return res.status(500).json({
-      message: "Lỗi hệ thống",
+      message: "Lá»—i há»‡ thá»‘ng",
     });
   }
 };
 
+// Từ chối provider.
 module.exports.rejectProvider = async (req, res) => {
   try {
     const { id } = req.params;
@@ -70,13 +73,13 @@ module.exports.rejectProvider = async (req, res) => {
 
     if (!provider) {
       return res.status(404).json({
-        message: "Nhà cung cấp không tồn tại",
+        message: "NhĂ  cung cáº¥p khĂ´ng tá»“n táº¡i",
       });
     }
 
     if (provider.role !== "provider") {
       return res.status(400).json({
-        message: "Tài khoản này không phải provider",
+        message: "TĂ i khoáº£n nĂ y khĂ´ng pháº£i provider",
       });
     }
 
@@ -84,7 +87,7 @@ module.exports.rejectProvider = async (req, res) => {
     await provider.save();
 
     return res.status(200).json({
-      message: "Từ chối nhà cung cấp thành công",
+      message: "Tá»« chá»‘i nhĂ  cung cáº¥p thĂ nh cĂ´ng",
       data: {
         id: provider._id,
         fullName: provider.fullName,
@@ -93,13 +96,14 @@ module.exports.rejectProvider = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Lỗi khi từ chối nhà cung cấp:", error);
+    console.error("Lá»—i khi tá»« chá»‘i nhĂ  cung cáº¥p:", error);
     return res.status(500).json({
-      message: "Lỗi hệ thống",
+      message: "Lá»—i há»‡ thá»‘ng",
     });
   }
 };
 
+// Lấy danh sách tài khoản.
 module.exports.getAccounts = async (req, res) => {
   try {
     const { role, status } = req.query;
@@ -114,32 +118,33 @@ module.exports.getAccounts = async (req, res) => {
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
-      message: "Lay danh sach tai khoan thanh cong",
+      message: "L?y danh s?ch t?i kho?n th?nh c?ng",
       data,
     });
   } catch (error) {
-    console.error("Loi khi lay danh sach tai khoan:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi l?y danh s?ch t?i kho?n:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Tạo tài khoản.
 module.exports.createAccount = async (req, res) => {
   try {
     const { fullName, email, phone, password, role, status } = req.body;
 
     if (!fullName || !email || !password) {
       return res.status(400).json({
-        message: "Thieu thong tin bat buoc",
+        message: "Thi?u th?ng tin b?t bu?c",
       });
     }
 
     if (role && !["user", "provider", "admin"].includes(role)) {
-      return res.status(400).json({ message: "Role khong hop le" });
+      return res.status(400).json({ message: "Role kh?ng h?p l?" });
     }
 
     const duplicate = await accounts.findOne({ email });
     if (duplicate) {
-      return res.status(409).json({ message: "Email da ton tai" });
+      return res.status(409).json({ message: "Email ?? t?n t?i" });
     }
 
     const bcrypt = require("bcrypt");
@@ -166,11 +171,12 @@ module.exports.createAccount = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Loi khi tao tai khoan:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi t?o t?i kho?n:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Cập nhật trạng thái tài khoản.
 const updateAccountStatus = async (req, res, nextStatus) => {
   const { id } = req.params;
   const user = await accounts.findById(id);
@@ -192,24 +198,27 @@ const updateAccountStatus = async (req, res, nextStatus) => {
   });
 };
 
+// Khóa tài khoản.
 module.exports.blockAccount = async (req, res) => {
   try {
     return await updateAccountStatus(req, res, "blocked");
   } catch (error) {
-    console.error("Loi khi khoa tai khoan:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi kh?a t?i kho?n:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Mở khóa tài khoản.
 module.exports.unblockAccount = async (req, res) => {
   try {
     return await updateAccountStatus(req, res, "active");
   } catch (error) {
-    console.error("Loi khi mo khoa tai khoan:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi m? kh?a t?i kho?n:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Xóa tài khoản.
 module.exports.deleteAccount = async (req, res) => {
   try {
     const { id } = req.params;
@@ -226,11 +235,12 @@ module.exports.deleteAccount = async (req, res) => {
       data: { id },
     });
   } catch (error) {
-    console.error("Loi khi xoa tai khoan:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi x?a t?i kho?n:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Lấy danh sách dịch vụ.
 module.exports.getServices = async (req, res) => {
   try {
     const { status } = req.query;
@@ -244,11 +254,12 @@ module.exports.getServices = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error("Loi khi lay danh sach dich vu:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi l?y danh s?ch d?ch v?:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Duyệt dịch vụ.
 module.exports.approveService = async (req, res) => {
   try {
     const { id } = req.params;
@@ -262,15 +273,16 @@ module.exports.approveService = async (req, res) => {
     await service.save();
 
     return res.status(200).json({
-      message: "Duyet dich vu thanh cong",
+      message: "Duy?t d?ch v? th?nh c?ng",
       data: { id: service._id, status: service.status },
     });
   } catch (error) {
-    console.error("Loi khi duyet dich vu:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi duy?t d?ch v?:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Từ chối dịch vụ.
 module.exports.rejectService = async (req, res) => {
   try {
     const { id } = req.params;
@@ -284,15 +296,16 @@ module.exports.rejectService = async (req, res) => {
     await service.save();
 
     return res.status(200).json({
-      message: "Tu choi dich vu thanh cong",
+      message: "T? ch?i d?ch v? th?nh c?ng",
       data: { id: service._id, status: service.status },
     });
   } catch (error) {
-    console.error("Loi khi tu choi dich vu:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi t? ch?i d?ch v?:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Xóa dịch vụ.
 module.exports.deleteService = async (req, res) => {
   try {
     const { id } = req.params;
@@ -316,11 +329,12 @@ module.exports.deleteService = async (req, res) => {
       data: { id },
     });
   } catch (error) {
-    console.error("Loi khi xoa dich vu:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi x?a d?ch v?:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
 
+// Lấy thống kê dashboard.
 module.exports.getStats = async (req, res) => {
   try {
     const [totalServices, pendingServices, totalAccounts, pendingProviders] =
@@ -341,7 +355,8 @@ module.exports.getStats = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Loi khi lay thong ke:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    console.error("L?i khi l?y th?ng k?:", error);
+    return res.status(500).json({ message: "L?i h? th?ng" });
   }
 };
+

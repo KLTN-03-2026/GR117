@@ -1,4 +1,5 @@
-﻿const buildInstructions = () =>
+﻿// Tạo hướng dẫn cho prompt.
+const buildInstructions = () =>
   [
     "Bạn là chuyên gia phân tích dữ liệu du lịch.",
     "Tôi sẽ cung cấp lịch trình 1 tour du lịch dưới dạng text tự do, có thể copy từ website, PDF hoặc tự viết.",
@@ -170,6 +171,7 @@ const responseSchema = {
   required: ["service", "itinerary"],
 };
 
+// Chuẩn hóa chuỗi thời gian.
 const normalizeTime = (value) => {
   const raw = String(value || "").trim();
   const match = raw.match(/^(\d{1,2})[:.](\d{2})$/);
@@ -180,6 +182,7 @@ const normalizeTime = (value) => {
   return `${hours}:${minutes}`;
 };
 
+// Chuẩn hóa icon của hoạt động.
 const normalizeIcon = (value) => {
   const allowed = new Set([
     "transport",
@@ -198,6 +201,7 @@ const normalizeIcon = (value) => {
   return allowed.has(normalized) ? normalized : "activity";
 };
 
+// Phân tách dòng bữa ăn.
 const parseMealsLine = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return [];
@@ -208,6 +212,7 @@ const parseMealsLine = (value) => {
     .filter(Boolean);
 };
 
+// Phân tích lịch trình từ văn bản thô.
 const parseItineraryFromText = (rawText) => {
   const text = String(rawText || "").replace(/\r/g, "");
   const lines = text.split("\n");
@@ -344,6 +349,7 @@ const parseItineraryFromText = (rawText) => {
   return itinerary.length > 0 ? itinerary : null;
 };
 
+// Chuẩn hóa dữ liệu dịch vụ.
 const normalizeService = (service) => ({
   name: String(service?.name || ""),
   description: String(service?.description || ""),
@@ -356,6 +362,7 @@ const normalizeService = (service) => ({
   includes: Array.isArray(service?.includes) ? service.includes : [],
 });
 
+// Chuẩn hóa dữ liệu trả về từ AI.
 const normalizeParsedData = (parsed) => {
   if (!parsed || typeof parsed !== "object") {
     return { service: normalizeService({}), itinerary: [] };
@@ -370,6 +377,7 @@ const normalizeParsedData = (parsed) => {
   };
 };
 
+// Phân tích JSON đầu ra thô.
 const parseJsonOutput = (rawText) => {
   try {
     return JSON.parse(rawText);
@@ -460,6 +468,7 @@ const callOllama = async (rawText) => {
   return result.response;
 };
 
+// Phân tích bản nháp dịch vụ từ AI.
 module.exports.parseServiceDraft = async (req, res) => {
   try {
     const { rawText } = req.body;
@@ -511,8 +520,14 @@ module.exports.parseServiceDraft = async (req, res) => {
   }
 };
 
+// Xuất các helper nội bộ để debug.
 module.exports._internal = {
   parseItineraryFromText,
   normalizeIcon,
   normalizeTime,
 };
+
+
+
+
+

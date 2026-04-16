@@ -1,5 +1,5 @@
-import React from "react";
-import Breadcrumb from "../../Components/Breadcrumb.jsx";
+﻿import React from "react";
+import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 
 const Revenue = () => {
   return (
@@ -32,3 +32,4 @@ const Revenue = () => {
 };
 
 export default Revenue;
+

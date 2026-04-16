@@ -5,7 +5,7 @@ import {
   FaPhone,
   FaUser,
   CiLogin,
-} from "../assets/Icons/Icons";
+} from "../../assets/Icons/Icons";
 import { SiGmail } from "react-icons/si";
 import { NavLink, Link } from "react-router-dom";
 
@@ -34,34 +34,34 @@ function Header({ variant = "default" }) {
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
       {!isDashboardHeader && (
-      <div className="bg-[#1a1a2e] text-white/80 hidden md:block text-[15px]">
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-6 px-2">
-            <span className="flex items-center gap-1">
-              <FaPhone />
-              1900 1234
-            </span>
-            <span className="flex items-center gap-1">
-              <SiGmail />
-              hello@vivutravel.vn
-            </span>
-          </div>
-
-          {!isCheck ? null : (
-            <span className="flex items-center gap-1">
+        <div className="bg-[#1a1a2e] text-white/80 hidden md:block text-[15px]">
+          <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <div className="flex items-center gap-6 px-2">
               <span className="flex items-center gap-1">
-                Xin Chào <FaUser />
-                <span className="text-[#f97316] ">
-                  {user?.fullName}
+                <FaPhone />
+                1900 1234
+              </span>
+              <span className="flex items-center gap-1">
+                <SiGmail />
+                hello@vivutravel.vn
+              </span>
+            </div>
+
+            {!isCheck ? null : (
+              <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1">
+                  Xin chào <FaUser />
+                  <span className="text-[#f97316] ">
+                    {user?.fullName}
+                  </span>
+                </span>
+                <span className="ml-2 px-2 py-0.5 bg-white/10 rounded text-[11px]">
+                  {user?.role === "user" ? "Khách hàng" : ""}
                 </span>
               </span>
-              <span className="ml-2 px-2 py-0.5 bg-white/10 rounded text-[11px]">
-                {user?.role === "user" ? "Khách Hàng" : ""}
-              </span>
-            </span>
-          )}
+            )}
+          </div>
         </div>
-      </div>
       )}
 
       {/* Main header */}
@@ -81,23 +81,23 @@ function Header({ variant = "default" }) {
         </div>
 
         {!isDashboardHeader && (
-        <div className="hidden md:flex items-center gap-6">
-          <NavLink to="/" end className={navClass}>
-            Trang Chủ
-          </NavLink>
+          <div className="hidden md:flex items-center gap-6">
+            <NavLink to="/" end className={navClass}>
+              Trang Chủ
+            </NavLink>
 
-          <NavLink to="/destination" className={navClass}>
-            Điểm Đến
-          </NavLink>
+            <NavLink to="/destination" className={navClass}>
+              Điểm Đến
+            </NavLink>
 
-          <NavLink to="/about" className={navClass}>
-            Về Chúng Tôi
-          </NavLink>
+            <NavLink to="/about" className={navClass}>
+              Về Chúng Tôi
+            </NavLink>
 
-          <NavLink to="/contact" className={navClass}>
-            Liên Hệ
-          </NavLink>
-        </div>
+            <NavLink to="/contact" className={navClass}>
+              Liên Hệ
+            </NavLink>
+          </div>
         )}
 
         {/* Auth */}
@@ -133,7 +133,7 @@ function Header({ variant = "default" }) {
                 className="flex items-center gap-1.5 px-2 py-2 text-muted-foreground hover:text-[#ef4444] transition-colors"
               >
                 <CiLogin />
-                Đăng Xuất
+                Đăng xuất
               </button>
             </>
           )}

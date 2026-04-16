@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
-import { FaClock, FaCircleCheck } from "../assets/Icons/Icons";
-import { formatDate } from "../utils/formatDate";
+import { FaClock, FaCircleCheck } from "../../assets/Icons/Icons";
+import { formatDate } from "../../utils/formatDate";
 
 function BookingBox({
     props,
@@ -129,3 +129,4 @@ function BookingBox({
 }
 
 export default BookingBox;
+

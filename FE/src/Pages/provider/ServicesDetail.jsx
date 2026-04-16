@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import ButtonBack from "../../Components/ButtonBack";
+import ButtonBack from "../../Components/shared/ButtonBack";
 
 const ServicesDetail = () => {
   const { id } = useParams();
@@ -89,3 +89,4 @@ const ServicesDetail = () => {
 };
 
 export default ServicesDetail;
+

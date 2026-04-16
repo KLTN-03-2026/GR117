@@ -2,8 +2,8 @@
 import { Link, useLocation, useParams } from "react-router-dom";
 import axios from "axios";
 
-import BookingBox from "../../Components/BookingBox";
-import DetailContentServices from "../../Components/DetailContentServices";
+import BookingBox from "../../Components/services/BookingBox";
+import DetailContentServices from "../../Components/services/DetailContentServices";
 import {
   FaArrowLeft,
   FaHeart,
@@ -339,3 +339,4 @@ function DetailServices() {
 }
 
 export default DetailServices;
+

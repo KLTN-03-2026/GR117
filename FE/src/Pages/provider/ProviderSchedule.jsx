@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { FiCalendar, FiPlus } from "react-icons/fi";
-import Breadcrumb from "../../Components/Breadcrumb.jsx";
+import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import ProviderScheduleTable from "./ProviderScheduleTable.jsx";
 import ScheduleFormModal from "./ScheduleFormModal.jsx";
 import DeleteScheduleModal from "./DeleteScheduleModal.jsx";
@@ -493,3 +493,4 @@ export default function ProviderSchedule() {
     </div>
   );
 }
+

@@ -3,22 +3,12 @@ import { FiEdit2, FiLock, FiMapPin, FiTrash2, FiUnlock } from "react-icons/fi";
 
 function CapacityCell({ booked, max }) {
   const pct = max > 0 ? Math.round((booked / max) * 100) : 0;
-  const barColor = pct >= 90 ? "#ef4444" : pct >= 60 ? "#f59e0b" : "#10b981";
 
   return (
     <div className="flex min-w-[120px] items-center gap-3">
       <span className="font-semibold text-gray-700">
         {booked}/{max}
       </span>
-
-      <div className="max-w-[80px] flex-1">
-        <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, background: barColor }}
-          />
-        </div>
-      </div>
 
       <span className="text-[12px] text-gray-400">{pct}%</span>
     </div>
@@ -88,12 +78,20 @@ export default function ProviderScheduleTable({
                 key={schedule._id}
                 className="border-b border-gray-100 transition-colors hover:bg-[#f8fafc]"
               >
-                <td className="px-3 py-3">
-                  <p className="font-medium">{service?.name || "—"}</p>
-                  <p className="flex items-center gap-1 text-[12px] text-gray-400">
-                    <FiMapPin size={11} />
-                    {service?.location || "—"}
-                  </p>
+                                <td className="px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{service?.name || "?"}</p>
+                      <p className="flex items-center gap-1 text-[12px] text-gray-400">
+                        <FiMapPin size={11} />
+                        {service?.location || "?"}
+                      </p>
+                    </div>
+
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#f97316]/10 px-2.5 py-1 text-[11px] font-semibold text-[#f97316]">
+                      {service?.duration || "Ch?a c?p nh?t"}
+                    </span>
+                  </div>
                 </td>
 
                 <td className="whitespace-nowrap px-3 py-3">

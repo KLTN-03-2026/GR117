@@ -1,4 +1,4 @@
-const accounts = require("../models/account.js");
+﻿const accounts = require("../models/account.js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -7,26 +7,27 @@ const Session = require("../models/session.js");
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 
-// ================= REGISTER =================
+// ================= ĐĂNG KÝ =================
+// Đăng ký user hoặc provider.
 module.exports.register = async (req, res) => {
   try {
     const { fullName, email, phone, password, confirmPass, role } = req.body;
 
-    // Validate
+    // Kiểm tra dữ liệu
     if (!fullName || !email || !phone || !password || !confirmPass || !role) {
-      return res.status(400).json({ message: "Thiếu thông tin đăng ký" });
+      return res.status(400).json({ message: "Thiáº¿u thĂ´ng tin Ä‘Äƒng kĂ½" });
     }
 
     if (!["user", "provider"].includes(role)) {
-      return res.status(400).json({ message: "Role không hợp lệ" });
+      return res.status(400).json({ message: "Role khĂ´ng há»£p lá»‡" });
     }
 
     if (password !== confirmPass) {
-      return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
+      return res.status(400).json({ message: "Máº­t kháº©u xĂ¡c nháº­n khĂ´ng khá»›p" });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
+      return res.status(400).json({ message: "Máº­t kháº©u pháº£i cĂ³ Ă­t nháº¥t 6 kĂ½ tá»±" });
     }
 
     const duplicate = await accounts.findOne({
@@ -35,17 +36,17 @@ module.exports.register = async (req, res) => {
 
     if (duplicate) {
       return res.status(409).json({
-        message: "Email hoặc số điện thoại đã tồn tại",
+        message: "Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i Ä‘Ă£ tá»“n táº¡i",
       });
     }
 
-    // hash password
+    // Mã hóa mật khẩu
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // set status theo role
+    // Gán trạng thái theo role
     const status = role === "provider" ? "pending" : "active";
 
-    // create account
+    // Tạo tài khoản
     const newAccount = await accounts.create({
       fullName,
       email,
@@ -58,8 +59,8 @@ module.exports.register = async (req, res) => {
     return res.status(201).json({
       message:
         role === "provider"
-          ? "Đăng ký đối tác thành công, chờ admin duyệt"
-          : "Đăng ký thành công",
+          ? "ÄÄƒng kĂ½ Ä‘á»‘i tĂ¡c thĂ nh cĂ´ng, chá» admin duyá»‡t"
+          : "ÄÄƒng kĂ½ thĂ nh cĂ´ng",
       data: {
         id: newAccount._id,
         fullName: newAccount.fullName,
@@ -70,47 +71,48 @@ module.exports.register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Lỗi register:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lá»—i register:", error);
+    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
   }
 };
+// Đăng nhập và tạo phiên làm việc.
 module.exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Thiếu email hoặc password" });
+      return res.status(400).json({ message: "Thiáº¿u email hoáº·c password" });
     }
 
     const user = await accounts.findOne({ email });
     if (!user) {
       return res
         .status(401)
-        .json({ message: "Email hoặc password không chính xác" });
+        .json({ message: "Email hoáº·c password khĂ´ng chĂ­nh xĂ¡c" });
     }
 
     const passwordCorrect = await bcrypt.compare(password, user.password);
     if (!passwordCorrect) {
       return res
         .status(401)
-        .json({ message: "Email hoặc password không chính xác" });
+        .json({ message: "Email hoáº·c password khĂ´ng chĂ­nh xĂ¡c" });
     }
 
     if (user.role === "provider" && user.status === "pending") {
       return res.status(403).json({
-        message: "Tài khoản đối tác đang chờ admin duyệt",
+        message: "TĂ i khoáº£n Ä‘á»‘i tĂ¡c Ä‘ang chá» admin duyá»‡t",
       });
     }
 
     if (user.role === "provider" && user.status === "rejected") {
       return res.status(403).json({
-        message: "Tài khoản đối tác đã bị từ chối",
+        message: "TĂ i khoáº£n Ä‘á»‘i tĂ¡c Ä‘Ă£ bá»‹ tá»« chá»‘i",
       });
     }
 
     if (user.status !== "active") {
       return res.status(403).json({
-        message: "Tài khoản của bạn đang bị khóa hoặc chưa được kích hoạt",
+        message: "TĂ i khoáº£n cá»§a báº¡n Ä‘ang bá»‹ khĂ³a hoáº·c chÆ°a Ä‘Æ°á»£c kĂ­ch hoáº¡t",
       });
     }
 
@@ -136,7 +138,7 @@ module.exports.login = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: "Đăng nhập thành công",
+      message: "ÄÄƒng nháº­p thĂ nh cĂ´ng",
       data: {
         accessToken,
         user: {
@@ -150,33 +152,34 @@ module.exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Lỗi khi gọi signIn:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lá»—i khi gá»i signIn:", error);
+    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
   }
 };
 
+// Làm mới access token.
 module.exports.refreshToken = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
     if (!token) {
-      return res.status(401).json({ message: "Token không tồn tại." });
+      return res.status(401).json({ message: "Token khĂ´ng tá»“n táº¡i." });
     }
 
     const session = await Session.findOne({ refreshToken: token });
     if (!session) {
       return res
         .status(403)
-        .json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+        .json({ message: "Token khĂ´ng há»£p lá»‡ hoáº·c Ä‘Ă£ háº¿t háº¡n" });
     }
 
     if (session.expiresAt < new Date()) {
       await Session.deleteOne({ _id: session._id });
-      return res.status(403).json({ message: "Token đã hết hạn." });
+      return res.status(403).json({ message: "Token Ä‘Ă£ háº¿t háº¡n." });
     }
 
     const user = await accounts.findById(session.userId);
     if (!user) {
-      return res.status(404).json({ message: "Người dùng không tồn tại" });
+      return res.status(404).json({ message: "NgÆ°á»i dĂ¹ng khĂ´ng tá»“n táº¡i" });
     }
 
     const accessToken = jwt.sign(
@@ -187,11 +190,12 @@ module.exports.refreshToken = async (req, res) => {
 
     return res.status(200).json({ accessToken });
   } catch (error) {
-    console.error("Lỗi khi gọi refreshToken:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lá»—i khi gá»i refreshToken:", error);
+    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
   }
 };
 
+// Đăng xuất và xóa refresh token.
 module.exports.logout = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
@@ -201,7 +205,7 @@ module.exports.logout = async (req, res) => {
     }
     return res.sendStatus(204);
   } catch (error) {
-    console.error("Lỗi khi gọi signOut:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Lá»—i khi gá»i signOut:", error);
+    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
   }
 };

@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { FaCircleCheck, MdOutlineDateRange } from "../assets/Icons/Icons";
+import { FaCircleCheck, MdOutlineDateRange } from "../../assets/Icons/Icons";
 import {
   FaBed,
   FaBus,
@@ -13,7 +13,7 @@ import {
   FaUtensils,
 } from "react-icons/fa6";
 
-import { formatDate } from "../utils/formatDate";
+import { formatDate } from "../../utils/formatDate";
 
 function DetailContentServices({
   view,
@@ -367,3 +367,4 @@ function LichKhoiHanh({ schedules, selectedSchedule, setSelectedSchedule }) {
 }
 
 export default DetailContentServices;
+

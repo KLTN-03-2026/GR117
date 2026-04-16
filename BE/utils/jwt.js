@@ -1,5 +1,6 @@
-const jwt = require("jsonwebtoken");
+﻿const jwt = require("jsonwebtoken");
 
+// Tạo access token.
 const generateAccessToken = (user) => {
     return jwt.sign(
         {
@@ -12,6 +13,7 @@ const generateAccessToken = (user) => {
     );
 };
 
+// Tạo refresh token.
 const generateRefreshToken = (user) => {
     return jwt.sign(
         {

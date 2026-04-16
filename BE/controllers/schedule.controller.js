@@ -1,24 +1,14 @@
 ﻿const Schedule = require("../models/schedule.js");
 const Service = require("../models/services.js");
+const {
+  resolveServiceId,
+  canAccessService,
+  buildServiceFilter,
+} = require("../utils/serviceHelpers.js");
 
 const ALLOWED_STATUS = ["open", "full", "closed"];
 
-const resolveServiceId = (reqBody) =>
-  String(reqBody.serviceId || reqBody.service_id || "").trim();
-
-const canAccessService = (service, user) => {
-  if (!service || !user) return false;
-  if (user.role === "admin") return true;
-  return String(service.provider_id || "") === String(user.id || "");
-};
-
-const buildServiceFilter = (user) => {
-  if (user?.role === "provider") {
-    return { provider_id: user.id };
-  }
-  return {};
-};
-
+// Tạo lịch khởi hành.
 module.exports.registerSchedule = async (req, res) => {
   try {
     const { departureDate, endDate, maxPeople, note, status } = req.body;
@@ -74,6 +64,7 @@ module.exports.registerSchedule = async (req, res) => {
   }
 };
 
+// Lấy danh sách dịch vụ cho form lịch.
 module.exports.getServiceList = async (req, res) => {
   try {
     const filter = buildServiceFilter(req.user);
@@ -88,6 +79,7 @@ module.exports.getServiceList = async (req, res) => {
   }
 };
 
+// Lấy lịch theo dịch vụ.
 module.exports.getSchedulesByService = async (req, res) => {
   try {
     const { serviceId } = req.params;
@@ -115,6 +107,7 @@ module.exports.getSchedulesByService = async (req, res) => {
   }
 };
 
+// Lấy tất cả lịch.
 module.exports.getAllSchedules = async (req, res) => {
   try {
     const serviceFilter = buildServiceFilter(req.user);
@@ -139,6 +132,7 @@ module.exports.getAllSchedules = async (req, res) => {
   }
 };
 
+// Cập nhật lịch.
 module.exports.updateOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -207,6 +201,7 @@ module.exports.updateOne = async (req, res) => {
   }
 };
 
+// Xóa lịch.
 module.exports.deleteOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -238,3 +233,5 @@ module.exports.deleteOne = async (req, res) => {
     });
   }
 };
+
+

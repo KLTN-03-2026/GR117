@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import CustomBtnDestination from "../../Components/ButtonDestination";
+import CustomBtnDestination from "../../Components/destination/ButtonDestination";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   FaUmbrellaBeach,
@@ -13,7 +13,7 @@ import {
   FaSearch,
   FaMapMarkerAlt,
 } from "react-icons/fa";
-import ServicesCard from "../../Components/ServicesCard";
+import ServicesCard from "../../Components/services/ServicesCard";
 import { Link, useLocation } from "react-router-dom";
 
 const normalizeText = (text) =>

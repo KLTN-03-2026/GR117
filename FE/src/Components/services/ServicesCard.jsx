@@ -1,9 +1,10 @@
-﻿import React from "react";
-import { IoLocationOutline } from "react-icons/io5";
+﻿import { IoLocationOutline } from "react-icons/io5";
 import { MdDelete } from "react-icons/md";
 import { FaEdit } from "react-icons/fa";
-import { FaHeart, FaChevronRight, FaStar, FaFire } from "react-icons/fa6";
+import { FaHeart, FaChevronRight, FaStar } from "react-icons/fa6";
 import { RiCalendarScheduleLine } from "react-icons/ri";
+
+const FALLBACK_IMAGE = "https://via.placeholder.com/400x250?text=No+Image";
 
 const getName = (service) =>
   service.uiName ||
@@ -11,15 +12,19 @@ const getName = (service) =>
   service.servicesName ||
   service.ServiceName ||
   "Chờ cập nhật";
+
 const getLocation = (service) =>
   service.uiLocation ||
   service.destination ||
   service.location ||
   service.region ||
   "Chờ cập nhật";
+
 const getPrice = (service) =>
   Number(service.uiPrice ?? service.prices ?? service.price ?? 0);
+
 const getStatus = (service) => service.uiStatus || service.status || "pending";
+
 const getDuration = (service) => {
   const value = service.duration || service.tourDuration || "";
   const normalized = String(value).trim();
@@ -28,23 +33,33 @@ const getDuration = (service) => {
     ? "Chờ cập nhật"
     : normalized;
 };
+
 const getDescription = (service) =>
   service.description || service.descriptionDetail || "Chưa có mô tả";
+
 const getCategory = (service) =>
   Array.isArray(service.category)
     ? service.category[0] || "Du lịch"
     : service.category || "Du lịch";
+
 const getRating = (service) => {
-  const value = Number(service.rating ?? 4.9);
-  return Number.isFinite(value) ? value : 4.9;
+  const value = Number(service.rating ?? 0);
+  return Number.isFinite(value) ? value : 0;
 };
+
 const getReviewCount = (service) => {
   const value = Number(service.reviewCount ?? 0);
   return Number.isFinite(value) ? value : 0;
 };
+
 const formatPrice = (value) =>
   Number(value || 0).toLocaleString("vi-VN") + " VNĐ";
-const FALLBACK_IMAGE = "https://via.placeholder.com/400x250?text=No+Image";
+
+const getImage = (service) =>
+  service.images?.[0] ||
+  service.imageUrl ||
+  (service.imageFile ? `http://localhost:5000/uploads/${service.imageFile}` : "") ||
+  FALLBACK_IMAGE;
 
 const statusClass = {
   approval: "bg-green-100 text-green-600",
@@ -74,11 +89,8 @@ const ServicesCard = ({
   const category = getCategory(service);
   const rating = getRating(service);
   const reviewCount = getReviewCount(service);
-  const image =
-    service.imageUrl ||
-    (service.imageFile
-      ? `http://localhost:5000/uploads/${service.imageFile}`
-      : FALLBACK_IMAGE);
+  const image = getImage(service);
+
   const handleEdit = (e) => {
     e.preventDefault();
     onEdit?.(service);
@@ -104,34 +116,34 @@ const ServicesCard = ({
     return (
       <div className="group w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
         <div className="relative h-52 overflow-hidden">
-            <img
-              src={image}
-              alt={serviceName}
-              onError={(event) => {
-                event.currentTarget.onerror = null;
-                event.currentTarget.src = FALLBACK_IMAGE;
-              }}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+          <img
+            src={image}
+            alt={serviceName}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = FALLBACK_IMAGE;
+            }}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-            <button
-              type="button"
-              className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-500 backdrop-blur-sm transition hover:bg-white hover:text-rose-500"
-            >
-              <FaHeart className="text-[15px]" />
-            </button>
+          <button
+            type="button"
+            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-500 backdrop-blur-sm transition hover:bg-white hover:text-rose-500"
+          >
+            <FaHeart className="text-[15px]" />
+          </button>
 
-            <span className="absolute left-3 top-3 rounded-full bg-sky-500 px-2.5 py-1 text-[11px] font-semibold text-white">
-                {category}
+          <span className="absolute left-3 top-3 rounded-full bg-sky-500 px-2.5 py-1 text-[11px] font-semibold text-white">
+            {category}
+          </span>
+
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4">
+            <span className="inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] text-white backdrop-blur-sm">
+              <RiCalendarScheduleLine className="text-[10px]" />
+              {duration}
             </span>
-
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4">
-              <span className="inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] text-white backdrop-blur-sm">
-                <RiCalendarScheduleLine className="text-[10px]" />
-                {duration}
-              </span>
-            </div>
+          </div>
         </div>
 
         <div className="p-4">
@@ -146,15 +158,23 @@ const ServicesCard = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="mb-3 flex items-center gap-1.5">
             {reviewCount > 0 ? (
               <>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <FaStar key={index} className="text-[12px] text-[#f59e0b]" />
-                ))}
-                <span className="ml-1 text-[12px] text-gray-500">
-                  {rating.toFixed(1)}{" "}
-                  <span className="text-gray-400">({reviewCount})</span>
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <FaStar
+                      key={index}
+                      size={13}
+                      className="text-[#f59e0b] fill-[#f59e0b]"
+                    />
+                  ))}
+                </div>
+                <span className="text-[12px] font-semibold text-gray-700">
+                  {rating.toFixed(1)}
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  ({reviewCount} đánh giá)
                 </span>
               </>
             ) : (
@@ -165,23 +185,21 @@ const ServicesCard = ({
           <div className="my-3 border-t border-gray-50" />
 
           <div className="flex items-center justify-between">
-              <div>
-                <p className="mb-0.5 text-[10px] text-gray-400">
-                  Từ
-                </p>
-                <p className="text-[18px] font-bold text-[#f97316]">
-                  {price > 0 ? formatPrice(price) : "Liên hệ"}
-                </p>
-                <p className="text-[10px] text-gray-400">/ người</p>
-              </div>
+            <div className="text-left">
+              <p className="mb-0.5 text-[10px] text-gray-400">Từ</p>
+              <p className="text-[18px] font-bold text-[#f97316]">
+                {price > 0 ? formatPrice(price) : "Liên hệ"}
+              </p>
+              <p className="text-[10px] text-gray-400">/ người</p>
+            </div>
 
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-4 py-2 text-[12px] font-semibold text-white transition-all group-hover:shadow-lg group-hover:shadow-orange-200"
-              >
-                Đặt ngay
-                <FaChevronRight className="text-[13px]" />
-              </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-4 py-2 text-[12px] font-semibold text-white transition-all group-hover:shadow-lg group-hover:shadow-orange-200"
+            >
+              Đặt ngay
+              <FaChevronRight className="text-[13px]" />
+            </button>
           </div>
         </div>
       </div>
