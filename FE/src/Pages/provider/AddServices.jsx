@@ -2,7 +2,6 @@
 import { useNavigate } from "react-router-dom";
 import ButtonBack from "../../Components/shared/ButtonBack";
 import { FaLocationDot } from "../../assets/Icons/Icons";
-import { parseServiceByAI } from "../../services/aiService";
 import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 const CATEGORY_OPTIONS = [
   "Biển đảo",
@@ -26,31 +25,14 @@ const EMPTY_FORM = {
   itinerary: "",
 };
 
-const parseItineraryInput = (value) => {
-  const raw = String(value || "").trim();
-  if (!raw) return [];
-
-  const normalized = raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "");
-
-  const parsed = JSON.parse(normalized);
-  if (!Array.isArray(parsed)) {
-    throw new Error("Lịch trình phải là mảng JSON");
-  }
-
-  return parsed;
-};
-
 const AddServices = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
+  const [itineraryFile, setItineraryFile] = useState(null);
 
   let currentUser = null;
   try {
@@ -80,33 +62,13 @@ const AddServices = () => {
     }
   };
 
-  const handleGenerateByAI = async () => {
-    if (!formData.itinerary.trim()) {
-      setSuccess(false);
-      setMessage("Vui lòng nhập nội dung vào ô lịch trình để AI phân tích");
-      return;
-    }
+  const handleItineraryFileChange = async (e) => {
+    const file = e.target.files?.[0] || null;
+    setItineraryFile(file);
 
-    try {
-      setAiLoading(true);
-      setSuccess(false);
-      setMessage("");
-
-      const aiData = await parseServiceByAI(formData.itinerary);
-
-      setFormData((prev) => ({
-        ...prev,
-        itinerary: JSON.stringify(aiData.itinerary || [], null, 2),
-      }));
-
-      setSuccess(true);
-      setMessage("AI đã chuẩn hóa nội dung lịch trình");
-    } catch (error) {
-      setSuccess(false);
-      setMessage(error.message);
-    } finally {
-      setAiLoading(false);
-    }
+    if (!file) return;
+    setSuccess(true);
+    setMessage("Đã chọn file lịch trình");
   };
 
   const validateForm = () => {
@@ -117,10 +79,8 @@ const AddServices = () => {
     if (!formData.price || Number(formData.price) <= 0)
       return "Giá phải lớn hơn 0";
 
-    try {
-      parseItineraryInput(formData.itinerary);
-    } catch (error) {
-      return "Lịch trình phải là JSON hợp lệ. Bạn có thể bấm 'Tạo bằng AI' để chuẩn hóa.";
+    if (!itineraryFile && !formData.itinerary.trim()) {
+      return "Vui lòng tải lên file lịch trình Excel.";
     }
 
     if (!imageFile) {
@@ -145,7 +105,6 @@ const AddServices = () => {
     }
 
     const payload = new FormData();
-    const parsedItinerary = parseItineraryInput(formData.itinerary);
     payload.append("serviceName", formData.name.trim());
     payload.append(
       "nameProvider",
@@ -157,8 +116,13 @@ const AddServices = () => {
     payload.append("category", formData.category);
     payload.append("duration", formData.duration.trim());
     payload.append("highlight", JSON.stringify(splitLines(formData.highlights)));
-    payload.append("itinerary", JSON.stringify(parsedItinerary));
     payload.append("serviceIncludes", JSON.stringify(splitLines(formData.includes)));
+
+    if (itineraryFile) {
+      payload.append("itineraryFile", itineraryFile);
+    } else if (formData.itinerary.trim()) {
+      payload.append("itinerary", formData.itinerary);
+    }
 
     if (imageFile) {
       payload.append("image", imageFile);
@@ -188,6 +152,7 @@ const AddServices = () => {
         setMessage("Thêm dịch vụ thành công");
         setFormData(EMPTY_FORM);
         setImageFile(null);
+        setItineraryFile(null);
         navigate("/provider/services");
       } else {
         setMessage(result.message || "Không thể thêm dịch vụ");
@@ -380,27 +345,29 @@ const AddServices = () => {
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>Lịch trình</label>
-                    <textarea
-                      name="itinerary"
-                      value={formData.itinerary}
-                      onChange={handleChange}
-                      rows="4"
-                      placeholder={
-                        'Dán mô tả thô để AI chuẩn hóa, hoặc nhập JSON itinerary hợp lệ'
-                      }
-                      className={inputClass}
+                    <label className={labelClass}>Lịch trình Excel</label>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleItineraryFileChange}
+                      className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-600 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
                     />
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleGenerateByAI}
-                        disabled={aiLoading}
-                        className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {aiLoading ? "AI đang phân tích..." : "Tạo bằng AI"}
-                      </button>
-                    </div>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Tải lên file Excel chứa lịch trình, hệ thống sẽ tự gom dữ
+                      liệu theo ngày.
+                    </p>
+                    {itineraryFile ? (
+                      <p className="mt-2 text-xs font-medium text-green-600">
+                        Đã chọn: {itineraryFile.name}
+                      </p>
+                    ) : null}
+                    <a
+                      href="/templates/service-itinerary-template.xlsx"
+                      download
+                      className="mt-2 inline-block text-xs font-semibold text-orange-600 underline-offset-4 hover:underline"
+                    >
+                      Tải file mẫu Excel
+                    </a>
                   </div>
                 </div>
               </div>
@@ -430,6 +397,8 @@ const AddServices = () => {
 };
 
 export default AddServices;
+
+
 
 
 

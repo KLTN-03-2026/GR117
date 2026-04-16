@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ButtonBack from "../../Components/shared/ButtonBack";
-import { parseServiceByAI } from "../../services/aiService";
 import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 
-const CATEGORY_OPTIONS = ["Biển đảo", "Núi", "Văn hoá", "Ẩm thực", "Thành phố", "Mạo hiểm"];
+const CATEGORY_OPTIONS = ["Biá»ƒn Ä‘áº£o", "NĂºi", "VÄƒn hoĂ¡", "áº¨m thá»±c", "ThĂ nh phá»‘", "Máº¡o hiá»ƒm"];
 
 const EMPTY_FORM = {
   name: "",
@@ -30,7 +29,7 @@ const parseItineraryInput = (value) => {
 
   const parsed = JSON.parse(normalized);
   if (!Array.isArray(parsed)) {
-    throw new Error("Lịch trình phải là mảng JSON");
+    throw new Error("Lá»‹ch trĂ¬nh pháº£i lĂ  máº£ng JSON");
   }
 
   return parsed;
@@ -44,8 +43,8 @@ const EditServices = () => {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
   const [imageFile, setImageFile] = useState(null);
+  const [itineraryFile, setItineraryFile] = useState(null);
 
   useEffect(() => {
     const fetchServiceDetail = async () => {
@@ -61,7 +60,7 @@ const EditServices = () => {
         const result = await res.json();
 
         if (!res.ok) {
-          setMessage(result?.message || "Không tải được thông tin dịch vụ");
+          setMessage(result?.message || "KhĂ´ng táº£i Ä‘Æ°á»£c thĂ´ng tin dá»‹ch vá»¥");
           return;
         }
 
@@ -90,7 +89,7 @@ const EditServices = () => {
             : service.itinerary || "",
         });
       } catch (error) {
-        setMessage("Không tải được thông tin dịch vụ");
+        setMessage("KhĂ´ng táº£i Ä‘Æ°á»£c thĂ´ng tin dá»‹ch vá»¥");
       } finally {
         setLoading(false);
       }
@@ -120,51 +119,31 @@ const EditServices = () => {
     }
   };
 
-  const handleGenerateByAI = async () => {
-    if (!formData.itinerary.trim()) {
-      setSuccess(false);
-      setMessage("Vui lòng nhập nội dung vào ô lịch trình để AI phân tích");
-      return;
-    }
+  const handleItineraryFileChange = async (e) => {
+    const file = e.target.files?.[0] || null;
+    setItineraryFile(file);
 
-    try {
-      setAiLoading(true);
-      setSuccess(false);
-      setMessage("");
-
-      const aiData = await parseServiceByAI(formData.itinerary);
-
-      setFormData((prev) => ({
-        ...prev,
-        itinerary: JSON.stringify(aiData.itinerary || [], null, 2),
-      }));
-
-      setSuccess(true);
-      setMessage("AI đã chuẩn hóa nội dung lịch trình");
-    } catch (error) {
-      setSuccess(false);
-      setMessage(error.message);
-    } finally {
-      setAiLoading(false);
-    }
+    if (!file) return;
+    setSuccess(true);
+    setMessage("Đã chọn file lịch trình");
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) return "Tên dịch vụ không được để trống";
-    if (!formData.description.trim()) return "Mô tả không được để trống";
-    if (!formData.location.trim()) return "Địa điểm không được để trống";
-    if (!formData.category) return "Vui lòng chọn danh mục";
-    if (!formData.price || Number(formData.price) <= 0) return "Giá phải lớn hơn 0";
+    if (!formData.name.trim()) return "TĂªn dá»‹ch vá»¥ khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng";
+    if (!formData.description.trim()) return "MĂ´ táº£ khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng";
+    if (!formData.location.trim()) return "Äá»‹a Ä‘iá»ƒm khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng";
+    if (!formData.category) return "Vui lĂ²ng chá»n danh má»¥c";
+    if (!formData.price || Number(formData.price) <= 0) return "GiĂ¡ pháº£i lá»›n hÆ¡n 0";
 
     try {
       parseItineraryInput(formData.itinerary);
     } catch (error) {
-      return "Lịch trình phải là JSON hợp lệ. Bạn có thể bấm 'Tạo bằng AI' để chuẩn hóa.";
+      return "Lich trinh phai la JSON hop le.";
     }
 
     if (!imageFile) {
       const invalidImage = splitLines(formData.images).find((item) => !isValidImageUrl(item));
-      if (invalidImage) return "Image URL không đúng định dạng";
+      if (invalidImage) return "Image URL khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng";
     }
 
     return "";
@@ -183,12 +162,11 @@ const EditServices = () => {
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setMessage("Bạn chưa đăng nhập hoặc token đã hết hạn");
+      setMessage("Báº¡n chÆ°a Ä‘Äƒng nháº­p hoáº·c token Ä‘Ă£ háº¿t háº¡n");
       return;
     }
 
     const payload = new FormData();
-    const parsedItinerary = parseItineraryInput(formData.itinerary);
     payload.append("serviceName", formData.name.trim());
     payload.append("description", formData.description.trim());
     payload.append("prices", String(Number(formData.price)));
@@ -196,10 +174,15 @@ const EditServices = () => {
     payload.append("category", formData.category);
     payload.append("duration", formData.duration.trim());
     payload.append("highlight", JSON.stringify(splitLines(formData.highlights)));
-    payload.append("itinerary", JSON.stringify(parsedItinerary));
     splitLines(formData.includes).forEach((item) => {
       payload.append("serviceIncludes", item);
     });
+
+    if (itineraryFile) {
+      payload.append("itineraryFile", itineraryFile);
+    } else if (formData.itinerary.trim()) {
+      payload.append("itinerary", formData.itinerary);
+    }
 
     if (imageFile) {
       payload.append("image", imageFile);
@@ -220,13 +203,13 @@ const EditServices = () => {
       const result = await res.json();
       if (res.ok && result.success) {
         setSuccess(true);
-        setMessage("Cập nhật dịch vụ thành công");
+        setMessage("Cáº­p nháº­t dá»‹ch vá»¥ thĂ nh cĂ´ng");
         navigate("/provider/services");
       } else {
-        setMessage(result.message || "Không thể cập nhật dịch vụ");
+        setMessage(result.message || "KhĂ´ng thá»ƒ cáº­p nháº­t dá»‹ch vá»¥");
       }
     } catch (error) {
-      setMessage(`Lỗi kết nối server: ${error.message}`);
+      setMessage(`Lá»—i káº¿t ná»‘i server: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -236,14 +219,14 @@ const EditServices = () => {
     "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100";
   const labelClass = "mb-1.5 block pl-1 text-sm font-semibold text-gray-700";
 
-  if (loading) return <p className="p-6">Đang tải dữ liệu...</p>;
+  if (loading) return <p className="p-6">Äang táº£i dá»¯ liá»‡u...</p>;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] px-4 py-6 md:px-6 md:py-10">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Sửa dịch vụ</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Sá»­a dá»‹ch vá»¥</h1>
           </div>
           <ButtonBack />
         </div>
@@ -262,12 +245,12 @@ const EditServices = () => {
               <div>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
-                    <label className={labelClass}>Tên dịch vụ</label>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Tên dịch vụ" className={inputClass} />
+                    <label className={labelClass}>TĂªn dá»‹ch vá»¥</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="TĂªn dá»‹ch vá»¥" className={inputClass} />
                   </div>
                   <div>
-                    <label className={labelClass}>Giá</label>
-                    <input type="number" min="0" name="price" value={formData.price} onChange={handleChange} placeholder="VNĐ" className={inputClass} />
+                    <label className={labelClass}>GiĂ¡</label>
+                    <input type="number" min="0" name="price" value={formData.price} onChange={handleChange} placeholder="VNÄ" className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -275,21 +258,21 @@ const EditServices = () => {
               <div>
                 <div className="grid gap-6 md:grid-cols-3">
                   <div>
-                    <label className={labelClass}>Địa điểm</label>
+                    <label className={labelClass}>Äá»‹a Ä‘iá»ƒm</label>
                     <input type="text" name="location" value={formData.location} onChange={handleChange} className={inputClass} />
                   </div>
                   <div>
-                    <label className={labelClass}>Danh mục</label>
+                    <label className={labelClass}>Danh má»¥c</label>
                     <select name="category" value={formData.category} onChange={handleChange} className={inputClass}>
-                      <option value="">Chọn danh mục</option>
+                      <option value="">Chá»n danh má»¥c</option>
                       {CATEGORY_OPTIONS.map((item) => (
                         <option key={item} value={item}>{item}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className={labelClass}>Thời lượng</label>
-                    <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="VD: 5 ngày 4 đêm" className={inputClass} />
+                    <label className={labelClass}>Thá»i lÆ°á»£ng</label>
+                    <input type="text" name="duration" value={formData.duration} onChange={handleChange} placeholder="VD: 5 ngĂ y 4 Ä‘Ăªm" className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -297,64 +280,68 @@ const EditServices = () => {
               <div>
                 <div className="space-y-6">
                   <div>
-                    <label className={labelClass}>Mô tả</label>
-                    <textarea name="description" value={formData.description} onChange={handleChange} rows="4" placeholder="Mô tả dịch vụ..." className={inputClass} />
+                    <label className={labelClass}>MĂ´ táº£</label>
+                    <textarea name="description" value={formData.description} onChange={handleChange} rows="4" placeholder="MĂ´ táº£ dá»‹ch vá»¥..." className={inputClass} />
                   </div>
                   <div>
-                    <label className={labelClass}>Ảnh</label>
+                    <label className={labelClass}>áº¢nh</label>
                     <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div>
-                          <p className="text-sm font-semibold text-gray-700">Ảnh từ máy</p>
+                          <p className="text-sm font-semibold text-gray-700">áº¢nh tá»« mĂ¡y</p>
                           <input id="service-image-upload-edit" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                           <label htmlFor="service-image-upload-edit" className="mt-3 inline-flex cursor-pointer items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-md">Upload file</label>
-                          <p className="mt-3 text-sm text-gray-500">{imageFile ? imageFile.name : "Giữ ảnh hiện tại nếu không chọn ảnh mới"}</p>
+                          <p className="mt-3 text-sm text-gray-500">{imageFile ? imageFile.name : "Giá»¯ áº£nh hiá»‡n táº¡i náº¿u khĂ´ng chá»n áº£nh má»›i"}</p>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-gray-700">Ảnh từ link</p>
-                          <textarea name="images" value={formData.images} onChange={handleImagesChange} rows="3" placeholder="Dán link ảnh (mỗi dòng 1 link)" className={`${inputClass} mt-3`} />
-                          <p className="mt-2 text-xs text-gray-500">Nếu bạn nhập link ảnh thì hệ thống sẽ dùng link, không dùng file.</p>
+                          <p className="text-sm font-semibold text-gray-700">áº¢nh tá»« link</p>
+                          <textarea name="images" value={formData.images} onChange={handleImagesChange} rows="3" placeholder="DĂ¡n link áº£nh (má»—i dĂ²ng 1 link)" className={`${inputClass} mt-3`} />
+                          <p className="mt-2 text-xs text-gray-500">Náº¿u báº¡n nháº­p link áº£nh thĂ¬ há»‡ thá»‘ng sáº½ dĂ¹ng link, khĂ´ng dĂ¹ng file.</p>
                         </div>
                       </div>
                     </div>
                   </div>
                   <div className="grid gap-6 md:grid-cols-2">
                     <div>
-                      <label className={labelClass}>Điểm nổi bật</label>
+                      <label className={labelClass}>Äiá»ƒm ná»•i báº­t</label>
                       <textarea name="highlights" value={formData.highlights} onChange={handleChange} rows="4" className={inputClass} />
                     </div>
                     <div>
-                      <label className={labelClass}>Bao gồm</label>
+                      <label className={labelClass}>Bao gá»“m</label>
                       <textarea name="includes" value={formData.includes} onChange={handleChange} rows="4" className={inputClass} />
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>Lịch trình</label>
-                    <textarea
-                      name="itinerary"
-                      value={formData.itinerary}
-                      onChange={handleChange}
-                      rows="4"
-                      placeholder={"Dán mô tả thô để AI chuẩn hóa, hoặc nhập JSON itinerary hợp lệ"}
-                      className={inputClass}
+                    <label className={labelClass}>Lịch trình Excel</label>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleItineraryFileChange}
+                      className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-600 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
                     />
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleGenerateByAI}
-                        disabled={aiLoading}
-                        className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {aiLoading ? "AI đang phân tích..." : "Tạo bằng AI"}
-                      </button>
-                    </div>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Tải lên file Excel chứa lịch trình, nếu không chọn thì
+                      hệ thống giữ nguyên lịch trình cũ.
+                    </p>
+                    {itineraryFile ? (
+                      <p className="mt-2 text-xs font-medium text-green-600">
+                        Đã chọn: {itineraryFile.name}
+                      </p>
+                    ) : null}
+                    <a
+                      href="/templates/service-itinerary-template.xlsx"
+                      download
+                      className="mt-2 inline-block text-xs font-semibold text-orange-600 underline-offset-4 hover:underline"
+                    >
+                      Tải file mẫu Excel
+                    </a>
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-4 border-t border-gray-100 pt-2">
-                <button type="button" onClick={() => navigate("/provider/services")} className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-gray-700 transition hover:bg-gray-50">Hủy</button>
-                <button type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60">{submitting ? "Đang lưu..." : "Lưu thay đổi"}</button>
+                <button type="button" onClick={() => navigate("/provider/services")} className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-gray-700 transition hover:bg-gray-50">Há»§y</button>
+                <button type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60">{submitting ? "Äang lÆ°u..." : "LÆ°u thay Ä‘á»•i"}</button>
               </div>
             </form>
           </div>
@@ -365,3 +352,4 @@ const EditServices = () => {
 };
 
 export default EditServices;
+

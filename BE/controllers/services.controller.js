@@ -1,4 +1,7 @@
-﻿const Services = require("../models/services.js");
+﻿const fs = require("fs");
+const path = require("path");
+const XLSX = require("xlsx");
+const Services = require("../models/services.js");
 const accounts = require("../models/account.js");
 const Reviews = require("../models/reviews.js");
 const {
@@ -6,6 +9,15 @@ const {
   normalizeItineraryField,
   isOwnerOrAdmin,
 } = require("../utils/serviceHelpers.js");
+
+const ALLOWED_ACTIVITY_ICONS = new Set([
+  "transport",
+  "hotel",
+  "food",
+  "sightseeing",
+  "activity",
+  "photo",
+]);
 
 const attachReviewStats = async (services) => {
   const list = Array.isArray(services) ? services : [];
@@ -50,8 +62,149 @@ const attachReviewStats = async (services) => {
   });
 };
 
+const getUploadedFile = (req, fieldName) => req.files?.[fieldName]?.[0] || null;
+
+const removeUploadedFile = (file) => {
+  if (!file?.path) return;
+  try {
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+  } catch (error) {}
+};
+
+const splitDelimitedList = (value) =>
+  String(value || "")
+    .split(/[\n,;|]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const normalizeActivityIcon = (value) => {
+  const icon = String(value || "activity").trim().toLowerCase();
+  return ALLOWED_ACTIVITY_ICONS.has(icon) ? icon : "activity";
+};
+
+const normalizeActivityTime = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const hours = String(value.getHours()).padStart(2, "0");
+    const minutes = String(value.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (parsed) {
+      const hours = String(parsed.h).padStart(2, "0");
+      const minutes = String(parsed.m).padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+  }
+
+  const text = String(value).trim();
+  const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (match) {
+    return `${match[1].padStart(2, "0")}:${match[2]}`;
+  }
+
+  const date = new Date(text);
+  if (!Number.isNaN(date.getTime()) && /GMT|UTC|1899|1900/.test(text)) {
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
+  return text;
+};
+
+const parseItineraryFromExcelFile = (file) => {
+  if (!file?.path) {
+    return [];
+  }
+
+  const workbook = XLSX.readFile(file.path, { cellDates: true });
+  const sheetName = workbook.SheetNames[1];
+
+  if (!sheetName) {
+    throw new Error("File lich trinh phai co sheet 2");
+  }
+
+  const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+    defval: "",
+    blankrows: false,
+  });
+
+  if (!rows.length) {
+    throw new Error("File lich trinh khong co dong nao");
+  }
+
+  const dayMap = new Map();
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const day = Number(row.day);
+
+    if (!Number.isFinite(day) || day <= 0) {
+      throw new Error(`Dong ${rowNumber}: day khong hop le`);
+    }
+
+    const current = dayMap.get(day) || {
+      day,
+      title: "",
+      description: "",
+      meals: [],
+      accommodation: "",
+      activities: [],
+    };
+
+    const title = String(row.title || "").trim();
+    const description = String(row.description || "").trim();
+    const accommodation = String(row.accommodation || "").trim();
+
+    if (title && !current.title) current.title = title;
+    if (description && !current.description) current.description = description;
+    if (accommodation && !current.accommodation) current.accommodation = accommodation;
+
+    const meals = splitDelimitedList(row.meals);
+    if (meals.length) {
+      current.meals = Array.from(new Set([...(current.meals || []), ...meals]));
+    }
+
+    const activityTime = normalizeActivityTime(row.activity_time);
+    const activityTitle = String(row.activity_title || "").trim();
+    const activityDescription = String(row.activity_description || "").trim();
+    const activityIcon = String(row.activity_icon || "").trim();
+
+    if (activityTime || activityTitle || activityDescription || activityIcon) {
+      current.activities.push({
+        time: activityTime,
+        title: activityTitle,
+        description: activityDescription,
+        icon: normalizeActivityIcon(activityIcon),
+      });
+    }
+
+    dayMap.set(day, current);
+  });
+
+  return Array.from(dayMap.values())
+    .sort((a, b) => a.day - b.day)
+    .filter(
+      (dayItem) =>
+        dayItem.title ||
+        dayItem.description ||
+        dayItem.accommodation ||
+        dayItem.meals.length ||
+        dayItem.activities.length,
+    );
+};
+
 // Tạo dịch vụ mới.
 exports.addServices = async (req, res) => {
+  const itineraryFile = getUploadedFile(req, "itineraryFile");
   try {
     const {
       serviceName,
@@ -71,7 +224,7 @@ exports.addServices = async (req, res) => {
     if (!serviceName || !prices || !nameProvider) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu thông tin bắt buộc",
+        message: "Thieu thong tin bat buoc",
       });
     }
 
@@ -80,14 +233,18 @@ exports.addServices = async (req, res) => {
     if (!user) {
       return res.status(403).json({
         success: false,
-        message: "Bạn không có quyền thực hiện hành động này",
+        message: "Ban khong co quyen thuc hien hanh dong nay",
       });
     }
 
-    const imageFile = req.file ? req.file.filename : null;
-    const finalImageUrl = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+    const imageFile = getUploadedFile(req, "image");
+    const finalImageUrl = imageFile
+      ? `${req.protocol}://${req.get("host")}/uploads/${imageFile.filename}`
       : imageUrl || null;
+
+    const normalizedItinerary = itineraryFile
+      ? parseItineraryFromExcelFile(itineraryFile)
+      : normalizeItineraryField(itinerary);
 
     const newService = new Services({
       provider_id: user._id,
@@ -101,8 +258,8 @@ exports.addServices = async (req, res) => {
       highlight: parseStringArrayField(highlight),
       description,
       serviceIncludes: parseStringArrayField(serviceIncludes),
-      itinerary: normalizeItineraryField(itinerary),
-      imageFile,
+      itinerary: normalizedItinerary,
+      imageFile: imageFile ? imageFile.filename : null,
       imageUrl: finalImageUrl,
       status: "pending",
     });
@@ -111,15 +268,17 @@ exports.addServices = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Thêm dịch vụ thành công",
+      message: "Them dich vu thanh cong",
       data: newService,
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "Lỗi khi thêm dịch vụ",
+      message: err.message,
       error: err.message,
     });
+  } finally {
+    removeUploadedFile(itineraryFile);
   }
 };
 
@@ -158,16 +317,17 @@ exports.publicServices = async (req, res) => {
 
 // Cập nhật dịch vụ.
 exports.putServices = async (req, res) => {
+  const itineraryFile = getUploadedFile(req, "itineraryFile");
   try {
     const { id } = req.params;
     const service = await Services.findById(id);
 
     if (!service) {
-      return res.status(404).json({ message: "Không tìm thấy service" });
+      return res.status(404).json({ message: "Khong tim thay service" });
     }
 
     if (!isOwnerOrAdmin(service, req.user)) {
-      return res.status(403).json({ message: "Bạn không có quyền sửa dịch vụ này" });
+      return res.status(403).json({ message: "Ban khong co quyen sua dich vu nay" });
     }
 
     let updateData = { ...req.body };
@@ -191,9 +351,14 @@ exports.putServices = async (req, res) => {
         : [updateData.category].filter(Boolean);
     }
 
-    if (req.file) {
-      updateData.imageFile = req.file.filename;
-      updateData.imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    const imageFile = getUploadedFile(req, "image");
+    if (imageFile) {
+      updateData.imageFile = imageFile.filename;
+      updateData.imageUrl = `${req.protocol}://${req.get("host")}/uploads/${imageFile.filename}`;
+    }
+
+    if (itineraryFile) {
+      updateData.itinerary = parseItineraryFromExcelFile(itineraryFile);
     }
 
     Object.keys(updateData).forEach(
@@ -206,16 +371,19 @@ exports.putServices = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Update thành công",
+      message: "Update thanh cong",
       data: updated,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
+  } finally {
+    removeUploadedFile(itineraryFile);
   }
 };
 
 // Cập nhật một phần dịch vụ.
 exports.patchServices = async (req, res) => {
+  const itineraryFile = getUploadedFile(req, "itineraryFile");
   try {
     const { id } = req.params;
     const service = await Services.findById(id);
@@ -223,14 +391,14 @@ exports.patchServices = async (req, res) => {
     if (!service) {
       return res.status(404).json({
         success: false,
-        message: "Service không tồn tại",
+        message: "Service khong ton tai",
       });
     }
 
     if (!isOwnerOrAdmin(service, req.user)) {
       return res.status(403).json({
         success: false,
-        message: "Bạn không có quyền cập nhật dịch vụ này",
+        message: "Ban khong co quyen cap nhat dich vu nay",
       });
     }
 
@@ -264,9 +432,14 @@ exports.patchServices = async (req, res) => {
         : [updateFields.category].filter(Boolean);
     }
 
-    if (req.file) {
-      updateFields.imageFile = req.file.filename;
-      updateFields.imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    const imageFile = getUploadedFile(req, "image");
+    if (imageFile) {
+      updateFields.imageFile = imageFile.filename;
+      updateFields.imageUrl = `${req.protocol}://${req.get("host")}/uploads/${imageFile.filename}`;
+    }
+
+    if (itineraryFile) {
+      updateFields.itinerary = parseItineraryFromExcelFile(itineraryFile);
     }
 
     Object.keys(updateFields).forEach(
@@ -281,15 +454,17 @@ exports.patchServices = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Cập nhật một phần thành công",
+      message: "Cap nhat mot phan thanh cong",
       data: updatedService,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Lỗi khi cập nhật",
+      message: "Loi khi cap nhat",
       error: error.message,
     });
+  } finally {
+    removeUploadedFile(itineraryFile);
   }
 };
 
@@ -301,14 +476,14 @@ exports.deleteOne = async (req, res) => {
 
     if (!service) {
       return res.status(404).json({
-        message: "Service không tồn tại",
+        message: "Service khong ton tai",
       });
     }
 
     if (!isOwnerOrAdmin(service, req.user)) {
       return res.status(403).json({
         success: false,
-        message: "Bạn không có quyền xóa dịch vụ này",
+        message: "Ban khong co quyen xoa dich vu nay",
       });
     }
 
@@ -323,12 +498,12 @@ exports.deleteOne = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Xóa service + ảnh thành công",
+      message: "Xoa service + anh thanh cong",
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Lỗi server",
+      message: "Loi server",
       error: error.message,
     });
   }
@@ -341,7 +516,7 @@ exports.deleteServices = async (req, res) => {
 
     if (!Array.isArray(ids)) {
       return res.status(400).json({
-        message: "Danh sách ID không hợp lệ",
+        message: "Danh sach ID khong hop le",
       });
     }
 
@@ -350,19 +525,19 @@ exports.deleteServices = async (req, res) => {
 
     if (unauthorized) {
       return res.status(403).json({
-        message: "Bạn không có quyền xóa một số dịch vụ trong danh sách này",
+        message: "Ban khong co quyen xoa mot so dich vu trong danh sach nay",
       });
     }
 
     const result = await Services.deleteMany({ _id: { $in: ids } });
 
     return res.status(200).json({
-      message: "Xóa nhiều thành công",
+      message: "Xoa nhieu thanh cong",
       deletedCount: result.deletedCount,
     });
   } catch (error) {
     return res.status(500).json({
-      message: "Lỗi server",
+      message: "Loi server",
     });
   }
 };
@@ -374,13 +549,13 @@ exports.servicesDetail = async (req, res) => {
 
     if (!service) {
       return res.status(404).json({
-        message: "Không tìm thấy dịch vụ",
+        message: "Khong tim thay dich vu",
       });
     }
 
     if (req.user && req.user.role === "provider" && !isOwnerOrAdmin(service, req.user)) {
       return res.status(403).json({
-        message: "Bạn không có quyền xem dịch vụ này",
+        message: "Ban khong co quyen xem dich vu nay",
       });
     }
 
@@ -427,11 +602,3 @@ exports.allServices = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-
-
-

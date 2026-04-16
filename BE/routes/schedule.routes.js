@@ -2,10 +2,12 @@
 const router = express.Router();
 const scheduleController = require("../controllers/schedule.controller.js");
 const { verifyToken, authorizeRoles } = require("../middlewares/auth.middlewares.js");
+const excelUpload = require("../middlewares/excelUpload.js");
 
 const CheckProvider = [verifyToken, authorizeRoles("provider")];
 
 router.post("/add", CheckProvider, scheduleController.registerSchedule);
+router.post("/import", CheckProvider, excelUpload.single("file"), scheduleController.importSchedulesFromExcel);
 router.get("/getServiceList", CheckProvider, scheduleController.getServiceList);
 router.get("/all", CheckProvider, scheduleController.getAllSchedules);
 router.get("/service/:serviceId", scheduleController.getSchedulesByService);
