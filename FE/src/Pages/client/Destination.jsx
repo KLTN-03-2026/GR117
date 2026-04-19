@@ -128,7 +128,7 @@ const Destination = () => {
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
-      <section className="relative h-[480px] overflow-hidden">
+      <section className="relative h-[630px] overflow-hidden">
         <div className="absolute inset-0">
           <img
             className="w-full h-full object-cover"
@@ -158,10 +158,12 @@ const Destination = () => {
             <br />
             tuyệt vời nhất Việt Nam
           </h1>
-
-          <p className="text-white/75 max-w-xl mx-auto mb-8 text-[16px]">
+<div className="mb-6">
+          <p className="text-white/75 max-w-xl mx-auto  text-[16px]">
             12+ tour độc đáo · Giá tốt nhất · Đảm bảo hoàn tiền
           </p>
+
+</div>
 
           <div className="w-full max-w-2xl">
             <div className="flex items-center gap-3 bg-white rounded-2xl shadow-2xl p-2 pl-5">
@@ -183,10 +185,9 @@ const Destination = () => {
                 Tìm kiếm
               </button>
             </div>
-
             <div className="flex items-center gap-2 mt-4 flex-wrap justify-center">
               <span className="text-white/60 text-[12px]">Phổ biến</span>
-              {uniqueLocations.map((loc) => (
+              {uniqueLocations.slice(0,5).map((loc) => (
                 <CustomBtnDestination key={loc} title={loc} size="medium" />
               ))}
             </div>

@@ -81,8 +81,8 @@ function HomePage() {
             const categories = Array.isArray(service?.category)
                 ? service.category
                 : service?.category
-                  ? [service.category]
-                  : [];
+                    ? [service.category]
+                    : [];
             const matchKeyword =
                 !keyword ||
                 name.includes(keyword) ||
@@ -148,7 +148,7 @@ function HomePage() {
                         </div>
 
                         {/* Search box */}
-                        <div className="mt-4 flex max-w-4xl flex-col gap-3 rounded-2xl bg-white p-3 shadow-2xl md:flex-row md:items-center md:gap-2 md:p-2">
+                        <div className="mt-4 flex max-w-4xl flex-col gap-3 rounded-xl bg-white p-3 shadow-2xl md:flex-row md:items-center md:gap-2 md:p-2">
 
                             {/* Keyword */}
                             <div className="flex items-center gap-2 px-2 md:flex-1 md:border-r border-gray-100">
@@ -237,7 +237,7 @@ function HomePage() {
                     <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
 
                         {[FaShield, FaHeadphones, FaHeart, FaClock].map((Icon, i) => (
-                            <div key={i} className="bg-white rounded-2xl p-6 text-center group hover:shadow-xl transition">
+                            <div key={i} className="bg-white rounded-xl p-6 text-center group hover:shadow-xl transition">
 
                                 <div className="w-14 h-14 mx-auto rounded-2xl bg-[#f97316]/10 flex items-center justify-center mb-4 group-hover:bg-[#f97316] transition">
                                     <Icon className="text-[#f97316] group-hover:text-white transition" />
@@ -256,7 +256,7 @@ function HomePage() {
                 </section>
                 <section className="py-20">
                     <div className="max-w-7xl mx-auto px-6 text-center mb-10">
-                            <span className="text-[#f97316] text-sm font-semibold tracking-widest">
+                        <span className="text-[#f97316] text-sm font-semibold tracking-widest">
                             KHÁM PHÁ
                         </span>
 
@@ -266,7 +266,7 @@ function HomePage() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-5 max-w-7xl mx-auto">
-                        {filteredServices.map((service, index) => {
+                        {filteredServices.slice(0, 5).map((service, index) => {
                             const serviceId = service?._id || service?.id;
                             const serviceName = service?.serviceName || service?.servicesName || service?.ServiceName || "Chờ cập nhật";
                             const serviceLocation = service?.location || service?.destination || service?.region || "Chờ cập nhật";
@@ -292,7 +292,7 @@ function HomePage() {
                                     transition={{ delay: index * 0.1 }}
                                 >
                                     <Link to={serviceId ? `/services/${serviceId}` : "/destination"} className="group block">
-                                        <div className="relative overflow-hidden rounded-2xl">
+                                        <div className="relative overflow-hidden rounded-lg">
                                             <img
                                                 src={serviceImage}
                                                 alt={serviceName}
@@ -324,7 +324,7 @@ function HomePage() {
                                         <div className="mt-4 flex items-center justify-between">
                                             <div className="text-left">
                                                 <p className="text-[#f97316]" style={{ fontSize: 18, fontWeight: 700 }}>
-                                                    {servicePrice.toLocaleString("vi-VN")}đ
+                                                    {servicePrice.toLocaleString("vi-VN")} đ
                                                 </p>
                                                 <p className="text-muted-foreground" style={{ fontSize: 12 }}>bởi {partnerName}</p>
                                             </div>
@@ -356,15 +356,15 @@ function HomePage() {
                         </div>
                     </div>
                     <div className="relative z-10 max-w-3xl mx-auto text-center px-6">
-                            <h2 className="text-white mb-4 text-[48px]">
+                        <h2 className="text-white mb-4 text-[48px]">
                             Bạn là nhà cung cấp dịch vụ du lịch?
-                            </h2>
-                            <p className="text-white/60 mb-8">
+                        </h2>
+                        <p className="text-white/60 mb-8">
                             Đăng ký làm đối tác VIVU Travel để đăng tải dịch vụ và tiếp cận hàng nghìn khách hàng tiềm năng
-                            </p>
-                            <Link to="register" className="inline-block px-8 mt-4 py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-full hover:shadow-lg transition-all">
+                        </p>
+                        <Link to="register" className="inline-block px-8 mt-4 py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-full hover:shadow-lg transition-all">
                             Đăng ký đối tác ngay
-                            </Link>
+                        </Link>
                     </div>
                 </section>
                 <section className="py-20 bg-[#f8fafc]">
@@ -386,7 +386,7 @@ function HomePage() {
                         <div className="max-w-2xl mx-auto">
                             <div className="bg-white rounded-3xl p-10 shadow-lg text-center">
                                 <div className="flex justify-center gap-1 mb-4">
-                                {[...Array(5)].map((_, i) => (
+                                    {[...Array(5)].map((_, i) => (
                                         <MdStar
                                             key={i}
                                             className={`w-6 h-6 ${i < currentComment.star

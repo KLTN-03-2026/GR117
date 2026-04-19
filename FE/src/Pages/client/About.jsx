@@ -6,7 +6,7 @@ const About = () => {
   return (
     <div>
       {/* HEADER */}
-      <section className="relative h-[400px]">
+      <section className="relative h-[300px]">
         <img
           src={about}
           alt=""
@@ -26,11 +26,11 @@ const About = () => {
 
       {/* GIỚI THIỆU */}
       <section className="container-custom py-20 grid md:grid-cols-2 gap-16 items-center">
-        <div className="overflow-hidden rounded-3xl aspect-[4/3]">
+        <div className="overflow-hidden p-3  aspect-[4/3]">
           <img
             src={introduce}
             alt=""
-            className="w-full h-full object-cover object-[50%_35%]"
+            className="w-full h-full   rounded-xl object-cover object-[50%_35%]"
           />
         </div>
 

@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import { NavLink } from "react-router-dom";
-
+import { MdOutlineAccountCircle } from "react-icons/md";
 export default function Sidebar() {
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
   const menu = [
@@ -14,9 +14,9 @@ export default function Sidebar() {
   return (
     <div className="flex h-screen w-64 flex-col bg-[#1a1a2e] text-white">
       <div className="border-b border-white/10 p-4">
-        <p className="text-sm text-white/70">
-          {currentUser?.fullName || "Công ty Du lịch Hạ Long"}
-        </p>
+        <div className="flex items-center text-sm   text-white/70">
+        <MdOutlineAccountCircle className="text-5xl mr-2" />   <p className="pt-3"> {currentUser?.fullName || "Công ty Du lịch Hạ Long"}</p>
+        </div>
       </div>
 
       <nav className="flex-1 p-4">
@@ -46,11 +46,11 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-white/10 p-4">
+      {/* <div className="border-t border-white/10 p-4">
         <button className="w-full rounded bg-red-500 py-2 hover:bg-red-600">
           Đăng xuất
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

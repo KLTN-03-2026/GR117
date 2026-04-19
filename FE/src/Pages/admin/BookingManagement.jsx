@@ -50,7 +50,7 @@ const BookingManagement = () => {
                   colSpan="7"
                   className="px-4 py-16 text-center text-slate-400"
                 >
-                  Chua co du lieu booking
+                  Chưa có dữ liệu booking
                 </td>
               </tr>
             </tbody>

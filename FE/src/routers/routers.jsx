@@ -23,6 +23,7 @@ import ServiceManagement from "../Pages/admin/ServiceManagement.jsx";
 import AccountManagement from "../Pages/admin/AccountManagement.jsx";
 import BookingManagement from "../Pages/admin/BookingManagement.jsx";
 import DetailServices from "../Pages/client/DetailServers.jsx";
+import NotFound from "../Pages/NotFound.jsx";
 
 function Routers() {
   const user = jwt();
@@ -81,6 +82,7 @@ function Routers() {
           <Route path="Revenue" element={<Navigate to="revenue" replace />} />
         </Route>
       </Route>
+       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

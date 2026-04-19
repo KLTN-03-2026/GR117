@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { jwt  } from "../utils/jwt";
+import NotFound from "../Pages/NotFound.jsx";
+import { jwt } from "../utils/jwt";
 
 export default function ProtectedRoute({ roles }) {
   const user = jwt();
@@ -10,10 +11,7 @@ export default function ProtectedRoute({ roles }) {
     roles &&
     !roles.some((role) => role.toLowerCase() === String(user.role).toLowerCase())
   ) {
-    const normalizedRole = String(user.role || "").toLowerCase();
-    if (normalizedRole === "admin") return <Navigate to="/admin" replace />;
-    if (normalizedRole === "provider") return <Navigate to="/provider" replace />;
-    return <Navigate to="/" replace />;
+    return <NotFound />;
   }
 
   return <Outlet />;

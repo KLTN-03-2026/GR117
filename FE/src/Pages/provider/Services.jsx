@@ -7,7 +7,7 @@ const STATUS_META = {
   all: "Tất cả",
   approval: "Hoạt động",
   pending: "Chờ duyệt",
-  reject: "Bị từ chối",
+  reject: "Ngừng hoạt động",
 };
 
 const Services = () => {
@@ -195,7 +195,7 @@ const Services = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm theo tên, địa điểm"
-              className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-[15px] outline-none transition placeholder:text-slate-300 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+              className="h-14 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-[15px] outline-none transition placeholder:text-slate-300 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
             />
           </div>
         </div>
@@ -213,7 +213,7 @@ const Services = () => {
                 key={key}
                 type="button"
                 onClick={() => setStatus(key)}
-                className={`rounded-2xl border px-5 py-3 text-sm font-medium transition ${
+                className={`rounded-xl border px-5 py-3 text-sm font-medium transition ${
                   active
                     ? "border-orange-500 bg-orange-500 text-white"
                     : "border-slate-200 bg-white text-slate-500 hover:border-orange-200 hover:text-orange-500"

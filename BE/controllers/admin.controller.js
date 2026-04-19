@@ -35,7 +35,7 @@ module.exports.approveProvider = async (req, res) => {
 
     if (provider.role !== "provider") {
       return res.status(400).json({
-        message: "TĂ i khoáº£n nĂ y khĂ´ng pháº£i provider",
+        message: "Tài khoản này ko phải provider",
       });
     }
 
@@ -137,6 +137,10 @@ module.exports.createAccount = async (req, res) => {
         message: "Thi?u th?ng tin b?t bu?c",
       });
     }
+    //check đuôi email 
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email)) {
+  return res.status(400).json({ message: "Email không hợp lệ" });
+  }
 
     if (role && !["user", "provider", "admin"].includes(role)) {
       return res.status(400).json({ message: "Role kh?ng h?p l?" });

@@ -53,7 +53,7 @@ const getReviewCount = (service) => {
 };
 
 const formatPrice = (value) =>
-  Number(value || 0).toLocaleString("vi-VN") + " VNĐ";
+  Number(value || 0).toLocaleString("vi-VN") + " đ";
 
 const getImage = (service) =>
   service.images?.[0] ||
@@ -114,7 +114,7 @@ const ServicesCard = ({
 
   if (variant === "destination") {
     return (
-      <div className="group w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+      <div className="group w-full overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
         <div className="relative h-52 overflow-hidden">
           <img
             src={image}
@@ -208,7 +208,7 @@ const ServicesCard = ({
 
   if (variant === "customer") {
     return (
-      <div className="overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg">
+      <div className="overflow-hidden rounded-xl bg-white shadow transition hover:-translate-y-1 hover:shadow-lg">
         <div className="relative overflow-hidden">
           <img
             src={image}
@@ -249,7 +249,7 @@ const ServicesCard = ({
 
   if (viewMode === "list") {
     return (
-      <div className="flex overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg">
+      <div className="flex overflow-hidden rounded-xl bg-white shadow transition hover:shadow-lg">
         <img
           src={image}
           alt={serviceName}
@@ -294,7 +294,7 @@ const ServicesCard = ({
   }
 
   return (
-    <div className="overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg">
+    <div className="overflow-hidden rounded-xl bg-white shadow transition hover:-translate-y-1 hover:shadow-lg">
       <div className="relative overflow-hidden">
         <img
           src={image}

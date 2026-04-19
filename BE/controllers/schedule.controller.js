@@ -136,7 +136,6 @@ module.exports.registerSchedule = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
-
 // Lấy danh sách dịch vụ cho form lịch.
 module.exports.getServiceList = async (req, res) => {
   try {
@@ -163,7 +162,7 @@ module.exports.getSchedulesByService = async (req, res) => {
     }
 
     if (req.user && req.user.role === "provider" && !canAccessService(service, req.user)) {
-      return res.status(403).json({ message: "Ban khong co quyen xem lich nay" });
+      return res.status(403).json({ message: "Ban không có quyền xem lịch này " });
     }
 
     const schedules = await Schedule.find({ service_id: serviceId }).sort({
@@ -183,25 +182,40 @@ module.exports.getSchedulesByService = async (req, res) => {
 // Lấy tất cả lịch.
 module.exports.getAllSchedules = async (req, res) => {
   try {
+    // 1. Lọc service theo user
     const serviceFilter = buildServiceFilter(req.user);
-    const services = await Service.find(serviceFilter).select("_id");
-    const serviceIds = services.map((item) => String(item._id));
 
-    const schedules = await Schedule.find(
+    // 2. Lấy danh sách service
+    const services = await Service.find(serviceFilter).select("_id");
+
+    // ❌ KHÔNG dùng String(_id)
+    // const serviceIds = services.map(item => String(item._id));
+
+    // ✅ Đúng: giữ nguyên ObjectId
+    const serviceIds = services.map((item) => item._id);
+
+    // 3. Query schedules
+    const query =
       req.user?.role === "provider"
         ? { service_id: { $in: serviceIds } }
-        : {},
-    ).sort({
+        : {};
+
+    const schedules = await Schedule.find(query).sort({
       departureDate: 1,
       createdAt: -1,
     });
 
+    // 4. Response
     return res.status(200).json({
       success: true,
       data: schedules,
     });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    console.error("Lỗi getAllSchedules:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống",
+    });
   }
 };
 
@@ -213,38 +227,38 @@ module.exports.updateOne = async (req, res) => {
     const normalizedServiceId = resolveServiceId(req.body);
 
     if (!normalizedServiceId || !departureDate || !endDate || !maxPeople) {
-      return res.status(400).json({ message: "Thieu du lieu" });
+      return res.status(400).json({ message: "Thiếu dữ liệu " });
     }
 
     const depDate = new Date(departureDate);
     const end = new Date(endDate);
 
     if (Number.isNaN(depDate.getTime()) || Number.isNaN(end.getTime())) {
-      return res.status(400).json({ message: "Ngay khong hop le" });
+      return res.status(400).json({ message: "Ngày không hợp lệ " });
     }
 
     if (end < depDate) {
-      return res.status(400).json({ message: "Ngay ve phai sau ngay di" });
+      return res.status(400).json({ message: "Ngay về phải sau ngày đi " });
     }
 
     if (status && !ALLOWED_STATUS.includes(status)) {
-      return res.status(400).json({ message: "Trang thai khong hop le" });
+      return res.status(400).json({ message: "Trạng thái không hợp lệ " });
     }
 
     const service = await Service.findById(normalizedServiceId);
     if (!service) {
-      return res.status(404).json({ message: "Service khong ton tai" });
+      return res.status(404).json({ message: "Service không tồn tại " });
     }
 
     if (!canAccessService(service, req.user)) {
-      return res.status(403).json({ message: "Ban khong co quyen cap nhat lich nay" });
+      return res.status(403).json({ message: "Ban không có quyền nhận lịch này " });
     }
 
     const schedule = await Schedule.findById(id);
     if (!schedule) {
       return res.status(404).json({
         success: false,
-        message: "Schedule khong ton tai",
+        message: "Lịch trình không tồn tại",
       });
     }
 
@@ -262,7 +276,7 @@ module.exports.updateOne = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Cap nhat schedule thanh cong",
+      message: "Cập nhật lịch thành công ",
       data: schedule,
     });
   } catch (error) {
@@ -296,7 +310,7 @@ module.exports.deleteOne = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Xoa schedule thanh cong",
+      message: "Xóa lịch thành công ",
     });
   } catch (error) {
     return res.status(500).json({

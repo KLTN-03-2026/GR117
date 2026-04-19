@@ -96,7 +96,7 @@ function BookingBox({
                         <div className="border-t border-border pt-2 flex justify-between">
                             <span className="font-semibold">Tổng cộng</span>
                             <span className="text-[#f97316] font-bold">
-                                {Number(total).toLocaleString("vi-VN")}đ
+                                {Number(total).toLocaleString("vi-VN")}VNĐ
                             </span>
                         </div>
                     </div>

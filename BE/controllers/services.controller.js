@@ -268,7 +268,7 @@ exports.addServices = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Them dich vu thanh cong",
+      message: "Thêm dịch vụ thành công ",
       data: newService,
     });
   } catch (err) {
@@ -323,7 +323,7 @@ exports.putServices = async (req, res) => {
     const service = await Services.findById(id);
 
     if (!service) {
-      return res.status(404).json({ message: "Khong tim thay service" });
+      return res.status(404).json({ message: "Không tìm thấy dịch vụ " });
     }
 
     if (!isOwnerOrAdmin(service, req.user)) {
@@ -398,7 +398,7 @@ exports.patchServices = async (req, res) => {
     if (!isOwnerOrAdmin(service, req.user)) {
       return res.status(403).json({
         success: false,
-        message: "Ban khong co quyen cap nhat dich vu nay",
+        message: "Bạn không có quyền ",
       });
     }
 

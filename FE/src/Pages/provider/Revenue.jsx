@@ -16,7 +16,7 @@ const Revenue = () => {
                 color: "rgb(26, 26, 46)",
               }}
             >
-              Quan ly doanh thu
+              Quản lý doanh thu 
             </h1>
           </div>
         </div>
@@ -24,7 +24,7 @@ const Revenue = () => {
 
       <div className="p-6">
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
-          Chuc nang doanh thu dang duoc hoan thien.
+          Chức năng đang hoàn thiện .
         </div>
       </div>
     </div>

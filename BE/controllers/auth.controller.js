@@ -11,42 +11,94 @@ const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 // Đăng ký user hoặc provider.
 module.exports.register = async (req, res) => {
   try {
-    const { fullName, email, phone, password, confirmPass, role } = req.body;
+    let { fullName, email, phone, password, confirmPass, role } = req.body;
 
-    // Kiểm tra dữ liệu
+    // 🔥 regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const nameRegex = /^[A-Za-zÀ-ỹ\s]+$/;
+    const phoneRegex = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+
+    // 🔥 normalize
+    fullName = fullName?.trim();
+
+    // ✅ REQUIRED
     if (!fullName || !email || !phone || !password || !confirmPass || !role) {
-      return res.status(400).json({ message: "Thiáº¿u thĂ´ng tin Ä‘Äƒng kĂ½" });
+      return res.status(400).json({
+        message: "Vui lòng điền đầy đủ thông tin",
+      });
     }
 
+    // ✅ NAME
+    if (fullName.length < 2) {
+      return res.status(400).json({
+        message: "Tên phải ít nhất 2 ký tự",
+      });
+    }
+
+    if (!nameRegex.test(fullName)) {
+      return res.status(400).json({
+        message: "Tên không hợp lệ",
+      });
+    }
+
+    // ✅ EMAIL
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        message: "Email không đúng định dạng",
+      });
+    }
+
+    if (!email.endsWith("@gmail.com")) {
+      return res.status(400).json({
+        message: "Chỉ chấp nhận email Gmail",
+      });
+    }
+
+    // ✅ PHONE
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        message: "Số điện thoại không hợp lệ  ",
+      });
+    }
+
+    // ✅ ROLE
     if (!["user", "provider"].includes(role)) {
-      return res.status(400).json({ message: "Role khĂ´ng há»£p lá»‡" });
+      return res.status(400).json({
+        message: "Role không hợp lệ",
+      });
+    }
+
+    // ✅ PASSWORD
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: "Mật khẩu phải ít nhất 6 ký tự",
+      });
     }
 
     if (password !== confirmPass) {
-      return res.status(400).json({ message: "Máº­t kháº©u xĂ¡c nháº­n khĂ´ng khá»›p" });
+      return res.status(400).json({
+        message: "Mật khẩu xác nhận không khớp",
+      });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Máº­t kháº©u pháº£i cĂ³ Ă­t nháº¥t 6 kĂ½ tá»±" });
-    }
-
+    // ✅ CHECK DUPLICATE
     const duplicate = await accounts.findOne({
       $or: [{ email }, { phone }],
     });
 
     if (duplicate) {
       return res.status(409).json({
-        message: "Email hoáº·c sá»‘ Ä‘iá»‡n thoáº¡i Ä‘Ă£ tá»“n táº¡i",
+        message: "Email hoặc số điện thoại đã tồn tại",
       });
     }
 
-    // Mã hóa mật khẩu
+    // ✅ HASH
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Gán trạng thái theo role
+    // ✅ STATUS
     const status = role === "provider" ? "pending" : "active";
 
-    // Tạo tài khoản
+    // ✅ CREATE
     const newAccount = await accounts.create({
       fullName,
       email,
@@ -59,8 +111,8 @@ module.exports.register = async (req, res) => {
     return res.status(201).json({
       message:
         role === "provider"
-          ? "ÄÄƒng kĂ½ Ä‘á»‘i tĂ¡c thĂ nh cĂ´ng, chá» admin duyá»‡t"
-          : "ÄÄƒng kĂ½ thĂ nh cĂ´ng",
+          ? "Đăng ký đối tác thành công, chờ admin duyệt"
+          : "Đăng ký thành công",
       data: {
         id: newAccount._id,
         fullName: newAccount.fullName,
@@ -71,8 +123,10 @@ module.exports.register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Lá»—i register:", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi register:", error);
+    return res.status(500).json({
+      message: "Lỗi hệ thống",
+    });
   }
 };
 // Đăng nhập và tạo phiên làm việc.
@@ -81,40 +135,40 @@ module.exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Thiáº¿u email hoáº·c password" });
+      return res.status(400).json({ message: "Thiếu email hoặc password" });
     }
 
     const user = await accounts.findOne({ email });
     if (!user) {
       return res
         .status(401)
-        .json({ message: "Email hoáº·c password khĂ´ng chĂ­nh xĂ¡c" });
+        .json({ message: "Email không chính xác " });
     }
 
     const passwordCorrect = await bcrypt.compare(password, user.password);
     if (!passwordCorrect) {
       return res
         .status(401)
-        .json({ message: "Email hoáº·c password khĂ´ng chĂ­nh xĂ¡c" });
+        .json({ message: "Mật khẩu không chính xác " });
     }
 
     if (user.role === "provider" && user.status === "pending") {
       return res.status(403).json({
-        message: "TĂ i khoáº£n Ä‘á»‘i tĂ¡c Ä‘ang chá» admin duyá»‡t",
+        message: "Tài khoản đang được xác minh",
       });
     }
 
-    if (user.role === "provider" && user.status === "rejected") {
-      return res.status(403).json({
-        message: "TĂ i khoáº£n Ä‘á»‘i tĂ¡c Ä‘Ă£ bá»‹ tá»« chá»‘i",
-      });
-    }
+   if (user.role === "provider" && user.status === "rejected") {
+  return res.status(403).json({
+    message: "Tài khoản đối tác đã bị từ chối",
+  });
+}
 
-    if (user.status !== "active") {
-      return res.status(403).json({
-        message: "TĂ i khoáº£n cá»§a báº¡n Ä‘ang bá»‹ khĂ³a hoáº·c chÆ°a Ä‘Æ°á»£c kĂ­ch hoáº¡t",
-      });
-    }
+  if (user.status !== "active") {
+  return res.status(403).json({
+    message: "Tài khoản của bạn đang bị khóa hoặc chưa được kích hoạt",
+  });
+}
 
     const accessToken = jwt.sign(
       { userId: user._id, role: user.role },
@@ -138,7 +192,7 @@ module.exports.login = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: "ÄÄƒng nháº­p thĂ nh cĂ´ng",
+      message: "Đăng nhập thành công ",
       data: {
         accessToken,
         user: {
@@ -151,10 +205,10 @@ module.exports.login = async (req, res) => {
         },
       },
     });
-  } catch (error) {
-    console.error("Lá»—i khi gá»i signIn:", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
-  }
+ } catch (error) {
+  console.error("Lỗi khi gọi signIn:", error);
+  return res.status(500).json({ message: "Lỗi hệ thống" });
+}
 };
 
 // Làm mới access token.
@@ -162,24 +216,24 @@ module.exports.refreshToken = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
     if (!token) {
-      return res.status(401).json({ message: "Token khĂ´ng tá»“n táº¡i." });
+      return res.status(401).json({ message: "Token không tồn tại." });
     }
 
     const session = await Session.findOne({ refreshToken: token });
     if (!session) {
       return res
         .status(403)
-        .json({ message: "Token khĂ´ng há»£p lá»‡ hoáº·c Ä‘Ă£ háº¿t háº¡n" });
+        .json({ message: "Token không hợp lệ hoặc đã hết hạn" });
     }
 
     if (session.expiresAt < new Date()) {
       await Session.deleteOne({ _id: session._id });
-      return res.status(403).json({ message: "Token Ä‘Ă£ háº¿t háº¡n." });
+      return res.status(403).json({ message: "Token đã hết hạn." });
     }
 
     const user = await accounts.findById(session.userId);
     if (!user) {
-      return res.status(404).json({ message: "NgÆ°á»i dĂ¹ng khĂ´ng tá»“n táº¡i" });
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
     }
 
     const accessToken = jwt.sign(
@@ -190,8 +244,8 @@ module.exports.refreshToken = async (req, res) => {
 
     return res.status(200).json({ accessToken });
   } catch (error) {
-    console.error("Lá»—i khi gá»i refreshToken:", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi gọi refreshToken:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
@@ -205,7 +259,7 @@ module.exports.logout = async (req, res) => {
     }
     return res.sendStatus(204);
   } catch (error) {
-    console.error("Lá»—i khi gá»i signOut:", error);
-    return res.status(500).json({ message: "Lá»—i há»‡ thá»‘ng" });
+    console.error("Lỗi khi gọi signOut:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
