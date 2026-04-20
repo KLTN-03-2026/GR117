@@ -1,4 +1,83 @@
 const Service = require("../models/Service.js");
+const { parseItineraryExcelBuffer } = require("../utils/itineraryExcelParser.js");
+
+// Hàm đổi dữ liệu text hoặc JSON từ form-data thành mảng string để lưu vào Mongo đúng kiểu.
+const parseArrayField = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (!text) return [];
+
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
+      }
+    } catch {
+      // Nếu không phải JSON thì rơi xuống tách dòng.
+    }
+
+    return text
+      .split(/[,;\n]/g)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+// Hàm chuẩn hóa dữ liệu service nhận từ FE trước khi tạo hoặc cập nhật trong DB.
+const normalizeServiceBody = (body) => {
+  const payload = {
+    serviceName: String(body.serviceName || body.name || "").trim(),
+    description: String(body.description || "").trim(),
+    prices: Number(body.prices ?? body.price ?? 0),
+    location: String(body.location || "").trim(),
+    category: String(body.category || "").trim(),
+    duration: String(body.duration || "").trim(),
+    highlight: parseArrayField(body.highlight || body.highlights),
+    includes: parseArrayField(body.includes),
+    images: parseArrayField(body.images),
+    imageUrl: String(body.imageUrl || "").trim(),
+    imageId: String(body.imageId || "").trim(),
+  };
+
+  return payload;
+};
+
+// Hàm lấy itinerary từ file Excel nếu FE upload file, hoặc từ body cũ nếu còn gửi JSON.
+const resolveItineraryPayload = (bodyItinerary, file) => {
+  if (file) {
+    return parseItineraryExcelBuffer(file.buffer);
+  }
+
+  if (!bodyItinerary) {
+    return undefined;
+  }
+
+  if (Array.isArray(bodyItinerary)) {
+    return bodyItinerary;
+  }
+
+  if (typeof bodyItinerary === "string") {
+    const text = bodyItinerary.trim();
+    if (!text) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
 
 //  LẤY DANH SÁCH TOUR (PUBLIC) 
 module.exports.getAllServices = async (req, res) => {
@@ -72,9 +151,30 @@ module.exports.getServiceById = async (req, res) => {
 //  TẠO TOUR MỚI (PROVIDER) 
 module.exports.createService = async (req, res) => {
   try {
-    // req.user.id lấy từ verifyToken middleware
+    // Hàm này tạo service mới và đọc lịch trình từ file Excel nếu FE gửi file lên.
+    const payload = normalizeServiceBody(req.body);
+    const itinerary = resolveItineraryPayload(req.body.itinerary, req.file);
+
+    if (
+      !payload.serviceName ||
+      !payload.description ||
+      !payload.prices ||
+      !payload.category
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Thiếu dữ liệu bắt buộc khi tạo service" });
+    }
+
+    if (req.file && (!itinerary || itinerary.length === 0)) {
+      return res
+        .status(400)
+        .json({ message: "File Excel không có dữ liệu lịch trình hợp lệ" });
+    }
+
     const newService = new Service({
-      ...req.body,
+      ...payload,
+      itinerary: itinerary || [],
       provider_id: req.user.id,
       status: "pending", // Mặc định chờ duyệt dù model để active
     });
@@ -107,9 +207,28 @@ module.exports.updateService = async (req, res) => {
         .json({ message: "Bạn không có quyền sửa tour này" });
     }
 
+    // Hàm này cập nhật service và chỉ thay lịch trình khi FE upload file Excel mới.
+    const payload = normalizeServiceBody(req.body);
+    const itinerary = resolveItineraryPayload(req.body.itinerary, req.file);
+    const updateData = {
+      ...payload,
+      status: "pending", // Sửa xong thì chờ duyệt lại
+    };
+
+    if (req.file) {
+      if (!itinerary || itinerary.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "File Excel không có dữ liệu lịch trình hợp lệ" });
+      }
+      updateData.itinerary = itinerary;
+    } else if (Array.isArray(itinerary)) {
+      updateData.itinerary = itinerary;
+    }
+
     const updatedService = await Service.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, status: "pending" }, // Sửa xong thì chờ duyệt lại
+      updateData,
       { new: true },
     );
 

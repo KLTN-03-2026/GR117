@@ -4,7 +4,7 @@ const Service = require("../models/Service.js");
 //  TẠO LỊCH KHỞI HÀNH MỚI (PROVIDER)
 module.exports.createSchedule = async (req, res) => {
   try {
-    const { serviceId, departureDate, maxSlots, status } = req.body;
+    const { serviceId, departureDate, endDate, maxSlots, status } = req.body;
 
     // 1. Kiểm tra tour có tồn tại không
     const service = await Service.findById(serviceId);
@@ -31,6 +31,7 @@ module.exports.createSchedule = async (req, res) => {
     const newSchedule = await Schedule.create({
       serviceId,
       departureDate,
+      endDate: endDate || null,
       maxSlots,
       status: status || "open",
     });
@@ -73,7 +74,7 @@ module.exports.getSchedulesByService = async (req, res) => {
 module.exports.updateSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-    const { maxSlots, status, departureDate } = req.body;
+    const { maxSlots, status, departureDate, endDate } = req.body;
 
     const schedule = await Schedule.findById(id).populate("serviceId");
     if (!schedule)
@@ -95,7 +96,7 @@ module.exports.updateSchedule = async (req, res) => {
 
     const updatedSchedule = await Schedule.findByIdAndUpdate(
       id,
-      { maxSlots, status, departureDate },
+      { maxSlots, status, departureDate, endDate: endDate || null },
       { new: true },
     );
 

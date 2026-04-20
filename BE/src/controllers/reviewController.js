@@ -77,6 +77,20 @@ module.exports.getReviewsByService = async (req, res) => {
   }
 };
 
+module.exports.getHighlightedReviews = async (req, res) => {
+  try {
+    const reviews = await Review.find({ rating: { $gte: 4 } })
+      .populate("userId", "fullName avatar")
+      .populate("serviceId", "serviceName")
+      .sort({ rating: -1, createdAt: -1 })
+      .limit(6);
+
+    return res.status(200).json({ data: reviews });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
 //  XÓA ĐÁNH GIÁ (USER/ADMIN)
 module.exports.deleteReview = async (req, res) => {
   try {

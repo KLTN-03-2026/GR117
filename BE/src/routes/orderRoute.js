@@ -12,6 +12,14 @@ router.post("/", verifyToken, orderController.createOrder);
 // Khách xem lịch sử của mình
 router.get("/my-orders", verifyToken, orderController.getMyOrders);
 
+// Admin xem toàn bộ đơn hàng
+router.get(
+  "/admin",
+  verifyToken,
+  authorizeRoles("admin"),
+  orderController.getAdminOrders,
+);
+
 // Provider xem danh sách khách đặt tour của mình
 router.get(
   "/provider",

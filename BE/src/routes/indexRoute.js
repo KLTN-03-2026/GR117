@@ -7,6 +7,7 @@ const categoryRoute = require("./categoryRoute.js");
 const orderRoute = require("./orderRoute.js");
 const reviewRoute = require("./reviewRoute.js");
 const statsRoute = require("./statsRoute.js");
+const adminRoute = require("./adminRoute.js");
 module.exports = function (app) {
   app.use("/api/auth", authRoute);
   app.use("/api/users", userRoute);
@@ -16,4 +17,5 @@ module.exports = function (app) {
   app.use("/api/orders", orderRoute);
   app.use("/api/reviews", reviewRoute);
   app.use("/api/stats", statsRoute);
+  app.use("/api/admin", adminRoute);
 };

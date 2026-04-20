@@ -9,6 +9,9 @@ const {
 // Xem review của tour (Ai cũng xem được)
 router.get("/service/:serviceId", reviewController.getReviewsByService);
 
+// Review nổi bật cho homepage
+router.get("/highlights", reviewController.getHighlightedReviews);
+
 // Gửi review (Phải đăng nhập)
 router.post("/", verifyToken, reviewController.createReview);
 

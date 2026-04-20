@@ -10,7 +10,7 @@ export default function ProtectedRoute({ roles }) {
     roles &&
     !roles.some((role) => role.toLowerCase() === String(user.role).toLowerCase())
   ) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/404" replace />;
   }
 
   return <Outlet />;

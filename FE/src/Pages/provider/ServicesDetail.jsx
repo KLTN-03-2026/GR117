@@ -1,139 +1,86 @@
 ﻿import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { IoIosArrowBack } from "react-icons/io";
-import { useNavigate } from "react-router-dom";
-import ButtonBack from "../../Components/ButtonBack";
+import ButtonBack from "../../Components/shared/ButtonBack";
 
 const ServicesDetail = () => {
   const { id } = useParams();
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
- const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/services/detail/${id}`);
+        const accessToken = localStorage.getItem("accessToken");
+        const res = await fetch(`/api/services/detail/${id}`, {
+          headers: accessToken
+            ? {
+                Authorization: `Bearer ${accessToken}`,
+              }
+            : {},
+        });
         const result = await res.json();
-        setService(result);
+        setService(res.ok ? result.data : null);
       } catch (err) {
-        console.error("Lá»—i fetch chi tiáº¿t:", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchDetail();
   }, [id]);
 
-  if (loading) return <p className="p-6">Äang táº£i chi tiáº¿t...</p>;
-  if (!service) return <p className="p-6 text-red-600">KhĂ´ng tĂ¬m tháº¥y dá»‹ch vá»¥</p>;
+  if (loading) return <p className="p-6">Đang tải chi tiết...</p>;
+  if (!service) return <p className="p-6 text-red-600">không tìm thấy dịch vụ</p>;
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] p-8">
-      <div className="w-full max-w-6xl mx-auto bg-white shadow-xl rounded-xl p-12 border border-orange-100">
-
-        {/* button back */}
-        <div className="flex justify-between mb-5 ">
-
-        <h1 className="text-3xl text-center font-bold text-orange-600 "> Chi tiáº¿t dá»‹ch vá»¥</h1>
-           <ButtonBack/>
-          
+      <div className="mx-auto w-full max-w-6xl rounded-xl border border-orange-100 bg-white p-12 shadow-xl">
+        <div className="mb-5 flex justify-between">
+          <h1 className="text-center text-3xl font-bold text-orange-600">Chi tiết dịch vụ</h1>
+          <ButtonBack />
         </div>
 
         <form className="space-y-6">
-          {/* Supplier */}
           <div>
-            <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              NhĂ  cung cáº¥p
-            </label>
-            <input
-              type="text"
-              value={service.supplier}
-              readOnly
-              className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
-            />
+            <label className="block pl-1.5 text-left text-sm font-semibold text-orange-600">Nhà cung cấp</label>
+            <input type="text" value={service.nameProvider || service.provider_id?.fullName || service.supplier || ""} readOnly className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3" />
           </div>
 
-          {/* TĂªn dá»‹ch vá»¥ + GiĂ¡ */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                TĂªn dá»‹ch vá»¥
-              </label>
-              <input
-                type="text"
-                value={service.servicesName}
-                readOnly
-                className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
-              />
+              <label className="block pl-1.5 text-left text-sm font-semibold text-orange-600">Tên dịch vụ</label>
+              <input type="text" value={service.serviceName || service.servicesName || ""} readOnly className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                GiĂ¡
-              </label>
-              <input
-                type="text"
-                value={`${service.prices}Ä‘`}
-                readOnly
-                className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
-              />
+              <label className="block pl-1.5 text-left text-sm font-semibold text-orange-600">Giá</label>
+              <input type="text" value={`${service.prices} VNĐ`} readOnly className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3" />
             </div>
           </div>
 
-          {/* Äá»‹a Ä‘iá»ƒm + Danh má»¥c */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Äá»‹a Ä‘iá»ƒm
-              </label>
-              <input
-                type="text"
-                value={service.destination}
-                readOnly
-                className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
-              />
+              <label className="block pl-1.5 text-left text-sm font-semibold text-orange-600">Địa điểm</label>
+              <input type="text" value={service.location || service.destination || service.region || ""} readOnly className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-                Danh má»¥c
-              </label>
-              <input
-                type="text"
-                value={service.category}
-                readOnly
-                className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
-              />
+              <label className="block pl-1.5 text-left text-sm font-semibold text-orange-600">Danh mục</label>
+              <input type="text" value={Array.isArray(service.category) ? service.category.join(", ") : service.category || ""} readOnly className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3" />
             </div>
           </div>
 
-          {/* MĂ´ táº£ */}
           <div>
-            <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              MĂ´ táº£ dá»‹ch vá»¥
-            </label>
-            <textarea
-              value={service.descriptionDetail}
-              readOnly
-              rows="4"
-              className="w-full border border-gray-300 p-3 rounded-lg bg-gray-50"
-            />
+            <label className="block pl-1.5 text-left text-sm font-semibold text-orange-600">Mô tả</label>
+            <textarea value={service.description || service.descriptionDetail || ""} readOnly rows="4" className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3" />
           </div>
 
-          {/* áº¢nh Ä‘áº¡i diá»‡n */}
           <div>
-            <label className="block text-sm font-semibold text-orange-600 text-left pl-1.5">
-              áº¢nh dá»‹ch vá»¥ 
-            </label>
-             <img
-            src={
-              service.imageUrl ||
-              (service.imageFile
-                ? `http://localhost:5000/uploads/${service.imageFile}`
-                : "https://via.placeholder.com/400x250?text=No+Image")
-            }
-            alt={service.servicesName}
-            className="w-full max-w-md h-64 object-cover rounded border-2 border-orange-200 mx-auto"
-          />
+            <label className="block pl-1.5 text-left text-sm font-semibold text-orange-600">Hình ảnh</label>
+            <img
+            src={service.imageUrl || (service.imageFile ? `/uploads/${service.imageFile}` : "https://via.placeholder.com/400x250?text=No+Image")}
+              alt={service.serviceName || service.servicesName || "service-image"}
+              className="mx-auto h-64 w-full max-w-md rounded border-2 border-orange-200 object-cover"
+            />
           </div>
         </form>
       </div>
@@ -142,3 +89,4 @@ const ServicesDetail = () => {
 };
 
 export default ServicesDetail;
+

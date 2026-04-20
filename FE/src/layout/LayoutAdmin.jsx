@@ -1,6 +1,6 @@
-import Header from "../Components/Header.jsx";
-import Footer from "../Components/Footer.jsx";
-import Sidebar from "../Components/Sidebar.jsx";
+﻿import Header from "../Components/shared/Header.jsx";
+import Footer from "../Components/shared/Footer.jsx";
+import Sidebar from "../Components/shared/Sidebar.jsx";
 import { Outlet } from "react-router-dom";
 import { jwt } from "../utils/jwt.js";
 
@@ -10,7 +10,7 @@ function LayoutAdmin() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header variant="dashboard" />
 
       <main className="flex flex-1 w-full">
         {showSidebar && <Sidebar />}

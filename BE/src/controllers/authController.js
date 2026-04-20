@@ -25,6 +25,16 @@ module.exports.register = async (req, res) => {
       return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
     }
 
+    if (fullName.length > 30) {
+      return res
+        .status(400)
+        .json({ message: "Họ và tên phải từ 2 đến 30 ký tự" });
+    }
+
+    if (!/^\d{10}$/.test(phone)) {
+      return res.status(400).json({ message: "Số điện thoại phải đúng 10 số" });
+    }
+
     if (password.length < 6) {
       return res
         .status(400)

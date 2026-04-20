@@ -232,10 +232,16 @@ module.exports.unlockAccount = async (req, res) => {
 //thêm tài khoản mới
 module.exports.addAccount = async (req, res) => {
   //request gửi lên các thông cần thiết
-  const { fullName, email, phone, password, role } = req.body;
+  const fullName = String(req.body.fullName || "").trim();
+  const email = String(req.body.email || "")
+    .trim()
+    .toLowerCase();
+  const phone = String(req.body.phone || "").trim();
+  const password = String(req.body.password || "");
+  const role = String(req.body.role || "").trim();
 
   try {
-    const existAccount = await accounts.find({
+    const existAccount = await User.findOne({
       $or: [{ email }, { phone }, { fullName }],
     });
     if (existAccount) {
@@ -246,31 +252,43 @@ module.exports.addAccount = async (req, res) => {
 
     //check trường có thiếu hay ko
     if (!fullName || !email || !phone || !password || !role) {
-      return res.status(400).json({ mesage: "thiếu thông tin bắt buộc " });
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
     }
-    //check độ dài trường
-    if (
-      fullName.length < 5 ||
-      email.length < 5 ||
-      fullName.length > 12 ||
-      email.length > 30 ||
-      phone.length < 10 ||
-      phone.length > 15
-    ) {
+
+    //check độ dài từng trường
+    if (fullName.length < 2 || fullName.length > 30) {
       return res
         .status(400)
-        .json({ message: "FullName phải từ 5 đến 12 ký tự" });
+        .json({ message: "Họ và tên phải từ 2 đến 30 ký tự" });
     }
+
+    if (email.length < 5 || email.length > 30) {
+      return res.status(400).json({ message: "Email phải từ 5 đến 30 ký tự" });
+    }
+
+    if (!/^\d{10}$/.test(phone)) {
+      return res.status(400).json({ message: "Số điện thoại phải đúng 10 số" });
+    }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
+    }
+
+    if (!["user", "provider", "admin"].includes(role)) {
+      return res.status(400).json({ message: "Vai trò không hợp lệ" });
+    }
+
     const hasdPassword = await bcrypt.hash(password, 8);
 
-    const newAccount = new accounts.create({
+    const newAccount = await User.create({
       fullName,
       email,
       phone,
       password: hasdPassword,
       role,
     });
-    await newAccount.save();
     return res.status(201).json({
       message: "Thêm tài khoản thành công",
       data: newAccount,

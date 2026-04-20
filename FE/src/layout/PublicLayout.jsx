@@ -1,19 +1,19 @@
-import Header from '../Components/Header.jsx';
-import Footer from '../Components/Footer.jsx';
-import { Outlet } from 'react-router-dom';
+import Header from "../Components/shared/Header.jsx";
+import Footer from "../Components/shared/Footer.jsx";
+import { Outlet } from "react-router-dom";
 
 function PublicLayout() {
-    return (
-        <div className="min-h-screen flex flex-col">
-            <Header />
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
 
-            <main className="flex-1 w-full">
-                <Outlet />
-            </main>
+      <main className="flex-1 w-full">
+        <Outlet />
+      </main>
 
-            <Footer />
-        </div>
-    );
+      <Footer />
+    </div>
+  );
 }
 
 export default PublicLayout;

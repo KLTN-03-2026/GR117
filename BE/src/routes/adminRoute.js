@@ -54,7 +54,7 @@ router.post("/add-account", ...Authorization, adminController.addAccount);
 //xem dich vu
 router.get("/getAllService", adminController.getAllService);
 //xoa dich vu
-router.delete("/deleteService", adminController.deleteService);
+router.delete("/deleteService/:id", adminController.deleteService);
 //thay doi trang thai dich vu
-router.patch("/changeServiceStatus", adminController.changeServiceStatus);
+router.patch("/changeServiceStatus/:id", adminController.changeServiceStatus);
 module.exports = router;

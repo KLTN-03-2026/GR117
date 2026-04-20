@@ -11,6 +11,10 @@ const scheduleSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    endDate: {
+      type: Date,
+      default: null,
+    },
     maxSlots: { type: Number, required: true },
     bookedSlots: { type: Number, default: 0 },
     status: {

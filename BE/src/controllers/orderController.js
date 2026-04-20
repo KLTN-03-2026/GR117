@@ -75,11 +75,26 @@ module.exports.getMyOrders = async (req, res) => {
   }
 };
 
+// DANH SÁCH ĐƠN HÀNG CHO ADMIN
+module.exports.getAdminOrders = async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("serviceId", "serviceName images location")
+      .populate("provider_id", "fullName")
+      .populate("userId", "fullName email phone")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ data: orders });
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
 // QUẢN LÝ ĐƠN HÀNG DÀNH CHO PROVIDER
 module.exports.getProviderOrders = async (req, res) => {
   try {
     const orders = await Order.find({ provider_id: req.user.id })
-      .populate("serviceId", "serviceName")
+      .populate("serviceId", "serviceName location destination region")
       .sort({ createdAt: -1 });
     return res.status(200).json({ data: orders });
   } catch (error) {
@@ -115,6 +130,12 @@ module.exports.updateOrderStatus = async (req, res) => {
         if (schedule.status === "full") schedule.status = "open";
         await schedule.save();
       }
+    }
+
+    if (status === "completed" && order.status !== "confirmed") {
+      return res.status(400).json({
+        message: "Chỉ có thể hoàn tất tour khi đơn hàng đã được xác nhận",
+      });
     }
 
     const updatedOrder = await Order.findByIdAndUpdate(

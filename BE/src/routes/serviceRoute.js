@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const serviceController = require("../controllers/serviceController.js");
+const { excelUpload } = require("../middlewares/excelUploadMiddleware.js");
 const {
   verifyToken,
   authorizeRoles,
@@ -15,6 +16,7 @@ router.post(
   "/",
   verifyToken,
   authorizeRoles("provider"),
+  excelUpload.single("itineraryFile"),
   serviceController.createService,
 );
 router.get(
@@ -27,6 +29,7 @@ router.put(
   "/:id",
   verifyToken,
   authorizeRoles("provider"),
+  excelUpload.single("itineraryFile"),
   serviceController.updateService,
 );
 router.delete(
