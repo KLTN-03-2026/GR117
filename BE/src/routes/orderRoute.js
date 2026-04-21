@@ -6,13 +6,16 @@ const {
   authorizeRoles,
 } = require("../middlewares/authMiddleware.js");
 
-// Đặt tour mới (Mọi user đã login đều làm được)
+// User tao don moi
 router.post("/", verifyToken, orderController.createOrder);
 
-// Khách xem lịch sử của mình
+// User xem don cua minh
 router.get("/my-orders", verifyToken, orderController.getMyOrders);
 
-// Admin xem toàn bộ đơn hàng
+// User huy don cua minh
+router.patch("/cancel/:id", verifyToken, orderController.cancelMyOrder);
+
+// Admin xem toan bo don hang
 router.get(
   "/admin",
   verifyToken,
@@ -20,7 +23,7 @@ router.get(
   orderController.getAdminOrders,
 );
 
-// Provider xem danh sách khách đặt tour của mình
+// Provider xem don cua minh
 router.get(
   "/provider",
   verifyToken,
@@ -28,7 +31,7 @@ router.get(
   orderController.getProviderOrders,
 );
 
-// Cập nhật trạng thái đơn (Xác nhận/Hủy/Thanh toán)
+// Provider/Admin cap nhat trang thai don
 router.patch(
   "/status/:id",
   verifyToken,

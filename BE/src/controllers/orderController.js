@@ -1,33 +1,46 @@
 const Order = require("../models/Order.js");
 const Schedule = require("../models/Schedule.js");
-const Service = require("../models/Service.js");
 
-//  TẠO ĐƠN ĐẶT TOUR MỚI (USER)
+const releaseScheduleSlots = async (order) => {
+  const schedule = await Schedule.findById(order.scheduleId);
+  if (!schedule) return;
+
+  schedule.bookedSlots = Math.max(
+    0,
+    Number(schedule.bookedSlots || 0) - Number(order.numPeople || 0),
+  );
+
+  if (schedule.bookedSlots < schedule.maxSlots && schedule.status === "full") {
+    schedule.status = "open";
+  }
+
+  await schedule.save();
+};
+
+// Tao don dat tour moi cho user
 module.exports.createOrder = async (req, res) => {
   try {
-    const { scheduleId, numPeople, customerInfo, note } = req.body;
+    const { scheduleId, numPeople, customerInfo, note, paymentFlow } = req.body;
 
-    // 1. Kiểm tra lịch khởi hành có tồn tại và còn mở không
     const schedule = await Schedule.findById(scheduleId).populate("serviceId");
     if (!schedule || schedule.status !== "open") {
       return res
         .status(400)
-        .json({ message: "Lịch khởi hành này hiện không khả dụng" });
+        .json({ message: "Lich khoi hanh nay hien khong kha dung" });
     }
 
-    // 2. Kiểm tra số chỗ trống
-    const availableSlots = schedule.maxSlots - schedule.bookedSlots;
-    if (numPeople > availableSlots) {
+    const availableSlots = Number(schedule.maxSlots || 0) - Number(schedule.bookedSlots || 0);
+    if (Number(numPeople) > availableSlots) {
       return res.status(400).json({
-        message: `Không đủ chỗ. Chỉ còn ${availableSlots} chỗ trống.`,
+        message: `Khong du cho. Chi con ${availableSlots} cho trong.`,
       });
     }
 
-    // 3. Lấy thông tin tour để làm Snapshot và tính giá
     const service = schedule.serviceId;
-    const totalPrice = service.prices * numPeople;
+    const totalPrice = Number(service.prices || 0) * Number(numPeople || 0);
+    const normalizedPaymentFlow =
+      String(paymentFlow || "").toLowerCase() === "vnpay" ? "vnpay" : "manual";
 
-    // 4. Tạo đơn hàng
     const newOrder = await Order.create({
       userId: req.user.id,
       serviceId: service._id,
@@ -42,11 +55,13 @@ module.exports.createOrder = async (req, res) => {
       numPeople,
       totalPrice,
       note,
-      status: "awaiting_confirm",
+      status:
+        normalizedPaymentFlow === "vnpay"
+          ? "awaiting_payment"
+          : "awaiting_confirm",
       paymentStatus: "unpaid",
     });
 
-    // 5. CẬP NHẬT BOOKED SLOTS TRONG SCHEDULE
     schedule.bookedSlots += Number(numPeople);
     if (schedule.bookedSlots >= schedule.maxSlots) {
       schedule.status = "full";
@@ -54,28 +69,83 @@ module.exports.createOrder = async (req, res) => {
     await schedule.save();
 
     return res.status(201).json({
-      message: "Đặt tour thành công, vui lòng chờ đối tác xác nhận",
+      message:
+        normalizedPaymentFlow === "vnpay"
+          ? "Da tao don cho thanh toan"
+          : "Dat tour thanh cong, vui long cho doi tac xac nhan",
       data: newOrder,
     });
   } catch (error) {
-    console.error("Lỗi createOrder:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống khi đặt tour" });
+    console.error("Loi createOrder:", error);
+    return res.status(500).json({ message: "Loi he thong khi dat tour" });
   }
 };
 
-//  LỊCH SỬ ĐẶT TOUR CỦA KHÁCH (USER)
+// Lich su dat tour cua user
 module.exports.getMyOrders = async (req, res) => {
   try {
     const myOrders = await Order.find({ userId: req.user.id })
       .populate("serviceId", "serviceName images")
       .sort({ createdAt: -1 });
+
     return res.status(200).json({ data: myOrders });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-// DANH SÁCH ĐƠN HÀNG CHO ADMIN
+// User huy don cua chinh minh
+module.exports.cancelMyOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: "Khong tim thay don hang" });
+    }
+
+    if (String(order.userId) !== String(req.user.id)) {
+      return res
+        .status(403)
+        .json({ message: "Ban khong co quyen huy don nay" });
+    }
+
+    if (
+      !["awaiting_payment", "awaiting_confirm", "confirmed"].includes(
+        order.status,
+      )
+    ) {
+      return res.status(400).json({
+        message:
+          "Chi co the huy don dang cho thanh toan, cho xac nhan hoac da xac nhan",
+      });
+    }
+
+    if (order.status !== "cancelled") {
+      await releaseScheduleSlots(order);
+    }
+
+    order.status = "cancelled";
+    if (order.paymentStatus === "paid") {
+      order.paymentStatus = "refunded";
+    }
+
+    await order.save();
+
+    return res.status(200).json({
+      message:
+        order.paymentStatus === "refunded"
+          ? "Da huy don va ghi nhan hoan tien"
+          : "Da huy don thanh cong",
+      data: order,
+    });
+  } catch (error) {
+    console.error("Loi cancelMyOrder:", error);
+    return res.status(500).json({ message: "Loi he thong khi huy don" });
+  }
+};
+
+// Danh sach don hang cho admin
 module.exports.getAdminOrders = async (req, res) => {
   try {
     const orders = await Order.find()
@@ -86,55 +156,50 @@ module.exports.getAdminOrders = async (req, res) => {
 
     return res.status(200).json({ data: orders });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-// QUẢN LÝ ĐƠN HÀNG DÀNH CHO PROVIDER
+// Danh sach don cua provider
 module.exports.getProviderOrders = async (req, res) => {
   try {
     const orders = await Order.find({ provider_id: req.user.id })
       .populate("serviceId", "serviceName location destination region")
       .sort({ createdAt: -1 });
+
     return res.status(200).json({ data: orders });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-// CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG (PROVIDER/ADMIN)
+// Provider/Admin cap nhat trang thai don
 module.exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, paymentStatus } = req.body;
 
     const order = await Order.findById(id);
-    if (!order)
-      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    if (!order) {
+      return res.status(404).json({ message: "Khong tim thay don hang" });
+    }
 
-    // Kiểm tra quyền (Chỉ Provider của tour đó hoặc Admin)
     if (
-      order.provider_id.toString() !== req.user.id &&
+      String(order.provider_id) !== String(req.user.id) &&
       req.user.role !== "admin"
     ) {
       return res
         .status(403)
-        .json({ message: "Bạn không có quyền xử lý đơn này" });
+        .json({ message: "Ban khong co quyen xu ly don nay" });
     }
 
-    // XỬ LÝ LOGIC KHI HỦY ĐƠN (Để trả lại chỗ cho bảng Schedule)
     if (status === "cancelled" && order.status !== "cancelled") {
-      const schedule = await Schedule.findById(order.scheduleId);
-      if (schedule) {
-        schedule.bookedSlots -= order.numPeople;
-        if (schedule.status === "full") schedule.status = "open";
-        await schedule.save();
-      }
+      await releaseScheduleSlots(order);
     }
 
     if (status === "completed" && order.status !== "confirmed") {
       return res.status(400).json({
-        message: "Chỉ có thể hoàn tất tour khi đơn hàng đã được xác nhận",
+        message: "Chi co the hoan tat tour khi don hang da duoc xac nhan",
       });
     }
 
@@ -145,11 +210,11 @@ module.exports.updateOrderStatus = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: "Cập nhật trạng thái đơn hàng thành công",
+      message: "Cap nhat trang thai don hang thanh cong",
       data: updatedOrder,
     });
   } catch (error) {
-    console.error("Lỗi updateOrderStatus:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi updateOrderStatus:", error);
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };

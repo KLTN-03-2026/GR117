@@ -8,6 +8,7 @@ const orderRoute = require("./orderRoute.js");
 const reviewRoute = require("./reviewRoute.js");
 const statsRoute = require("./statsRoute.js");
 const adminRoute = require("./adminRoute.js");
+const vnpayRoute = require("./vnpayRoute.js");
 module.exports = function (app) {
   app.use("/api/auth", authRoute);
   app.use("/api/users", userRoute);
@@ -18,4 +19,5 @@ module.exports = function (app) {
   app.use("/api/reviews", reviewRoute);
   app.use("/api/stats", statsRoute);
   app.use("/api/admin", adminRoute);
+  app.use("/api", vnpayRoute);
 };

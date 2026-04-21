@@ -21,6 +21,6 @@ router(app);
 // Ket noi MongoDB
 db.connectDB().then(() => {
   app.listen(port, () => {
-    console.log(`server bắt đầu trên cổng ${port}`);
+    console.log(`server bat dau tren cong ${port}`);
   });
 });

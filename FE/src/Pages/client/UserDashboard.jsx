@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   FaClock,
@@ -50,6 +50,8 @@ const getDepartureDate = (order) =>
   order?.tourSnapshot?.departureDate || order?.scheduleId?.departureDate || null;
 
 function UserDashboard() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const user = jwt();
   const currentUser = useMemo(() => {
     try {
@@ -79,6 +81,8 @@ function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [cancellingOrderId, setCancellingOrderId] = useState("");
+  const [payingOrderId, setPayingOrderId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -88,6 +92,10 @@ function UserDashboard() {
 
   const accessToken = localStorage.getItem("accessToken");
   const currentUserId = String(user.userId || user.id || currentUser?._id || currentUser?.id || "");
+  const searchParams = new URLSearchParams(location.search);
+  const vnpayStatus = searchParams.get("vnpayStatus");
+  const callbackOrderId = searchParams.get("orderId");
+  const callbackUpdated = searchParams.get("updated");
 
   const fetchDashboard = async () => {
     try {
@@ -134,6 +142,27 @@ function UserDashboard() {
 
     fetchDashboard();
   }, [accessToken]);
+
+  useEffect(() => {
+    if (!vnpayStatus) return;
+
+    if (vnpayStatus === "success") {
+      setNotice(
+        callbackUpdated === "1"
+          ? `Thanh toan VNPAY thanh cong. Don #${String(callbackOrderId || "").slice(-6)} da duoc cap nhat.`
+          : "Thanh toan VNPAY thanh cong. Dashboard dang tai lai du lieu moi nhat.",
+      );
+      fetchDashboard();
+    } else if (vnpayStatus === "failed") {
+      setNotice("Thanh toan VNPAY chua thanh cong hoac chu ky xac thuc khong hop le.");
+    }
+
+    const timer = window.setTimeout(() => {
+      navigate("/user/dashboard", { replace: true });
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [vnpayStatus, callbackOrderId, callbackUpdated, navigate]);
 
   const activeOrders = orders.filter(
     (order) => !["completed", "cancelled", "rejected"].includes(order.status),
@@ -274,15 +303,122 @@ function UserDashboard() {
     }
   };
 
-  const canCancel = (status) => ["awaiting_payment", "awaiting_confirm"].includes(status);
-  const canPay = (status) => status === "awaiting_payment";
+  const canCancel = (order) =>
+    ["awaiting_payment", "awaiting_confirm", "confirmed"].includes(
+      order?.status,
+    );
+  const canPay = (order) =>
+    order?.paymentStatus === "unpaid" && order?.status !== "cancelled";
   const canReview = (order) =>
     order.status === "completed" &&
     !reviews.find((review) => String(review.orderId) === String(getOrderId(order)));
 
+  const handleUserCancel = async (order) => {
+    const orderId = getOrderId(order);
+
+    if (!accessToken) {
+      setError("Ban can dang nhap de huy don.");
+      return;
+    }
+
+    if (!["awaiting_payment", "awaiting_confirm", "confirmed"].includes(order.status)) {
+      setError("Don nay hien khong the huy o trang thai hien tai.");
+      setNotice("");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Ban chac chan muon huy don #${String(orderId).slice(-6)}?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      setCancellingOrderId(String(orderId));
+      setError("");
+      setNotice("");
+
+      const res = await axios.patch(
+        `/api/orders/cancel/${orderId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      setDetailId((prev) => (prev === orderId ? "" : prev));
+      setNotice(
+        res.data?.message || `Da huy don #${String(orderId).slice(-6)} thanh cong.`,
+      );
+      await fetchDashboard();
+    } catch (cancelError) {
+      setError(
+        cancelError?.response?.data?.message ||
+          "Khong the huy don nay vao luc nay.",
+      );
+    } finally {
+      setCancellingOrderId("");
+    }
+  };
+
   const handleCancel = (orderId) => {
     setNotice(`Đơn #${String(orderId).slice(-6)}: hiện backend chưa có endpoint hủy từ user.`);
     console.log("cancel order", orderId);
+  };
+
+  const handleOrderPay = async (order) => {
+    const orderId = getOrderId(order);
+
+    if (!accessToken) {
+      setError("Ban can dang nhap de thanh toan.");
+      return;
+    }
+
+    if (!canPay(order)) {
+      setError("Don nay khong con o trang thai co the thanh toan.");
+      setNotice("");
+      return;
+    }
+
+    try {
+      setPayingOrderId(String(orderId));
+      setError("");
+      setNotice("");
+
+      const departureDate = getDepartureDate(order);
+      const orderInfo = [
+        getServiceName(order),
+        `${Number(order?.numPeople || 0)} nguoi`,
+        departureDate
+          ? `KH ${new Date(departureDate).toLocaleDateString("vi-VN")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      const res = await axios.post("/api/create-qr", {
+        amount: String(order.totalPrice || 0),
+        orderInfo,
+        txnRef: String(orderId),
+      });
+
+      const paymentUrl = res.data?.vnpayRespone;
+      if (!paymentUrl) {
+        setError("Khong tao duoc link thanh toan.");
+        return;
+      }
+
+      window.location.href = paymentUrl;
+    } catch (payError) {
+      setError(
+        payError?.response?.data?.message ||
+          payError.message ||
+          "Khong the ket noi den cong thanh toan.",
+      );
+    } finally {
+      setPayingOrderId("");
+    }
   };
 
   const handlePay = (orderId) => {
@@ -290,7 +426,11 @@ function UserDashboard() {
     console.log("pay order", orderId);
   };
 
-  const BookingTable = ({ list }) => (
+  const BookingTable = ({
+    list,
+    allowActions = true,
+    allowReviewAction = false,
+  }) => (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[980px]" style={{ fontSize: 14 }}>
         <thead>
@@ -346,26 +486,28 @@ function UserDashboard() {
                       <FaEye size={12} />
                       Chi tiết
                     </button>
-                    {canPay(order.status) ? (
+                    {allowActions && canPay(order) ? (
                       <button
                         type="button"
-                        onClick={() => handlePay(orderId)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-600"
+                        onClick={() => handleOrderPay(order)}
+                        disabled={payingOrderId === String(orderId)}
+                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Thanh toán
                       </button>
                     ) : null}
-                    {canCancel(order.status) ? (
+                    {allowActions && canCancel(order) ? (
                       <button
                         type="button"
-                        onClick={() => handleCancel(orderId)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 transition hover:bg-red-50"
+                        onClick={() => handleUserCancel(order)}
+                        disabled={cancellingOrderId === String(orderId)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <FaTrash size={12} />
                         Hủy
                       </button>
                     ) : null}
-                    {canReview(order) ? (
+                    {(allowActions || allowReviewAction) && canReview(order) ? (
                       <button
                         type="button"
                         onClick={() => openReview(order)}
@@ -464,14 +606,18 @@ function UserDashboard() {
           {tab === "orders" ? (
             <div>
               <h2 className="mb-4 text-xl font-semibold text-slate-900">Đơn hàng đang xử lý</h2>
-              <BookingTable list={activeOrders} />
+              <BookingTable list={activeOrders} allowActions />
             </div>
           ) : null}
 
           {tab === "history" ? (
             <div>
               <h2 className="mb-4 text-xl font-semibold text-slate-900">Lịch sử đặt dịch vụ</h2>
-              <BookingTable list={historyOrders} />
+              <BookingTable
+                list={historyOrders}
+                allowActions={false}
+                allowReviewAction
+              />
             </div>
           ) : null}
 

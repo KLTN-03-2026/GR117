@@ -198,6 +198,91 @@ function BookingConfirm() {
     }
   };
 
+  const handlePayNow = async () => {
+    if (!serviceId) {
+      setError("Khong tim thay ma tour.");
+      return;
+    }
+
+    if (!selectedScheduleId) {
+      setError("Vui long chon lich khoi hanh.");
+      return;
+    }
+
+    if (!customerForm.fullName || !customerForm.email || !customerForm.phone) {
+      setError("Vui long nhap day du ho ten, email va so dien thoai.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError("");
+      setSuccess("");
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        navigate("/signin", { replace: true });
+        return;
+      }
+
+      const orderInfo = [
+        getServiceName(service),
+        `${people} nguoi`,
+        selectedSchedule ? `KH ${summaryDate}` : "",
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      const orderRes = await axios.post(
+        "/api/orders",
+        {
+          scheduleId: selectedScheduleId,
+          numPeople: people,
+          customerInfo: {
+            name: customerForm.fullName,
+            email: customerForm.email,
+            phone: customerForm.phone,
+          },
+          note: bookingForm.note,
+          paymentStatus: "unpaid",
+          paymentFlow: "vnpay",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      const createdOrder = orderRes.data?.data;
+      if (!createdOrder?._id) {
+        setError("Khong tao duoc don hang cho thanh toan.");
+        return;
+      }
+
+      const res = await axios.post("/api/create-qr", {
+        amount: String(createdOrder.totalPrice || total),
+        orderInfo,
+        txnRef: String(createdOrder._id),
+      });
+
+      const paymentUrl = res.data?.vnpayRespone;
+      if (!paymentUrl) {
+        setError("Khong tao duoc link thanh toan.");
+        return;
+      }
+
+      window.location.href = paymentUrl;
+    } catch (submitError) {
+      setError(
+        submitError?.response?.data?.message ||
+          submitError.message ||
+          "Khong the ket noi den cong thanh toan.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f6f8fc] px-4 py-8">
@@ -377,7 +462,7 @@ function BookingConfirm() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleCreateOrder({ paymentStatus: "paid" })}
+                  onClick={handlePayNow}
                   disabled={submitting}
                   className="rounded-xl bg-[#0f74c8] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0b5ea4] disabled:cursor-not-allowed disabled:opacity-70"
                 >
