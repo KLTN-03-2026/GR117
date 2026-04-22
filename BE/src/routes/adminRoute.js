@@ -52,9 +52,13 @@ router.post("/add-account", ...Authorization, adminController.addAccount);
 
 // QUAN LY DU LIEU DICH VU
 //xem dich vu
-router.get("/getAllService", adminController.getAllService);
+router.get("/getAllService", ...Authorization, adminController.getAllService);
 //xoa dich vu
-router.delete("/deleteService/:id", adminController.deleteService);
+router.delete("/deleteService/:id", ...Authorization, adminController.deleteService);
 //thay doi trang thai dich vu
-router.patch("/changeServiceStatus/:id", adminController.changeServiceStatus);
+router.patch(
+  "/changeServiceStatus/:id",
+  ...Authorization,
+  adminController.changeServiceStatus,
+);
 module.exports = router;

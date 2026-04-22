@@ -106,7 +106,9 @@ module.exports.checkPayment = async (req, res) => {
     verifyResult?.vnp_ResponseCode ?? req.query?.vnp_ResponseCode ?? "",
   );
   const transactionStatus = String(
-    verifyResult?.vnp_TransactionStatus ?? req.query?.vnp_TransactionStatus ?? "",
+    verifyResult?.vnp_TransactionStatus ??
+      req.query?.vnp_TransactionStatus ??
+      "",
   );
   const isVerified = Boolean(verifyResult?.isVerified);
   const hasSuccessfulResponseCode = responseCode === "00";
@@ -114,7 +116,9 @@ module.exports.checkPayment = async (req, res) => {
     transactionStatus === "" || transactionStatus === "00";
   const isSuccess =
     isVerified && hasSuccessfulResponseCode && hasSuccessfulTransactionStatus;
-  const txnRef = String(verifyResult?.vnp_TxnRef || req.query?.vnp_TxnRef || "");
+  const txnRef = String(
+    verifyResult?.vnp_TxnRef || req.query?.vnp_TxnRef || "",
+  );
   let didUpdateOrder = false;
 
   if (txnRef) {
@@ -146,60 +150,46 @@ module.exports.checkPayment = async (req, res) => {
   }&orderId=${encodeURIComponent(txnRef)}&verified=${
     isVerified ? "1" : "0"
   }&updated=${didUpdateOrder ? "1" : "0"}`;
+  const homeUrl = `${getFrontendBaseUrl()}/`;
 
   return res.status(200).send(`<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VNPAY Callback</title>
-    <meta http-equiv="refresh" content="2;url=${dashboardUrl}" />
+    <title>${isSuccess ? "Thanh toan thanh cong" : "Ket qua thanh toan"}</title>
+    <meta http-equiv="refresh" content="3;url=${homeUrl}" />
   </head>
-  <body style="margin:0;font-family:Arial,sans-serif;background:#f8fafc;color:#0f172a;">
-    <div style="max-width:840px;margin:40px auto;padding:0 16px;">
-      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;padding:24px;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
-        <div style="display:inline-block;padding:8px 12px;border-radius:999px;background:${isSuccess ? "#dcfce7" : "#e0f2fe"};color:${isSuccess ? "#166534" : "#0369a1"};font-weight:700;font-size:13px;">
+  <body style="margin:0;font-family:Arial,sans-serif;background:radial-gradient(circle at top,#ecfdf5 0%,#f8fafc 45%,#eef2ff 100%);color:#0f172a;">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+      <div style="width:100%;max-width:560px;background:#ffffff;border:1px solid #dbeafe;border-radius:28px;padding:40px 32px;box-shadow:0 20px 60px rgba(15,23,42,0.10);text-align:center;">
+        <div style="width:88px;height:88px;margin:0 auto 20px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:${isSuccess ? "#dcfce7" : "#fee2e2"};box-shadow:inset 0 0 0 10px ${isSuccess ? "#f0fdf4" : "#fff1f2"};">
+          ${
+            isSuccess
+              ? `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M20 6L9 17l-5-5" stroke="#16a34a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>`
+              : `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M15 9l-6 6M9 9l6 6" stroke="#dc2626" stroke-width="2.8" stroke-linecap="round"/>
+                </svg>`
+          }
+        </div>
+
+        <div style="display:inline-block;padding:8px 14px;border-radius:999px;background:${isSuccess ? "#dcfce7" : "#fee2e2"};color:${isSuccess ? "#166534" : "#b91c1c"};font-weight:700;font-size:13px;">
           ${title}
         </div>
-        <h1 style="margin:16px 0 8px;font-size:28px;">Trang check-payment-vnpay</h1>
-        <p style="margin:0 0 20px;color:#475569;line-height:1.6;">${subtitle}</p>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">
-          <div style="background:#f8fafc;border-radius:14px;padding:14px;">
-            <div style="font-size:12px;color:#64748b;">vnp_ResponseCode</div>
-            <div style="margin-top:6px;font-size:18px;font-weight:700;">${escapeHtml(responseCode || "--")}</div>
-          </div>
-          <div style="background:#f8fafc;border-radius:14px;padding:14px;">
-            <div style="font-size:12px;color:#64748b;">vnp_TransactionStatus</div>
-            <div style="margin-top:6px;font-size:18px;font-weight:700;">${escapeHtml(transactionStatus || "--")}</div>
-          </div>
-          <div style="background:#f8fafc;border-radius:14px;padding:14px;">
-            <div style="font-size:12px;color:#64748b;">vnp_TxnRef</div>
-            <div style="margin-top:6px;font-size:18px;font-weight:700;">${escapeHtml(txnRef || "--")}</div>
-          </div>
-          <div style="background:#f8fafc;border-radius:14px;padding:14px;">
-            <div style="font-size:12px;color:#64748b;">verifyReturnUrl</div>
-            <div style="margin-top:6px;font-size:18px;font-weight:700;">${escapeHtml(
-              verifyResult?.message || (isVerified ? "verified" : "failed"),
-            )}</div>
-          </div>
-        </div>
+        <h1 style="margin:18px 0 10px;font-size:32px;line-height:1.2;color:#0f172a;">
+          ${isSuccess ? "Thanh toán thành công" : "Thanh toán chưa thành công"}
+        </h1>
 
-        <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:16px;">
-          <table style="width:100%;border-collapse:collapse;background:#fff;">
-            <thead style="background:#f8fafc;">
-              <tr>
-                <th style="text-align:left;padding:12px;border-bottom:1px solid #e2e8f0;">Field</th>
-                <th style="text-align:left;padding:12px;border-bottom:1px solid #e2e8f0;">Value</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-
-        <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;">
-          <a href="${dashboardUrl}" style="display:inline-block;padding:12px 16px;border-radius:12px;background:#0f74c8;color:#fff;text-decoration:none;font-weight:700;">Mo theo doi don hang</a>
-          <a href="${getFrontendBaseUrl()}/" style="display:inline-block;padding:12px 16px;border-radius:12px;background:#e2e8f0;color:#0f172a;text-decoration:none;font-weight:700;">Ve trang chu</a>
+        <p style="margin:0 auto;max-width:420px;color:#475569;line-height:1.7;font-size:15px;">
+          ${
+            isSuccess
+              ? "Giao dịch của bạn đã được xác nhận. Hệ thống sẽ tự động đưa bạn quay về trang chủ sau 3 giây."
+              : "Giao dịch chưa được xác nhận thành công. Bạn sẽ được chuyển về trang chủ sau 3 giây để tiếp tục thao tác."
+          }
+        </p>
         </div>
       </div>
     </div>

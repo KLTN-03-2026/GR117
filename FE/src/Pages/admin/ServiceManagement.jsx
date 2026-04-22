@@ -16,7 +16,7 @@ const ServiceManagement = () => {
       try {
         setError("");
         const accessToken = localStorage.getItem("accessToken");
-        const result = await axios.get("/api/admin/getAllService", {
+        const result = await axios.get("/api/admin/getAllService?limit=1000", {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },

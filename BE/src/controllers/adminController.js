@@ -304,7 +304,9 @@ module.exports.addAccount = async (req, res) => {
 module.exports.getAllService = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 6;
+    const rawLimit = parseInt(req.query.limit);
+    const hasPagination = Number.isFinite(rawLimit) && rawLimit > 0;
+    const limit = hasPagination ? rawLimit : 0;
     const skip = (page - 1) * limit;
 
     // Lấy thêm keyword để hỗ trợ thanh tìm kiếm trên giao diện
@@ -330,7 +332,7 @@ module.exports.getAllService = async (req, res) => {
       // Dùng $toString để ép kiểu dữ liệu, giải quyết triệt để lỗi không khớp ObjectId vs String
       {
         $lookup: {
-          from: "accounts",
+          from: "users",
           let: { pId: "$provider_id" },
           pipeline: [
             {
@@ -396,11 +398,9 @@ module.exports.getAllService = async (req, res) => {
       {
         $facet: {
           metadata: [{ $count: "total" }],
-          data: [
-            { $sort: { createdAt: -1 } },
-            { $skip: skip },
-            { $limit: limit },
-          ],
+          data: hasPagination
+            ? [{ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: limit }]
+            : [{ $sort: { createdAt: -1 } }],
         },
       },
     ]);
@@ -415,7 +415,7 @@ module.exports.getAllService = async (req, res) => {
         page,
         limit,
         total,
-        totalPage: Math.ceil(total / limit),
+        totalPage: hasPagination && limit > 0 ? Math.ceil(total / limit) : 1,
       },
     });
   } catch (error) {

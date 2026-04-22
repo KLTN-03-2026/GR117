@@ -61,7 +61,7 @@ const Destination = () => {
     useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/services");
+        const res = await fetch("/api/services?limit=1000");
         const data = await res.json();
         setData(data.data || []);
       } catch (error) {

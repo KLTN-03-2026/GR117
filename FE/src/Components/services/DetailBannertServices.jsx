@@ -19,7 +19,10 @@ function DetailBannerService({
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
       <div className="absolute bottom-0 left-0 right-0 mx-auto max-w-7xl p-6 md:p-10">
-        <a href="/destination" className="mb-4 block text-white/70 hover:text-white">
+        <a
+          href="/destination"
+          className="mb-4 block text-white/70 hover:text-white"
+        >
           ← Quay lại
         </a>
 

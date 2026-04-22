@@ -9,6 +9,8 @@ const reviewRoute = require("./reviewRoute.js");
 const statsRoute = require("./statsRoute.js");
 const adminRoute = require("./adminRoute.js");
 const vnpayRoute = require("./vnpayRoute.js");
+// const provider = require("./providerRoutes.js");
+// app.use("/api/provider", provider);
 module.exports = function (app) {
   app.use("/api/auth", authRoute);
   app.use("/api/users", userRoute);
