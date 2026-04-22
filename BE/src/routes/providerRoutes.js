@@ -1,12 +1,17 @@
-// const express = require("express");
-// const router = express.Router();
-// const registerProvider = require("../controllers/provider.js");
-// const {
-//   verifyToken,
-//   authorizeRoles,
-// } = require("../middlewares/authMiddleware.js");
+const express = require("express");
+const router = express.Router();
+const providerController = require("../controllers/providerController.js");
+const {
+  verifyToken,
+  authorizeRoles,
+} = require("../middlewares/authMiddleware.js");
 
-// // lấy ra tất cả thông tin của provider
-// router.get("/info", registerProvider.getInfo);
+router.get("/info/:id", providerController.getInfo);
+router.get(
+  "/me",
+  verifyToken,
+  authorizeRoles("provider", "admin"),
+  providerController.getMyProviderProfile,
+);
 
-// module.exports = router;
+module.exports = router;

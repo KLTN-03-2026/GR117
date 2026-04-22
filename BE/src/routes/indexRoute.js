@@ -1,4 +1,3 @@
-const express = require("express");
 const authRoute = require("./authRoute.js");
 const userRoute = require("./userRoute.js");
 const serviceRoute = require("./serviceRoute.js");
@@ -9,8 +8,8 @@ const reviewRoute = require("./reviewRoute.js");
 const statsRoute = require("./statsRoute.js");
 const adminRoute = require("./adminRoute.js");
 const vnpayRoute = require("./vnpayRoute.js");
-// const provider = require("./providerRoutes.js");
-// app.use("/api/provider", provider);
+const providerRoute = require("./providerRoutes.js");
+
 module.exports = function (app) {
   app.use("/api/auth", authRoute);
   app.use("/api/users", userRoute);
@@ -21,5 +20,6 @@ module.exports = function (app) {
   app.use("/api/reviews", reviewRoute);
   app.use("/api/stats", statsRoute);
   app.use("/api/admin", adminRoute);
+  app.use("/api/provider", providerRoute);
   app.use("/api", vnpayRoute);
 };

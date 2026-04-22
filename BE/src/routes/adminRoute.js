@@ -11,6 +11,7 @@ router.get(
   ...Authorization,
   adminController.getPendingProviders,
 );
+router.get("/providers", ...Authorization, adminController.getAllProviders);
 router.patch(
   "/approve-provider/:id",
   ...Authorization,

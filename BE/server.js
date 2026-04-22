@@ -10,9 +10,11 @@ const router = require("./src/routes/indexRoute.js");
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+// Provider registration sends the business license as a base64 image string,
+// so we raise the JSON/body parser limit above the default 100kb.
+app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes

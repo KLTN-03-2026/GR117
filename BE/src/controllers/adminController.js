@@ -1,6 +1,7 @@
 const User = require("../models/User.js");
 const Service = require("../models/Service.js");
 const Review = require("../models/Review.js");
+const Provider = require("../models/Provider.js");
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
@@ -46,6 +47,10 @@ module.exports.approveProvider = async (req, res) => {
 
     provider.status = "active";
     await provider.save();
+    await Provider.findOneAndUpdate(
+      { providerID: provider._id },
+      { status: "approved" },
+    );
 
     return res.status(200).json({
       message: "Duyệt nhà cung cấp thành công",
@@ -83,6 +88,10 @@ module.exports.rejectProvider = async (req, res) => {
 
     provider.status = "rejected";
     await provider.save();
+    await Provider.findOneAndUpdate(
+      { providerID: provider._id },
+      { status: "rejected" },
+    );
 
     return res.status(200).json({
       message: "Từ chối nhà cung cấp thành công",
@@ -101,10 +110,52 @@ module.exports.rejectProvider = async (req, res) => {
   }
 };
 
+module.exports.getAllProviders = async (req, res) => {
+  try {
+    const providerUsers = await User.find({ role: "provider" })
+      .select("fullName email phone role status createdAt")
+      .sort({ createdAt: -1 });
+
+    const providerProfiles = await Provider.find({
+      providerID: { $in: providerUsers.map((item) => item._id) },
+    });
+
+    const providerProfileMap = new Map(
+      providerProfiles.map((profile) => [String(profile.providerID), profile]),
+    );
+
+    const providers = providerUsers.map((user) => {
+      const profile = providerProfileMap.get(String(user._id));
+
+      return {
+        _id: profile?._id || user._id,
+        providerID: user,
+        businessName: profile?.businessName || user.fullName,
+        taxCode: profile?.taxCode || "",
+        businessLicense: profile?.businessLicense || "",
+        address: profile?.address || "",
+        legalRepresentative: profile?.legalRepresentative || "",
+        status: profile?.status || user.status,
+        agreements: profile?.agreements || {},
+        createdAt: profile?.createdAt || user.createdAt,
+        updatedAt: profile?.updatedAt || user.updatedAt,
+      };
+    });
+
+    return res.status(200).json({
+      message: "Lay danh sach provider thanh cong",
+      data: providers,
+    });
+  } catch (error) {
+    console.error("Loi getAllProviders:", error);
+    return res.status(500).json({ message: "Loi he thong" });
+  }
+};
+
 //láy tất cả tài khoản
 module.exports.getAllAccounts = async (req, res) => {
   try {
-    const accountsList = await User.find()
+    const accountsList = await User.find({ role: { $ne: "provider" } })
       .select("fullName email phone role status createdAt")
       .sort({ createdAt: -1 });
     return res.status(200).json({
@@ -164,6 +215,9 @@ module.exports.deleteAccount = async (req, res) => {
       });
     }
     const deletedAccount = await User.findByIdAndDelete(id);
+    if (deletedAccount?.role === "provider") {
+      await Provider.deleteOne({ providerID: deletedAccount._id });
+    }
     return res.status(200).json({
       message: "xóa tài khoản thành công",
       data: deletedAccount,

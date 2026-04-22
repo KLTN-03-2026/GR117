@@ -29,7 +29,7 @@ const AccountManagement = () => {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
 
-        setAccounts(result.data.data || []);
+        setAccounts((result.data.data || []).filter((item) => item?.role !== "provider"));
       } catch (err) {
         setError(err?.response?.data?.message || "Không thể tải danh sách tài khoản");
       }
@@ -39,6 +39,7 @@ const AccountManagement = () => {
   }, []);
 
   const filteredAccounts = accounts.filter((item) => {
+    if (item?.role === "provider") return false;
     const keyword = accountSearch.trim().toLowerCase();
     if (!keyword) return true;
 

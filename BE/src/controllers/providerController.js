@@ -1,33 +1,44 @@
-// //lấy thông tin
-// const User = require("../models/User.js");
-// const Provider = require("../models/Business.js");
+const Provider = require("../models/Provider.js");
 
-// //post
+module.exports.getInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const provider = await Provider.findById(id).populate(
+      "providerID",
+      "fullName email phone role status createdAt",
+    );
 
-// // lấy thông tin
-// module.exports.getInfo = async (req, res) => {
-//   try {
-//     const { id } = req.params;
+    if (!provider) {
+      return res.status(404).json({ message: "Khong tim thay provider" });
+    }
 
-//     const provider = await Provider.findById(id).populate(
-//       "providerID",
-//       "fullName email phone",
-//     );
+    return res.status(200).json({
+      message: "Lay thong tin provider thanh cong",
+      data: provider,
+    });
+  } catch (error) {
+    console.error("Loi getInfo provider:", error);
+    return res.status(500).json({ message: "Loi server" });
+  }
+};
 
-//     if (!provider) {
-//       return res.status(404).json({
-//         message: "Không tìm thấy provider",
-//       });
-//     }
+module.exports.getMyProviderProfile = async (req, res) => {
+  try {
+    const provider = await Provider.findOne({ providerID: req.user.id }).populate(
+      "providerID",
+      "fullName email phone role status createdAt",
+    );
 
-//     res.status(200).json({
-//       message: "Lấy thông tin thành công",
-//       data: provider,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).json({
-//       message: "Lỗi server",
-//     });
-//   }
-// };
+    if (!provider) {
+      return res.status(404).json({ message: "Chua co ho so provider" });
+    }
+
+    return res.status(200).json({
+      message: "Lay ho so provider thanh cong",
+      data: provider,
+    });
+  } catch (error) {
+    console.error("Loi getMyProviderProfile:", error);
+    return res.status(500).json({ message: "Loi server" });
+  }
+};

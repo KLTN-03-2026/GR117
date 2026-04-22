@@ -9,6 +9,12 @@ const providerSchema = new mongoose.Schema(
       required: true,
     },
 
+    businessName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     taxCode: {
       type: String,
       required: true,
