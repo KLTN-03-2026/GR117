@@ -30,6 +30,26 @@ module.exports.createOrder = async (req, res) => {
       couponCode,
     } = req.body;
 
+    const parsedPeople = Number(numPeople);
+    if (!scheduleId) {
+      return res.status(400).json({ message: "Thieu lich khoi hanh" });
+    }
+
+    if (!Number.isInteger(parsedPeople) || parsedPeople < 1) {
+      return res.status(400).json({ message: "So luong khach khong hop le" });
+    }
+
+    if (
+      !customerInfo ||
+      !String(customerInfo.name || "").trim() ||
+      !String(customerInfo.email || "").trim() ||
+      !String(customerInfo.phone || "").trim()
+    ) {
+      return res.status(400).json({
+        message: "Vui long nhap day du ho ten, email va so dien thoai",
+      });
+    }
+
     const schedule = await Schedule.findById(scheduleId).populate("serviceId");
     if (!schedule || schedule.status !== "open") {
       return res
@@ -37,15 +57,16 @@ module.exports.createOrder = async (req, res) => {
         .json({ message: "Lich khoi hanh nay hien khong kha dung" });
     }
 
-    const availableSlots = Number(schedule.maxSlots || 0) - Number(schedule.bookedSlots || 0);
-    if (Number(numPeople) > availableSlots) {
+    const availableSlots =
+      Number(schedule.maxSlots || 0) - Number(schedule.bookedSlots || 0);
+    if (parsedPeople > availableSlots) {
       return res.status(400).json({
-        message: `Khong du cho. Chi con ${availableSlots} cho trong.`,
+        message: "Số lượng chỗ còn lại không đủ",
       });
     }
 
     const service = schedule.serviceId;
-    const baseTotalPrice = Number(service.prices || 0) * Number(numPeople || 0);
+    const baseTotalPrice = Number(service.prices || 0) * parsedPeople;
     let discountAmount = 0;
     let couponId = null;
     let normalizedCouponCode = "";
@@ -109,7 +130,7 @@ module.exports.createOrder = async (req, res) => {
         pricePerPerson: service.prices,
       },
       customerInfo,
-      numPeople,
+      numPeople: parsedPeople,
       originalPrice: baseTotalPrice,
       totalPrice: finalPrice,
       couponCode: normalizedCouponCode,
@@ -124,7 +145,7 @@ module.exports.createOrder = async (req, res) => {
       paymentStatus: "unpaid",
     });
 
-    schedule.bookedSlots += Number(numPeople);
+    schedule.bookedSlots += parsedPeople;
     if (schedule.bookedSlots >= schedule.maxSlots) {
       schedule.status = "full";
     }

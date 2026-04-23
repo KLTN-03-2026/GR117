@@ -174,6 +174,12 @@ function BookingConfirm() {
       return;
     }
 
+    const validationMessage = validateBookingBeforeSubmit();
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
+
     if (!customerForm.fullName || !customerForm.email || !customerForm.phone) {
       setError("Vui lòng nhập đầy đủ họ tên, email và số điện thoại.");
       return;
@@ -335,6 +341,17 @@ function BookingConfirm() {
   const remainingSlots = selectedSchedule
     ? getRemainingSlots(selectedSchedule)
     : 0;
+  const validateBookingBeforeSubmit = () => {
+    if (!selectedScheduleId) return "Vui long chon lich khoi hanh.";
+    if (people < 1) return "So luong khach khong hop le.";
+    if (people > remainingSlots) {
+      return "Số lượng chỗ còn lại không đủ";
+    }
+    if (!customerForm.fullName || !customerForm.email || !customerForm.phone) {
+      return "Vui long nhap day du ho ten, email va so dien thoai.";
+    }
+    return "";
+  };
 
   return (
     <div className="min-h-screen bg-[#f6f8fc] px-4 py-8 text-left md:px-6">

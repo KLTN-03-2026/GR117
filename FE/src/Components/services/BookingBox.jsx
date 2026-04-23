@@ -41,6 +41,13 @@ function BookingBox({
   const subtotal = price * normalizedPeople;
   const discountAmount = Number(couponResult?.discountAmount || 0);
   const finalTotal = Math.max(subtotal - discountAmount, 0);
+  const availableSlots = Math.max(
+    Number(selectedSchedule?.maxSlots || selectedSchedule?.maxPeople || 0) -
+      Number(selectedSchedule?.bookedSlots || 0),
+    0,
+  );
+  const isOverCapacity =
+    Boolean(selectedScheduleId) && normalizedPeople > availableSlots;
 
   useEffect(() => {
     if (viewPage === false) setShowBooking(true);
@@ -85,6 +92,16 @@ function BookingBox({
 
   // Tao payload dat tour va chuyen sang trang xac nhan.
   const handleBook = () => {
+    if (!selectedScheduleId) {
+      setCouponError("Vui long chon lich khoi hanh.");
+      return;
+    }
+
+    if (isOverCapacity) {
+      setCouponError("Số lượng chỗ còn lại không đủ");
+      return;
+    }
+
     const payload = {
       serviceId: service?._id || "",
       service,
@@ -322,6 +339,7 @@ function BookingBox({
 
               <button
                 onClick={handleBook}
+                disabled={isOverCapacity}
                 className="w-full py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-xl hover:shadow-lg hover:shadow-orange-200 transition-all flex items-center justify-center gap-2"
                 style={{ fontSize: 15, fontWeight: 600 }}
               >

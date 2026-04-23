@@ -4,6 +4,7 @@ import { CiLogin } from "../../assets/Icons/Icons";
 import { FaFacebook, FaInstagram } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { fileToDataUrl } from "../../utils/fileToDataUrl";
+import TermsContent from "./TermsContent";
 
 const defaultForm = {
   fullName: "",
@@ -32,6 +33,7 @@ export default function Register() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -65,15 +67,15 @@ export default function Register() {
 
   const validateProviderForm = () => {
     if (!form.businessName.trim())
-      return "Vui long nhap ten doanh nghiep/ho kinh doanh/thuong nhan";
-    if (!form.taxCode.trim()) return "Vui long nhap ma so thue";
-    if (!form.address.trim()) return "Vui long nhap dia chi doanh nghiep";
+      return "Vui lòng nhập tên doanh nghiệp/hộ kinh doanh/thương nhân";
+    if (!form.taxCode.trim()) return "Vui lòng nhập mã số thuế";
+    if (!form.address.trim()) return "Vui lòng nhập địa chỉ doanh nghiệp";
     if (!form.businessLicense.trim())
-      return "Vui long upload giay phep kinh doanh";
+      return "Vui lòng upload giấy phép kinh doanh";
     if (!form.legalRepresentative.trim())
-      return "Vui long nhap nguoi dai dien phap luat";
+      return "Vui lòng nhập người đại diện pháp luật";
     if (form.agreements.termsAccepted !== true) {
-      return "Ban can dong y dieu khoan hop tac";
+      return "Bạn cần đồng ý với điều khoản hợp tác";
     }
     return "";
   };
@@ -82,13 +84,13 @@ export default function Register() {
     e.preventDefault();
 
     if (form.password !== form.confirmPass) {
-      setError("Mat khau xac nhan khong khop");
+      setError("Mật khẩu xác nhận không khớp");
       setMessage("");
       return;
     }
 
     if (form.password.length < 6) {
-      setError("Mat khau phai co it nhat 6 ky tu");
+      setError("Mật khẩu phải có ít nhất 6 ký tự");
       setMessage("");
       return;
     }
@@ -141,17 +143,17 @@ export default function Register() {
         const data = await res.json();
 
         if (res.ok) {
-          setMessage(data.message || "Dang ky thanh cong");
+          setMessage(data.message || "Đăng ký thành công");
           setForm({
             ...defaultForm,
             agreements: { ...defaultForm.agreements },
           });
           setTimeout(() => navigate("/signin"), 1000);
         } else {
-          setError(data.message || "Dang ky that bai");
+          setError(data.message || "Đăng ký thất bại");
         }
       } catch {
-        setError("Loi he thong");
+        setError("Lỗi hệ thống");
       } finally {
         setLoading(false);
         setSubmitted(false);
@@ -162,11 +164,32 @@ export default function Register() {
   }, [submitted, form, navigate]);
 
   const checkboxItems = [
-    { key: "termsAccepted", label: "Toi da doc va dong y dieu khoan hop tac" },
+    {
+      key: "termsAccepted",
+      label: (
+        <>
+          Tôi đã đọc và đồng ý với{" "}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowTerms(true);
+            }}
+            className="font-medium text-[#f97316] underline underline-offset-2 transition hover:text-orange-600"
+          >
+            điều khoản
+          </button>{" "}
+          hợp tác
+        </>
+      ),
+    },
   ];
 
   const inputClass =
     "flex h-12 w-full items-center rounded-xl border border-gray-200 bg-[#f8fafc] px-4 text-[#0f172a] outline-none transition-colors focus:border-[#f97316] focus:bg-white";
+  const uploadClass =
+    "flex h-12 w-full cursor-pointer items-center justify-between rounded-xl border border-dashed border-orange-200 bg-[#f8fafc] px-4 text-sm text-slate-600 outline-none transition hover:border-orange-300 focus:border-[#f97316] focus:bg-white";
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center bg-[#f8fafc] px-4 py-16">
@@ -247,7 +270,7 @@ export default function Register() {
           )}
 
           {form.role === "provider" ? (
-            <div className="space-y-4 rounded-3xl  p-6">
+            <div>
               <div>
                 <label
                   className="mb-1.5 block pl-2 text-left text-slate-500"
@@ -285,7 +308,7 @@ export default function Register() {
                 >
                   Giấy phép kinh doanh
                 </label>
-                <label className="flex h-12 cursor-pointer items-center justify-between gap-4 rounded-xl border border-dashed border-orange-200 bg-white px-4 text-sm text-slate-600 transition hover:border-orange-300">
+                <label className={uploadClass}>
                   <span>Upload ảnh</span>
                   <span className="text-xs text-slate-400">
                     {form.businessLicense ? "Đã chọn ảnh" : "Chưa upload"}
@@ -468,6 +491,41 @@ export default function Register() {
           </div>
         </form>
       </div>
+
+      {showTerms ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8"
+          onClick={() => setShowTerms(false)}
+        >
+          <div
+            className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">
+                  Điều khoản
+                </p>
+                <h3 className="text-2xl font-bold text-slate-900">
+                  Điều khoản hợp tác
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowTerms(false)}
+                className="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <div className="max-h-[75vh] overflow-y-auto px-6 py-6">
+              <TermsContent />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

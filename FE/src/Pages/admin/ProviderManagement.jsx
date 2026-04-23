@@ -193,6 +193,14 @@ const ProviderManagement = () => {
           <button
             type="button"
             disabled={disabled}
+            onClick={() => setSelectedProvider(item)}
+            className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Xem chi tiet
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
             onClick={() =>
               callProtectedPatch(
                 `/api/admin/approve-provider/${userId}`,
