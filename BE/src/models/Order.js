@@ -36,7 +36,16 @@ const orderSchema = new mongoose.Schema(
       phone: { type: String, required: true },
     },
     numPeople: { type: Number, required: true, min: 1 },
+    originalPrice: { type: Number, default: 0 },
     totalPrice: { type: Number, required: true },
+    couponCode: { type: String, default: "" },
+    couponId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Coupon",
+      default: null,
+    },
+    discountAmount: { type: Number, default: 0 },
+    finalPrice: { type: Number, default: 0 },
     status: {
       type: String,
       enum: [

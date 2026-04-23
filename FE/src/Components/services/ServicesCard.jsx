@@ -4,6 +4,8 @@ import { FaEdit } from "react-icons/fa";
 import { FaHeart, FaChevronRight, FaStar } from "react-icons/fa6";
 import { RiCalendarScheduleLine } from "react-icons/ri";
 
+import { useEffect, useState } from "react";
+
 const FALLBACK_IMAGE = "https://via.placeholder.com/400x250?text=No+Image";
 
 const getName = (service) =>
@@ -88,6 +90,10 @@ const ServicesCard = ({
   variant = "provider",
   onEdit,
   onDelete,
+  showFavorite = false,
+  isFavorite = false,
+  favoriteLoading = false,
+  onToggleFavorite,
 }) => {
   const serviceName = getName(service);
   const destination = getLocation(service);
@@ -100,6 +106,7 @@ const ServicesCard = ({
   const rating = getRating(service);
   const reviewCount = getReviewCount(service);
   const image = getImage(service);
+  const [favoriteToast, setFavoriteToast] = useState("");
 
   const handleEdit = (e) => {
     e.preventDefault();
@@ -110,6 +117,29 @@ const ServicesCard = ({
     e.preventDefault();
     onDelete?.(service);
   };
+
+  const handleToggleFavorite = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const result = await onToggleFavorite?.(service);
+    const nextFavorite =
+      typeof result === "boolean" ? result : Boolean(result?.isFavorited);
+
+    if (nextFavorite) {
+      setFavoriteToast("Đã lưu vào yêu thích");
+    }
+  };
+
+  useEffect(() => {
+    if (!favoriteToast) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setFavoriteToast("");
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, [favoriteToast]);
 
   const actionButtons = (
     <div className="flex gap-3 text-gray-600">
@@ -137,12 +167,34 @@ const ServicesCard = ({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-          <button
-            type="button"
-            className="absolute right-3 top-3 z-10 flex h-[25px] w-[25px] items-center justify-center rounded-full bg-white/80 text-gray-500 backdrop-blur-sm transition hover:bg-white hover:text-rose-500"
-          >
-            <FaHeart className="text-[15px]" />
-          </button>
+          {favoriteToast ? (
+            <div className="absolute right-3 top-12 z-20 rounded-full bg-slate-900/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur-sm">
+              {favoriteToast}
+            </div>
+          ) : null}
+
+          {showFavorite ? (
+            <button
+              type="button"
+              onClick={handleToggleFavorite}
+              disabled={favoriteLoading}
+              aria-pressed={isFavorite}
+              aria-label={
+                isFavorite ? "Bỏ khỏi yêu thích" : "Thêm vào yêu thích"
+              }
+              className={`absolute right-3 top-3 z-10 flex h-[25px] w-[25px] items-center justify-center rounded-full bg-white/80 backdrop-blur-sm transition disabled:cursor-not-allowed disabled:opacity-70 ${
+                isFavorite
+                  ? "text-rose-500 hover:bg-white"
+                  : "text-gray-500 hover:bg-white hover:text-rose-500"
+              }`}
+            >
+              <FaHeart
+                className={`text-[15px] transition ${
+                  isFavorite ? "fill-current" : ""
+                }`}
+              />
+            </button>
+          ) : null}
 
           <span
             className="absolute left-3 top-3 px-2.5 py--3 rounded-full text-[11px] font-semibold text-white w-fit"

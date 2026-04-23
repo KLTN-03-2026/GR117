@@ -35,6 +35,15 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
     isLocked: { type: Boolean, default: false },
+    resetPasswordTokenHash: { type: String, default: null },
+    resetPasswordExpiresAt: { type: Date, default: null },
+    resetPasswordUsedAt: { type: Date, default: null },
+    favoriteServices: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Service",
+      },
+    ],
   },
   {
     timestamps: true,

@@ -7,9 +7,7 @@ import DetailContentServices from "../../Components/services/DetailContentServic
 import {
   FaArrowRight,
   FaArrowLeftLong,
-  FaHeart,
   FaLocationDot,
-  FaShareNodes,
   FaStar,
 } from "react-icons/fa6";
 import {
@@ -121,6 +119,7 @@ function DetailServices() {
   const [showGallery, setShowGallery] = useState(false);
   const [galleryImg, setGalleryImg] = useState(0);
   const navigate = useNavigate();
+  const countedViewServiceId = useMemo(() => ({ current: "" }), []);
 
   const { id } = useParams();
   const location = useLocation();
@@ -173,6 +172,23 @@ function DetailServices() {
 
   useEffect(() => {
     if (!service?._id) return;
+    if (countedViewServiceId.current === String(service._id)) return;
+
+    countedViewServiceId.current = String(service._id);
+
+    const incrementView = async () => {
+      try {
+        await axios.patch(`/api/services/${service._id}/view`);
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    incrementView();
+  }, [service?._id]);
+
+  useEffect(() => {
+    if (!service?._id) return;
 
     const fetchSchedules = async () => {
       try {
@@ -216,17 +232,6 @@ function DetailServices() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
         <div className="absolute bottom-0 left-0 right-0 mx-auto max-w-7xl p-6 md:p-10">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div className="hidden shrink-0 gap-2 md:flex">
-              <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/40">
-                <FaHeart size={16} />
-              </button>
-              <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/40">
-                <FaShareNodes size={16} />
-              </button>
-            </div>
-          </div>
-
           <div className="flex items-end justify-between gap-4">
             <div>
               <div className="mb-2 flex items-center gap-2">
@@ -351,6 +356,15 @@ function DetailServices() {
                       scheduleId: bookingData.scheduleId,
                       people: bookingData.people,
                       note: bookingData.note,
+                      price: bookingData.price,
+                      originalTotal: bookingData.originalTotal,
+                      discountAmount: bookingData.discountAmount,
+                      finalTotal: bookingData.finalTotal,
+                      total: bookingData.total,
+                      couponCode: bookingData.couponCode,
+                      coupon: bookingData.coupon,
+                      couponResult: bookingData.couponResult,
+                      appliedCoupon: bookingData.appliedCoupon,
                     },
                   })
                 }

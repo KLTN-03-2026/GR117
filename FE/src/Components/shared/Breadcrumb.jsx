@@ -21,6 +21,7 @@ const PAGE_LABELS = {
   detailservices: "Chi tiết dịch vụ",
   schedule: "Lịch khởi hành",
   booking: "Đặt chỗ",
+  coupons: "Mã giảm giá",
   revenue: "Doanh thu",
 };
 

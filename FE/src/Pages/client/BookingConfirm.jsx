@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { FaArrowLeft, FaCircleCheck, FaTicket, FaShieldHeart } from "react-icons/fa6";
+import { FaArrowLeft, FaTicket } from "react-icons/fa6";
 import { MdOutlineLocalOffer } from "react-icons/md";
 import { FaLocationDot, FaClock } from "../../assets/Icons/Icons";
 import { formatDate } from "../../utils/formatDate";
@@ -14,16 +14,21 @@ const formatCurrency = (value) =>
   }) + " đ";
 
 const getServiceImage = (service) => {
-  if (Array.isArray(service?.images) && service.images[0]) return service.images[0];
+  if (Array.isArray(service?.images) && service.images[0])
+    return service.images[0];
   if (service?.imageUrl) return service.imageUrl;
   if (service?.imageFile) return `/uploads/${service.imageFile}`;
   return FALLBACK_IMAGE;
 };
 
 const getServiceName = (service) =>
-  service?.serviceName || service?.servicesName || service?.name || "Chưa có dữ liệu tour";
+  service?.serviceName ||
+  service?.servicesName ||
+  service?.name ||
+  "Chưa có dữ liệu tour";
 
-const getLocation = (service) => service?.location || service?.destination || "Chưa cập nhật";
+const getLocation = (service) =>
+  service?.location || service?.destination || "Chưa cập nhật";
 
 const getScheduleId = (schedule) => schedule?._id || schedule?.id || "";
 
@@ -39,7 +44,8 @@ function BookingConfirm() {
   const { serviceId: routeServiceId } = useParams();
   const state = location.state || {};
 
-  const serviceId = routeServiceId || state.serviceId || state.service?._id || "";
+  const serviceId =
+    routeServiceId || state.serviceId || state.service?._id || "";
   const currentUser = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("currentUser") || "null");
@@ -69,9 +75,22 @@ function BookingConfirm() {
 
   const people = Math.max(Number(bookingForm.people || 1), 1);
   const price = Number(service?.prices || service?.price || 0);
-  const total = price * people;
+  const originalTotal = Number(state.originalTotal ?? price * people);
+  const appliedCoupon =
+    state.appliedCoupon || state.couponResult || state.coupon || null;
+  const couponCode = String(
+    state.couponCode || appliedCoupon?.code || "",
+  ).trim();
+  const discountAmount = Number(
+    state.discountAmount || appliedCoupon?.discountAmount || 0,
+  );
+  const total = Math.max(
+    Number(state.finalTotal ?? state.total ?? originalTotal - discountAmount),
+    0,
+  );
   const selectedSchedule =
-    schedules.find((item) => getScheduleId(item) === selectedScheduleId) || null;
+    schedules.find((item) => getScheduleId(item) === selectedScheduleId) ||
+    null;
 
   const summaryDate = useMemo(() => {
     if (!selectedSchedule?.departureDate) return "Chưa chọn lịch khởi hành";
@@ -82,6 +101,7 @@ function BookingConfirm() {
     }
   }, [selectedSchedule?.departureDate]);
 
+  // Tai thong tin tour va lich khoi hanh cho man xac nhan.
   useEffect(() => {
     if (!serviceId) {
       setError("Thiếu mã tour để tải dữ liệu.");
@@ -117,7 +137,10 @@ function BookingConfirm() {
         }
       } catch (loadError) {
         if (!isMounted) return;
-        setError(loadError?.response?.data?.message || "Không thể tải dữ liệu tour từ database.");
+        setError(
+          loadError?.response?.data?.message ||
+            "Không thể tải dữ liệu tour từ database.",
+        );
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -130,8 +153,10 @@ function BookingConfirm() {
     };
   }, [serviceId]);
 
+  // Quay lai trang truoc do.
   const handleBack = () => navigate(-1);
 
+  // Tao don dat tour va luu coupon neu co.
   const handleCreateOrder = async ({ paymentStatus = "unpaid" } = {}) => {
     if (!serviceId) {
       setError("Không tìm thấy mã tour.");
@@ -168,6 +193,7 @@ function BookingConfirm() {
           phone: customerForm.phone,
         },
         note: bookingForm.note,
+        couponCode,
         paymentStatus,
       };
 
@@ -198,6 +224,7 @@ function BookingConfirm() {
     }
   };
 
+  // Tao don va chuyen sang cong thanh toan VNPay.
   const handlePayNow = async () => {
     if (!serviceId) {
       setError("Khong tim thay ma tour.");
@@ -228,6 +255,7 @@ function BookingConfirm() {
         getServiceName(service),
         `${people} nguoi`,
         selectedSchedule ? `KH ${summaryDate}` : "",
+        couponCode ? `Coupon ${couponCode}` : "",
       ]
         .filter(Boolean)
         .join(" | ");
@@ -243,6 +271,7 @@ function BookingConfirm() {
             phone: customerForm.phone,
           },
           note: bookingForm.note,
+          couponCode,
           paymentStatus: "unpaid",
           paymentFlow: "vnpay",
         },
@@ -303,7 +332,9 @@ function BookingConfirm() {
     );
   }
 
-  const remainingSlots = selectedSchedule ? getRemainingSlots(selectedSchedule) : 0;
+  const remainingSlots = selectedSchedule
+    ? getRemainingSlots(selectedSchedule)
+    : 0;
 
   return (
     <div className="min-h-screen bg-[#f6f8fc] px-4 py-8 text-left md:px-6">
@@ -317,11 +348,6 @@ function BookingConfirm() {
             <FaArrowLeft size={14} />
             Quay lại
           </button>
-
-          <div className="hidden items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-500 shadow-sm md:flex">
-            <FaShieldHeart className="text-emerald-500" />
-            Dữ liệu lấy từ database
-          </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.9fr)_minmax(320px,1fr)]">
@@ -358,9 +384,32 @@ function BookingConfirm() {
                 Mã giảm giá
               </div>
 
-              <div className="rounded-2xl bg-[#eceef4] px-4 py-4 text-center text-[15px] font-semibold text-slate-500">
-                Không có mã giảm giá khả dụng
-              </div>
+              {couponCode ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-slate-700">
+                  <p className="mt-1 text-lg font-semibold text-slate-900 color-[#gray]">
+                    {couponCode}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-[#eceef4] px-4 py-4 text-center text-[15px] font-semibold text-slate-500">
+                  {state.appliedCoupon || state.couponResult || state.coupon ? (
+                    <div className="space-y-1">
+                      <p className="text-slate-600">Mã giảm giá đã sử dụng</p>
+                      <p className="text-lg font-bold text-slate-900">
+                        {String(
+                          state.couponCode ||
+                            state.appliedCoupon?.code ||
+                            state.couponResult?.code ||
+                            state.coupon?.code ||
+                            "",
+                        ).trim()}
+                      </p>
+                    </div>
+                  ) : (
+                    "Không có mã giảm giá khả dụng"
+                  )}
+                </div>
+              )}
             </section>
 
             <section className="rounded-[28px] border border-slate-200/70 bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
@@ -372,9 +421,18 @@ function BookingConfirm() {
                 <div className="flex items-center justify-between text-[15px] text-slate-500">
                   <span>Tổng tiền:</span>
                   <span className="font-medium text-slate-700">
-                    {formatCurrency(total)}
+                    {formatCurrency(originalTotal)}
                   </span>
                 </div>
+
+                {couponCode ? (
+                  <div className="flex items-center justify-between text-[15px] text-slate-500">
+                    <span>Giảm giá:</span>
+                    <span className="font-medium text-emerald-600">
+                      -{formatCurrency(discountAmount)}
+                    </span>
+                  </div>
+                ) : null}
 
                 <div className="border-t border-slate-200 pt-4">
                   <div className="flex items-center justify-between">
@@ -400,7 +458,10 @@ function BookingConfirm() {
                   <input
                     value={customerForm.fullName}
                     onChange={(e) =>
-                      setCustomerForm((prev) => ({ ...prev, fullName: e.target.value }))
+                      setCustomerForm((prev) => ({
+                        ...prev,
+                        fullName: e.target.value,
+                      }))
                     }
                     className="w-full rounded-xl border border-slate-200 bg-[#fbfcfe] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
                   />
@@ -412,7 +473,10 @@ function BookingConfirm() {
                     type="email"
                     value={customerForm.email}
                     onChange={(e) =>
-                      setCustomerForm((prev) => ({ ...prev, email: e.target.value }))
+                      setCustomerForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
                     }
                     className="w-full rounded-xl border border-slate-200 bg-[#fbfcfe] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
                   />
@@ -423,7 +487,10 @@ function BookingConfirm() {
                   <input
                     value={customerForm.phone}
                     onChange={(e) =>
-                      setCustomerForm((prev) => ({ ...prev, phone: e.target.value }))
+                      setCustomerForm((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
                     }
                     className="w-full rounded-xl border border-slate-200 bg-[#fbfcfe] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
                   />
@@ -436,7 +503,10 @@ function BookingConfirm() {
                   rows={3}
                   value={bookingForm.note}
                   onChange={(e) =>
-                    setBookingForm((prev) => ({ ...prev, note: e.target.value }))
+                    setBookingForm((prev) => ({
+                      ...prev,
+                      note: e.target.value,
+                    }))
                   }
                   className="w-full resize-none rounded-xl border border-slate-200 bg-[#fbfcfe] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
                 />
@@ -542,14 +612,6 @@ function BookingConfirm() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-4 rounded-[24px] border border-dashed border-slate-300 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
-              <div className="mb-2 flex items-center gap-2 font-semibold text-slate-800">
-                <FaCircleCheck className="text-emerald-500" />
-                Lưu ý
-              </div>
-              Trang này đang lấy dữ liệu thật từ MongoDB qua API tour, lịch khởi hành và đơn hàng.
             </div>
           </aside>
         </div>

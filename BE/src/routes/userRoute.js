@@ -10,6 +10,8 @@ const {
 router.get("/profile", verifyToken, userController.getProfile);
 router.put("/profile", verifyToken, userController.updateProfile);
 router.patch("/change-password", verifyToken, userController.changePassword);
+router.get("/favorites", verifyToken, userController.getFavoriteServices);
+router.patch("/favorites/:serviceId/toggle", verifyToken, userController.toggleFavoriteService);
 
 // Routes cho Admin
 router.get(

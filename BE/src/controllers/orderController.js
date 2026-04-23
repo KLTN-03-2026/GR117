@@ -1,5 +1,6 @@
 const Order = require("../models/Order.js");
 const Schedule = require("../models/Schedule.js");
+const Coupon = require("../models/Coupon.js");
 
 const releaseScheduleSlots = async (order) => {
   const schedule = await Schedule.findById(order.scheduleId);
@@ -17,10 +18,17 @@ const releaseScheduleSlots = async (order) => {
   await schedule.save();
 };
 
-// Tao don dat tour moi cho user
+// Tao don dat tour moi cho user, co xu ly coupon neu duoc gui len.
 module.exports.createOrder = async (req, res) => {
   try {
-    const { scheduleId, numPeople, customerInfo, note, paymentFlow } = req.body;
+    const {
+      scheduleId,
+      numPeople,
+      customerInfo,
+      note,
+      paymentFlow,
+      couponCode,
+    } = req.body;
 
     const schedule = await Schedule.findById(scheduleId).populate("serviceId");
     if (!schedule || schedule.status !== "open") {
@@ -37,7 +45,56 @@ module.exports.createOrder = async (req, res) => {
     }
 
     const service = schedule.serviceId;
-    const totalPrice = Number(service.prices || 0) * Number(numPeople || 0);
+    const baseTotalPrice = Number(service.prices || 0) * Number(numPeople || 0);
+    let discountAmount = 0;
+    let couponId = null;
+    let normalizedCouponCode = "";
+
+    if (couponCode) {
+      const coupon = await Coupon.findOne({
+        code: String(couponCode).trim().toUpperCase(),
+        provider_id: service.provider_id,
+        status: "active",
+      });
+
+      if (coupon) {
+        const now = new Date();
+        const withinTimeRange =
+          (!coupon.startDate || coupon.startDate <= now) &&
+          (!coupon.endDate || coupon.endDate >= now);
+
+        if (
+          withinTimeRange &&
+          Number(coupon.usedCount || 0) < Number(coupon.maxUsage || 1) &&
+          baseTotalPrice >= Number(coupon.minOrderValue || 0)
+        ) {
+          const allowedServiceIds = Array.isArray(coupon.serviceIds)
+            ? coupon.serviceIds.map((item) => String(item))
+            : [];
+          const serviceAllowed =
+            allowedServiceIds.length === 0 ||
+            allowedServiceIds.includes(String(service._id));
+
+          if (serviceAllowed) {
+            if (coupon.discountType === "percent") {
+              discountAmount = Math.floor(
+                (baseTotalPrice * Number(coupon.discountValue || 0)) / 100,
+              );
+            } else {
+              discountAmount = Number(coupon.discountValue || 0);
+            }
+
+            if (discountAmount > baseTotalPrice) discountAmount = baseTotalPrice;
+            couponId = coupon._id;
+            normalizedCouponCode = coupon.code;
+            coupon.usedCount += 1;
+            await coupon.save();
+          }
+        }
+      }
+    }
+
+    const finalPrice = Math.max(baseTotalPrice - discountAmount, 0);
     const normalizedPaymentFlow =
       String(paymentFlow || "").toLowerCase() === "vnpay" ? "vnpay" : "manual";
 
@@ -53,7 +110,12 @@ module.exports.createOrder = async (req, res) => {
       },
       customerInfo,
       numPeople,
-      totalPrice,
+      originalPrice: baseTotalPrice,
+      totalPrice: finalPrice,
+      couponCode: normalizedCouponCode,
+      couponId,
+      discountAmount,
+      finalPrice,
       note,
       status:
         normalizedPaymentFlow === "vnpay"

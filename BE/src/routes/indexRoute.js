@@ -9,6 +9,8 @@ const statsRoute = require("./statsRoute.js");
 const adminRoute = require("./adminRoute.js");
 const vnpayRoute = require("./vnpayRoute.js");
 const providerRoute = require("./providerRoutes.js");
+const aiRoute = require("./aiRoute.js");
+const couponRoute = require("./couponRoute.js");
 
 module.exports = function (app) {
   app.use("/api/auth", authRoute);
@@ -21,5 +23,7 @@ module.exports = function (app) {
   app.use("/api/stats", statsRoute);
   app.use("/api/admin", adminRoute);
   app.use("/api/provider", providerRoute);
+  app.use("/api/ai", aiRoute);
+  app.use("/api/coupons", couponRoute);
   app.use("/api", vnpayRoute);
 };

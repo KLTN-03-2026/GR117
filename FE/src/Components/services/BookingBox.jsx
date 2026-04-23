@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   FaClock as Clock,
   FaCircleCheck as CheckCircle2,
@@ -25,21 +26,65 @@ function BookingBox({
   const [activeTab, setActiveTab] = useState("overview");
   const [people, setPeople] = useState("2");
   const [note, setNote] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponResult, setCouponResult] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   const price = Number(service?.price || service?.prices || 0);
+  const selectedScheduleId =
+    selectedSchedule?._id || selectedSchedule?.id || "";
   const normalizedPeople = Math.max(
     Number(String(people || "1").replace(/^0+(?=\d)/, "") || 1),
     1,
   );
+  const subtotal = price * normalizedPeople;
+  const discountAmount = Number(couponResult?.discountAmount || 0);
+  const finalTotal = Math.max(subtotal - discountAmount, 0);
 
   useEffect(() => {
     if (viewPage === false) setShowBooking(true);
   }, [viewPage]);
 
-  const handleBook = () => {
-    const selectedScheduleId =
-      selectedSchedule?._id || selectedSchedule?.id || "";
+  useEffect(() => {
+    setCouponResult(null);
+    setCouponError("");
+  }, [normalizedPeople, selectedScheduleId, service?._id]);
 
+  // Kiem tra ma giam gia tren backend.
+  const handleApplyCoupon = async () => {
+    const code = String(couponCode || "").trim();
+
+    if (!code) {
+      setCouponError("Vui long nhap ma giam gia.");
+      setCouponResult(null);
+      return;
+    }
+
+    try {
+      setCouponLoading(true);
+      setCouponError("");
+
+      const res = await axios.post("/api/coupons/validate", {
+        code,
+        serviceId: service?._id || "",
+        amount: subtotal,
+      });
+
+      setCouponResult(res.data?.data || null);
+      setCouponError("");
+    } catch (applyError) {
+      setCouponResult(null);
+      setCouponError(
+        applyError?.response?.data?.message || "Khong the ap dung ma giam gia.",
+      );
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  // Tao payload dat tour va chuyen sang trang xac nhan.
+  const handleBook = () => {
     const payload = {
       serviceId: service?._id || "",
       service,
@@ -48,7 +93,14 @@ function BookingBox({
       people: normalizedPeople,
       note,
       price,
-      total: price * normalizedPeople,
+      originalTotal: subtotal,
+      discountAmount,
+      finalTotal,
+      total: finalTotal,
+      couponCode: couponResult?.code || "",
+      coupon: couponResult || null,
+      couponResult: couponResult || null,
+      appliedCoupon: couponResult || null,
     };
 
     if (typeof onCheckout === "function") {
@@ -59,6 +111,7 @@ function BookingBox({
     navigate(`/booking/confirm/${payload.serviceId}`, { state: payload });
   };
 
+  // Mo khung dat lich va chuyen view sang tab lich khoi hanh.
   const openBooking = () => {
     setShowBooking(true);
     setActiveTab("schedules");
@@ -66,6 +119,7 @@ function BookingBox({
     if (typeof setViewPage === "function") setViewPage(false);
   };
 
+  // Dong khung dat tour quay ve trang xem thong tin.
   const closeBooking = () => {
     setShowBooking(false);
     if (typeof setViewPage === "function") setViewPage(true);
@@ -191,21 +245,44 @@ function BookingBox({
                   }}
                 />
               </div>
-
               <div>
                 <label
                   className="block mb-1.5 text-left text-muted-foreground"
                   style={{ fontSize: 13 }}
                 >
-                  Ghi chú
+                  Mã giảm giá
                 </label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-border outline-none focus:border-[#f97316] resize-none"
-                  style={{ fontSize: 14 }}
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Nhập mã giảm giá"
+                    className="flex-1 w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-border outline-none focus:border-[#f97316]"
+                    style={{ fontSize: 14 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading}
+                    className="rounded-xl bg-[#1a1a2e] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#111827] disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {couponLoading ? "Đang áp dụng..." : "Áp dụng"}
+                  </button>
+                </div>
+                {couponError ? (
+                  <p className="mt-2 text-left text-sm text-red-500">
+                    {couponError}
+                  </p>
+                ) : null}
+                {couponResult ? (
+                  <div className="mt-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left text-sm text-emerald-700">
+                    Đã áp dụng mã <strong>{couponResult.code}</strong> - giảm{" "}
+                    {Number(couponResult.discountAmount || 0).toLocaleString(
+                      "vi-VN",
+                    )}
+                    đ
+                  </div>
+                ) : null}
               </div>
 
               <div className="bg-[#f8fafc] rounded-xl p-4 space-y-2">
@@ -214,9 +291,21 @@ function BookingBox({
                     Giá x {normalizedPeople} người
                   </span>
                   <span style={{ fontWeight: 600 }}>
-                    {(price * normalizedPeople).toLocaleString("vi-VN")}đ
+                    {subtotal.toLocaleString("vi-VN")}đ
                   </span>
                 </div>
+
+                {couponResult ? (
+                  <div
+                    className="flex justify-between"
+                    style={{ fontSize: 14 }}
+                  >
+                    <span className="text-muted-foreground">Giảm giá</span>
+                    <span className="font-semibold text-emerald-600">
+                      -{discountAmount.toLocaleString("vi-VN")}đ
+                    </span>
+                  </div>
+                ) : null}
 
                 <div className="border-t border-border pt-2 flex justify-between">
                   <span style={{ fontSize: 15, fontWeight: 600 }}>
@@ -226,7 +315,7 @@ function BookingBox({
                     className="text-[#f97316]"
                     style={{ fontSize: 18, fontWeight: 700 }}
                   >
-                    {(price * normalizedPeople).toLocaleString("vi-VN")}đ
+                    {finalTotal.toLocaleString("vi-VN")}đ
                   </span>
                 </div>
               </div>

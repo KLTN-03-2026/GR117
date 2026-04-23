@@ -67,6 +67,16 @@ const serviceSchema = new mongoose.Schema(
     },
     rating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0 },
+    featured: { type: Boolean, default: false },
+    seasonTags: { type: [String], default: [] },
+    bestMonths: { type: [Number], default: [] },
+    weatherTags: { type: [String], default: [] },
+    budgetRange: {
+      type: String,
+      enum: ["low", "mid", "high"],
+      default: "mid",
+    },
     itinerary: [itinerarySchema],
 
     //ảnh

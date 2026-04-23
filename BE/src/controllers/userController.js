@@ -1,4 +1,5 @@
 const User = require("../models/User.js");
+const Service = require("../models/Service.js");
 const bcrypt = require("bcrypt");
 
 // Lấy thông tin cá nhân hiện tại
@@ -64,6 +65,76 @@ module.exports.changePassword = async (req, res) => {
     return res.status(200).json({ message: "Thay đổi mật khẩu thành công" });
   } catch (error) {
     console.error("Lỗi changePassword:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// [USER] LAY DANH SACH YEU THICH
+module.exports.getFavoriteServices = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .select("favoriteServices")
+      .populate({
+        path: "favoriteServices",
+        populate: [
+          { path: "category", select: "categoryName slug" },
+          { path: "provider_id", select: "fullName email phone" },
+        ],
+      });
+
+    if (!user) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+
+    return res.status(200).json({
+      data: Array.isArray(user.favoriteServices) ? user.favoriteServices : [],
+    });
+  } catch (error) {
+    console.error("Loi getFavoriteServices:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// [USER] THEM / BO YEU THICH
+module.exports.toggleFavoriteService = async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+
+    const service = await Service.findById(serviceId).select("_id serviceName status");
+    if (!service) {
+      return res.status(404).json({ message: "Không tìm thấy dịch vụ" });
+    }
+
+    const user = await User.findById(req.user.id).select("favoriteServices");
+    if (!user) {
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    }
+
+    const favorites = Array.isArray(user.favoriteServices)
+      ? user.favoriteServices.map((item) => String(item))
+      : [];
+    const isFavorited = favorites.includes(String(serviceId));
+
+    if (isFavorited) {
+      user.favoriteServices = user.favoriteServices.filter(
+        (item) => String(item) !== String(serviceId),
+      );
+    } else {
+      user.favoriteServices.push(service._id);
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: isFavorited ? "Đã bỏ khỏi yêu thích" : "Đã thêm vào yêu thích",
+      data: {
+        serviceId: service._id,
+        isFavorited: !isFavorited,
+        favoriteServices: user.favoriteServices,
+      },
+    });
+  } catch (error) {
+    console.error("Loi toggleFavoriteService:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

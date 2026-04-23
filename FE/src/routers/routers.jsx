@@ -5,6 +5,7 @@ import HomePage from "../Pages/client/HomePage.jsx";
 import SignIn from "../Pages/auth/SignIn.jsx";
 import Register from "../Pages/auth/Register.jsx";
 import ForgotPassword from "../Pages/auth/ForgotPassword.jsx";
+import ResetPassword from "../Pages/Auth/ResetPassword.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import { jwt } from "../utils/jwt.js";
 import Services from "../Pages/provider/Services.jsx";
@@ -20,6 +21,7 @@ import UserDashboard from "../Pages/client/UserDashboard.jsx";
 import ProviderSchedule from "../Pages/provider/ProviderSchedule.jsx";
 import Booking from "../Pages/provider/Booking.jsx";
 import Revenue from "../Pages/provider/Revenue.jsx";
+import Coupons from "../Pages/provider/Coupons.jsx";
 import BookingConfirm from "../Pages/client/BookingConfirm.jsx";
 import ServiceManagement from "../Pages/admin/ServiceManagement.jsx";
 import AccountManagement from "../Pages/admin/AccountManagement.jsx";
@@ -39,6 +41,7 @@ function Routers() {
         <Route path="/signin" element={user ? <Navigate to={homePath} replace /> : <SignIn />} />
         <Route path="/register" element={user ? <Navigate to={homePath} replace /> : <Register />} />
         <Route path="/forgot-password" element={user ? <Navigate to={homePath} replace /> : <ForgotPassword />} />
+        <Route path="/reset-password" element={user ? <Navigate to={homePath} replace /> : <ResetPassword />} />
         <Route path="/destination" element={isStaff ? <Navigate to={homePath} replace /> : <Destination />} />
         <Route path="/about" element={isStaff ? <Navigate to={homePath} replace /> : <About />} />
         <Route path="/contact" element={isStaff ? <Navigate to={homePath} replace /> : <Contact />} />
@@ -87,6 +90,8 @@ function Routers() {
           <Route path="Booking" element={<Navigate to="booking" replace />} />
           <Route path="revenue" element={<Revenue />} />
           <Route path="Revenue" element={<Navigate to="revenue" replace />} />
+          <Route path="coupons" element={<Coupons />} />
+          <Route path="Coupons" element={<Navigate to="coupons" replace />} />
         </Route>
       </Route>
 

@@ -41,6 +41,15 @@ const normalizeServiceBody = (body) => {
     highlight: parseArrayField(body.highlight || body.highlights),
     includes: parseArrayField(body.includes),
     images: parseArrayField(body.images),
+    featured: body.featured === true || body.featured === "true",
+    seasonTags: parseArrayField(body.seasonTags || body.seasonTagsJson),
+    bestMonths: parseArrayField(body.bestMonths).map((item) => Number(item)).filter(Number.isFinite),
+    weatherTags: parseArrayField(body.weatherTags),
+    budgetRange: ["low", "mid", "high"].includes(
+      String(body.budgetRange || "mid").trim().toLowerCase(),
+    )
+      ? String(body.budgetRange || "mid").trim().toLowerCase()
+      : "mid",
     imageUrl: String(body.imageUrl || "").trim(),
     imageId: String(body.imageId || "").trim(),
   };
@@ -144,6 +153,34 @@ module.exports.getServiceById = async (req, res) => {
     return res.status(200).json({ data: service });
   } catch (error) {
     console.error("Lỗi getServiceById:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// [PUBLIC] TĂNG LƯỢT XEM TOUR
+module.exports.incrementServiceView = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updatedService = await Service.findByIdAndUpdate(
+      id,
+      { $inc: { viewCount: 1 } },
+      { new: true },
+    );
+
+    if (!updatedService) {
+      return res.status(404).json({ message: "Không tìm thấy dịch vụ" });
+    }
+
+    return res.status(200).json({
+      message: "Tăng lượt xem thành công",
+      data: {
+        id: updatedService._id,
+        viewCount: updatedService.viewCount || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Loi incrementServiceView:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

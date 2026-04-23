@@ -14,7 +14,8 @@ import {
   FaMapMarkerAlt,
 } from "react-icons/fa";
 import ServicesCard from "../../Components/services/ServicesCard";
-import { Link, useLocation } from "react-router-dom";
+import axios from "axios";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const normalizeText = (text) =>
   String(text || "")
@@ -53,12 +54,28 @@ const getCategoryIcon = (categoryName) => {
 
 const Destination = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [Data, setData] = useState([]);
   const [activeCategory, setActiveCategory] = useState("Tất cả");
   const [searchText, setSearchText] = useState("");
   const [budgetFilter, setBudgetFilter] = useState("all");
+  const [favoriteServiceIds, setFavoriteServiceIds] = useState([]);
+  const [favoriteLoadingId, setFavoriteLoadingId] = useState("");
+  const accessToken = localStorage.getItem("accessToken");
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("currentUser") || "null");
+    } catch {
+      return null;
+    }
+  }, []);
+  const canManageFavorites = Boolean(
+    currentUser &&
+      String(currentUser.role || "").toLowerCase() === "user" &&
+      accessToken,
+  );
 
-    useEffect(() => {
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await fetch("/api/services?limit=1000");
@@ -71,6 +88,31 @@ const Destination = () => {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!canManageFavorites) {
+      setFavoriteServiceIds([]);
+      return;
+    }
+
+    const fetchFavorites = async () => {
+      try {
+        const res = await axios.get("/api/users/favorites", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        const favoriteIds = Array.isArray(res.data?.data)
+          ? res.data.data.map((item) => String(item?._id || item?.id)).filter(Boolean)
+          : [];
+
+        setFavoriteServiceIds(favoriteIds);
+      } catch (error) {
+        setFavoriteServiceIds([]);
+      }
+    };
+
+    fetchFavorites();
+  }, [accessToken, canManageFavorites]);
 
   const categories = useMemo(() => {
     const categorySet = new Set();
@@ -154,9 +196,45 @@ const Destination = () => {
     });
   }, [budgetFilter, searchText, visibleServices]);
 
+  const handleToggleFavorite = async (service) => {
+    const serviceId = String(service?._id || service?.id || "");
+    if (!serviceId) return;
+
+    if (!canManageFavorites) {
+      navigate("/signin");
+      return;
+    }
+
+    try {
+      setFavoriteLoadingId(serviceId);
+      const res = await axios.patch(
+        `/api/users/favorites/${serviceId}/toggle`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+
+      const nextFavorite = Boolean(res.data?.data?.isFavorited);
+      setFavoriteServiceIds((prev) => {
+        if (nextFavorite) {
+          return prev.includes(serviceId) ? prev : [...prev, serviceId];
+        }
+
+        return prev.filter((item) => item !== serviceId);
+      });
+      return { isFavorited: nextFavorite };
+    } catch (error) {
+      console.log(error);
+      return { isFavorited: false };
+    } finally {
+      setFavoriteLoadingId("");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f9fafb]">
-      <section className="relative h-[408px] overflow-hidden">
+      <section className="relative h-[90vh] min-h-[600px] flex items-center overflow-hidden text-center">
         <div className="absolute inset-0">
           <img
             className="w-full h-full object-cover"
@@ -167,63 +245,52 @@ const Destination = () => {
 
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/25 to-black/45" />
 
-        <div className="relative z-10 h-full flex flex-col items-center justify-start text-center px-6 pt-[15px] pb-[15px]">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/90 text-[13px] font-medium mb-5">
-            <FaMapMarkerAlt className="text-[#f59e0b]" size={12} />
-            Miền Bắc · Vịnh Hạ Long
-          </div>
-
-          <h1
-            className="text-white mb-4"
-            style={{
-              fontFamily: "Playfair Display, serif",
-              fontSize: "clamp(28px, 5vw, 52px)",
-              fontWeight: 700,
-              lineHeight: 1.2,
-            }}
-          >
-            Khám phá <span className="text-[#f59e0b]">điểm đến</span>
-            <br />
-            tuyệt vời nhất Việt Nam
-          </h1>
-
-          <p className="text-white/75 max-w-xl mx-auto mb-8 text-[16px]">
-            12+ tour độc đáo · Giá tốt nhất · Đảm bảo hoàn tiền
-          </p>
-
-          <div className="w-full max-w-2xl">
-            <div className="flex items-center gap-3 bg-white rounded-2xl shadow-2xl p-2 pl-5">
-              <FaSearch className="text-gray-400" />
-
-              <input
-                type="text"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Tìm theo địa điểm hoặc địa hình..."
-                className="flex-1 outline-none text-[14px] text-gray-800"
-              />
-
-              <button
-                type="button"
-                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white text-[14px] font-semibold"
-              >
-                <FaSearch size={14} />
-                Tìm kiếm
-              </button>
+        <div className="relative z-10 mx-auto flex w-full max-w-7xl justify-center px-6">
+          <div className="flex max-w-2xl flex-col items-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/90 text-[13px] font-medium mb-5">
+              <FaMapMarkerAlt className="text-[#f59e0b]" size={12} />
+              Miền Bắc · Vịnh Hạ Long
             </div>
 
-            <div className="flex items-center gap-2 mt-4 flex-wrap justify-center">
-              <span className="text-white/60 text-[12px]">Phổ biến</span>
-              {uniqueLocations.map((loc) => (
-                <CustomBtnDestination
-                  key={loc}
-                  title={loc}
-                  size="medium"
-                  onClick={() => setSearchText(loc)}
+            <h1
+              className="text-white mb-4"
+              style={{
+                fontFamily: "Playfair Display, serif",
+                fontSize: "clamp(28px, 5vw, 52px)",
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}
+            >
+              Khám phá <span className="text-[#f59e0b]">điểm đến</span>
+              <br />
+              tuyệt vời nhất Việt Nam
+            </h1>
+
+            <p className="text-white/75 max-w-xl mb-8 text-[16px] leading-7">
+              12+ tour độc đáo · Giá tốt nhất · Đảm bảo hoàn tiền
+            </p>
+
+            <div className="w-full max-w-4xl">
+              <div className="flex items-center gap-3 rounded-2xl bg-white p-2 pl-5 shadow-2xl">
+                <FaSearch className="text-gray-400" />
+
+                <input
+                  type="text"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Tìm theo địa điểm hoặc địa hình..."
+                  className="flex-1 outline-none text-[14px] text-gray-800"
                 />
-              ))}
-            </div>
 
+                <button
+                  type="button"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white text-[14px] font-semibold"
+                >
+                  <FaSearch size={14} />
+                  Tìm kiếm
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -269,7 +336,14 @@ const Destination = () => {
                     state={{ props: service }}
                     className="block"
                   >
-                    <ServicesCard service={service} variant="destination" />
+                    <ServicesCard
+                      service={service}
+                      variant="destination"
+                      showFavorite
+                      isFavorite={favoriteServiceIds.includes(String(serviceId))}
+                      favoriteLoading={favoriteLoadingId === String(serviceId)}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
                   </Link>
                 </motion.div>
               );

@@ -8,6 +8,7 @@ export default function Sidebar() {
     { id: "dichvu", label: "Dịch vụ", path: "/provider/services" },
     { id: "lich", label: "Lịch khởi hành", path: "/provider/schedule" },
     { id: "datcho", label: "Đặt chỗ", path: "/provider/booking", badge: 1 },
+    { id: "coupon", label: "Mã giảm giá", path: "/provider/coupons" },
     { id: "doanhthu", label: "Doanh thu", path: "/provider/revenue" },
   ];
 

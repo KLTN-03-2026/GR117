@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   FaClock,
+  FaHeart,
   FaEye,
   FaPenToSquare,
   FaTicket,
@@ -15,6 +16,7 @@ import { jwt } from "../../utils/jwt";
 const tabs = [
   { id: "orders", label: "Đơn hàng", icon: FaTicket },
   { id: "history", label: "Lịch sử", icon: FaClock },
+  { id: "favorites", label: "Yêu thích", icon: FaHeart },
   { id: "profile", label: "Thông tin cá nhân", icon: FaUser },
   { id: "reviews", label: "Đánh giá", icon: FaStar },
 ];
@@ -69,6 +71,7 @@ function UserDashboard() {
   });
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [favoriteServices, setFavoriteServices] = useState([]);
   const [detailId, setDetailId] = useState("");
   const [reviewForm, setReviewForm] = useState({
     orderId: "",
@@ -141,6 +144,7 @@ function UserDashboard() {
     }
 
     fetchDashboard();
+    fetchFavorites();
   }, [accessToken]);
 
   useEffect(() => {
@@ -359,6 +363,21 @@ function UserDashboard() {
       );
     } finally {
       setCancellingOrderId("");
+    }
+  };
+
+  const fetchFavorites = async () => {
+    try {
+      const headers = accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : {};
+
+      const res = await axios.get("/api/users/favorites", { headers });
+      setFavoriteServices(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (error) {
+      setFavoriteServices([]);
     }
   };
 
@@ -668,6 +687,76 @@ function UserDashboard() {
                   {savingProfile ? "Đang cập nhật..." : "Cập nhật"}
                 </button>
               </div>
+            </div>
+          ) : null}
+
+          {tab === "favorites" ? (
+            <div>
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Địa điểm / dịch vụ đã lưu
+                </h2>
+                <p className="text-sm text-slate-500">{favoriteServices.length} mục</p>
+              </div>
+
+              {favoriteServices.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 px-5 py-14 text-center text-slate-500">
+                  Bạn chưa lưu địa điểm nào
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {favoriteServices.map((service) => {
+                    const serviceId = service?._id || service?.id;
+                    const serviceName = service?.serviceName || "Chưa có tên";
+                    const serviceLocation = service?.location || "Chưa có địa điểm";
+                    const serviceImage =
+                      service?.images?.[0] ||
+                      service?.imageUrl ||
+                      "https://via.placeholder.com/600x400?text=No+Image";
+                    const serviceRating = Number(service?.rating || 0);
+                    const reviewCount = Number(service?.reviewCount || 0);
+
+                    return (
+                      <div
+                        key={serviceId}
+                        className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+                      >
+                        <img
+                          src={serviceImage}
+                          alt={serviceName}
+                          className="h-44 w-full object-cover"
+                        />
+                        <div className="space-y-3 p-4">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-500">
+                              Đã lưu
+                            </p>
+                            <h3 className="mt-1 line-clamp-1 text-lg font-semibold text-slate-900">
+                              {serviceName}
+                            </h3>
+                            <p className="mt-1 text-sm text-slate-500">{serviceLocation}</p>
+                          </div>
+
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">{serviceRating.toFixed(1)} sao</span>
+                            <span className="text-slate-400">{reviewCount} đánh giá</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(serviceId ? `/services/${serviceId}` : "/destination")
+                            }
+                            className="w-full rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-2.5 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-orange-200"
+                          >
+                            Xem chi tiết
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : null}
 

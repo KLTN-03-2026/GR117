@@ -22,6 +22,7 @@ function HomePage() {
   const navigate = useNavigate();
   const [Service, setService] = useState([]);
   const [featuredReviews, setFeaturedReviews] = useState([]);
+  const [aiRecommendations, setAiRecommendations] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchCategory, setSearchCategory] = useState("all");
   const [searchBudget, setSearchBudget] = useState("all");
@@ -51,6 +52,22 @@ function HomePage() {
     };
 
     fetchReviews();
+  }, []);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const res = await fetch(`/api/ai/recommendations?limit=5&month=${month}`);
+        const data = await res.json();
+        setAiRecommendations(Array.isArray(data?.data) ? data.data : []);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchRecommendations();
   }, []);
 
   const reviewCards = useMemo(() => {
@@ -112,6 +129,14 @@ function HomePage() {
       return matchKeyword && matchCategory && matchBudget;
     });
   }, [Service, searchBudget, searchCategory, searchKeyword]);
+
+  const featuredExploreServices = useMemo(() => {
+    if (Array.isArray(aiRecommendations) && aiRecommendations.length > 0) {
+      return aiRecommendations.slice(0, 5);
+    }
+
+    return filteredServices.slice(0, 5);
+  }, [aiRecommendations, filteredServices]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -281,7 +306,7 @@ function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-5 max-w-7xl mx-auto">
-            {filteredServices.map((service, index) => {
+            {featuredExploreServices.map((service, index) => {
               const serviceId = service?._id || service?.id;
               const serviceName =
                 service?.serviceName ||

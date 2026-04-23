@@ -4,10 +4,13 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const Session = require("../models/Session.js");
+const mailer = require("../utils/mailer.js");
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
+const RESET_TOKEN_TTL = 15 * 60 * 1000;
 
+// Dang ky tai khoan user/provider va tao ho so provider neu can.
 module.exports.register = async (req, res) => {
   try {
     const {
@@ -26,50 +29,52 @@ module.exports.register = async (req, res) => {
     } = req.body;
 
     if (!email || !phone || !password || !confirmPass || !role) {
-      return res.status(400).json({ message: "Thieu thong tin dang ky" });
+      return res.status(400).json({ message: "Thiếu thông tin đăng ký" });
     }
 
     if (!["user", "provider"].includes(role)) {
-      return res.status(400).json({ message: "Role khong hop le" });
+      return res.status(400).json({ message: "Role không hợp lệ" });
     }
 
     if (password !== confirmPass) {
-      return res.status(400).json({ message: "Mat khau xac nhan khong khop" });
+      return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
     }
 
     const normalizedDisplayName =
-      role === "provider" ? String(businessName || "").trim() : String(fullName || "").trim();
+      role === "provider"
+        ? String(businessName || "").trim()
+        : String(fullName || "").trim();
 
     if (!normalizedDisplayName) {
       return res.status(400).json({
         message:
           role === "provider"
-            ? "Thieu ten doanh nghiep/ho kinh doanh/thuong nhan"
-            : "Thieu ho va ten",
+            ? "Thiếu tên doanh nghiệp/ho kinh doanh/thương nhân"
+            : "Thiếu họ và tên",
       });
     }
 
     if (
-      normalizedDisplayName.length < 2 ||
-      normalizedDisplayName.length > 120
+      normalizedDisplayName.length < 10 ||
+      normalizedDisplayName.length > 50
     ) {
       return res.status(400).json({
         message:
           role === "provider"
-            ? "Ten doanh nghiep phai tu 2 den 120 ky tu"
-            : "Ho va ten phai tu 2 den 120 ky tu",
+            ? "Tên doanh nghiệp phải từ 10 đến 50 ký tự"
+            : "Họ và tên phải từ 10 đến 50 ký tự",
       });
     }
 
     if (!/^\d{10}$/.test(String(phone || "").trim())) {
       return res.status(400).json({
-        message: "So dien thoai phai dung 10 so",
+        message: "Số điện thoại sai định dạng",
       });
     }
 
     if (String(password).length < 6) {
       return res.status(400).json({
-        message: "Mat khau phai co it nhat 6 ky tu",
+        message: "Mật khẩu phải có ít nhất 6 ký tự",
       });
     }
 
@@ -82,13 +87,13 @@ module.exports.register = async (req, res) => {
         !legalRepresentative
       ) {
         return res.status(400).json({
-          message: "Thieu thong tin ho so nha cung cap",
+          message: "Thiếu thông tin hồ sơ nhà cung cấp",
         });
       }
 
       if (agreements?.termsAccepted !== true) {
         return res.status(400).json({
-          message: "Ban can dong y dieu khoan hop tac",
+          message: "Bạn cần đồng ý điều khoản hợp tác",
         });
       }
     }
@@ -102,7 +107,7 @@ module.exports.register = async (req, res) => {
 
     if (duplicate) {
       return res.status(409).json({
-        message: "Email hoac so dien thoai da ton tai",
+        message: "Email hoặc số điện thoại đã tồn tại",
       });
     }
 
@@ -139,7 +144,7 @@ module.exports.register = async (req, res) => {
         await User.findByIdAndDelete(newUser._id);
         console.error("Loi tao ho so provider:", providerError);
         return res.status(500).json({
-          message: "Khong the tao ho so nha cung cap",
+          message: "Không thể tạo hồ sơ nhà cung cấp. Vui lòng thử lại sau.",
         });
       }
     }
@@ -147,8 +152,8 @@ module.exports.register = async (req, res) => {
     return res.status(201).json({
       message:
         role === "provider"
-          ? "Dang ky doi tac thanh cong, cho admin duyet"
-          : "Dang ky thanh cong",
+          ? "Đăng kí đối tác thành công. Hồ sơ của bạn đang chờ admin duyệt."
+          : "Đăng ký thành công",
       data: {
         id: newUser._id,
         fullName: newUser.fullName,
@@ -160,47 +165,48 @@ module.exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error("Loi register:", error);
-    return res.status(500).json({ message: "Loi he thong" });
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
 
+// Dang nhap, kiem tra mat khau va cap access token + refresh token.
 module.exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Thieu email hoac password" });
+      return res.status(400).json({ message: "Thiếu email hoặc password" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
-        message: "Email hoac password khong chinh xac",
+        message: "Email hoặc password không chính xác",
       });
     }
 
     const passwordCorrect = await bcrypt.compare(password, user.password);
     if (!passwordCorrect) {
       return res.status(401).json({
-        message: "Email hoac password khong chinh xac",
+        message: "Email hoặc password không chính xác",
       });
     }
 
     if (user.role === "provider" && user.status === "pending") {
       return res.status(403).json({
-        message: "Tai khoan doi tac dang cho admin duyet",
+        message: "Tài khoản đối tác đang chờ admin duyệt",
       });
     }
 
     if (user.role === "provider" && user.status === "rejected") {
       return res.status(403).json({
-        message: "Tai khoan doi tac da bi tu choi",
+        message: "Tài khoản đối tác đã bị từ chối",
       });
     }
 
     if (user.status !== "active") {
       return res.status(403).json({
-        message: "Tai khoan cua ban dang bi khoa hoac chua duoc kich hoat",
+        message: "Tài khoản của bạn đang bị khóa hoặc chưa được kích hoạt",
       });
     }
 
@@ -245,6 +251,7 @@ module.exports.login = async (req, res) => {
   }
 };
 
+// Tao lai access token tu refresh token trong cookie.
 module.exports.refreshToken = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
@@ -282,6 +289,7 @@ module.exports.refreshToken = async (req, res) => {
   }
 };
 
+// Dang xuat va xoa refresh session hien tai.
 module.exports.logout = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
@@ -292,6 +300,120 @@ module.exports.logout = async (req, res) => {
     return res.sendStatus(204);
   } catch (error) {
     console.error("Loi logout:", error);
+    return res.status(500).json({ message: "Loi he thong" });
+  }
+};
+
+// Tao token dat lai mat khau va gui email huong dan cho user.
+module.exports.forgotPassword = async (req, res) => {
+  try {
+    const successMessage = "Đã gửi";
+    const email = String(req.body?.email || "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      return res.status(404).json({
+        message: "Khong ton tai email. Vui long kiem tra lai !",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        message: "Khong ton tai email. Vui long kiem tra lai !",
+      });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
+
+    // Luu hash token trong DB, khong luu token thuc.
+    user.resetPasswordTokenHash = tokenHash;
+    user.resetPasswordExpiresAt = new Date(Date.now() + RESET_TOKEN_TTL);
+    user.resetPasswordUsedAt = null;
+    await user.save();
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(
+      email,
+    )}`;
+
+    await mailer.sendMail({
+      from: process.env.SMTP_FROM,
+      to: user.email,
+      subject: "Dat lai mat khau",
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#1f2937">
+          <h2 style="color:#f97316">Đặt lại mật khẩu</h2>
+          <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản VIVU Travel.</p>
+          <p>Hãy click vào liên kết sau để tạo mật khẩu mới:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>Liên kết có hiệu lực trong 15 phút.</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({ message: successMessage });
+  } catch (error) {
+    console.error("Loi forgotPassword:", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// Kiem tra token + email, sau do cap nhat mat khau moi.
+module.exports.resetPassword = async (req, res) => {
+  try {
+    const email = String(req.body?.email || "")
+      .trim()
+      .toLowerCase();
+    const token = String(req.body?.token || "").trim();
+    const newPassword = String(req.body?.newPassword || "");
+    const confirmPassword = String(req.body?.confirmPassword || "");
+
+    if (!email || !token || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "Thieu thong tin" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Mat khau xac nhan khong khop" });
+    }
+
+    if (newPassword.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Mat khau phai co it nhat 6 ky tu" });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    // Token phai khop, chua het han va dung voi email cua user.
+    const user = await User.findOne({
+      email,
+      resetPasswordTokenHash: tokenHash,
+      resetPasswordExpiresAt: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Token khong hop le hoac da het han" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordTokenHash = null;
+    user.resetPasswordExpiresAt = null;
+    user.resetPasswordUsedAt = new Date();
+    await user.save();
+
+    await Session.deleteMany({ userId: user._id });
+
+    return res.status(200).json({ message: "Dat lai mat khau thanh cong" });
+  } catch (error) {
+    console.error("Loi resetPassword:", error);
     return res.status(500).json({ message: "Loi he thong" });
   }
 };
