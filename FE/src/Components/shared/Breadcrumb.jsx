@@ -38,14 +38,14 @@ function Breadcrumb() {
   const normalizedSection = section.toLowerCase();
 
   return (
-    <div className="mb-4 flex items-center gap-2 text-sm">
-      <Link to={rootRoute.to} className="text-gray-400 hover:text-gray-600">
+    <div className="mb-2 flex items-center gap-1.5 text-[13px] leading-none">
+      <Link to={rootRoute.to} className="text-slate-400 transition hover:text-slate-600">
         {rootRoute.label}
       </Link>
 
-      <span className="text-gray-400">{">"}</span>
+      <span className="text-slate-300">{">"}</span>
 
-      <span className="font-medium text-orange-500">
+      <span className="font-medium text-slate-900">
         {PAGE_LABELS[normalizedSection] || section}
       </span>
     </div>

@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import {
-  CiLogin,
-  FaRegEye,
-  FaRegEyeSlash,
-} from "../../assets/Icons/Icons";
+import { CiLogin, FaRegEye, FaRegEyeSlash } from "../../assets/Icons/Icons";
 import { FaFacebook } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { FaInstagram } from "react-icons/fa";
@@ -69,9 +65,7 @@ function SignIn() {
         <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
           {/* Title */}
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              Đăng nhập
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Đăng nhập</h1>
             <p className="text-gray-500 text-sm mt-1 mb-3">
               Chào mừng bạn quay trở lại VIVU Travel
             </p>
@@ -80,7 +74,10 @@ function SignIn() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
-            <label className="text-left pl-2 mb-1.5 block text-slate-500 font-medium text-sm" > Email </label>
+            <label className="text-left pl-2 mb-1.5 block text-slate-500 font-medium text-sm">
+              {" "}
+              Email{" "}
+            </label>
             <input
               type="email"
               placeholder="Email của bạn"
@@ -111,7 +108,11 @@ function SignIn() {
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 hover:text-orange-500 transition"
                 >
-                  {showPw ? <FaRegEyeSlash size={18} /> : <FaRegEye size={18} />}
+                  {showPw ? (
+                    <FaRegEyeSlash size={18} />
+                  ) : (
+                    <FaRegEye size={18} />
+                  )}
                 </button>
               </div>
             </div>
@@ -137,9 +138,7 @@ function SignIn() {
 
             {/* Message */}
             {message.text && (
-              <p className="text-center text-red-500 text-sm">
-                {message.text}
-              </p>
+              <p className="text-center text-red-500 text-sm">{message.text}</p>
             )}
 
             {/* Button */}
@@ -155,9 +154,7 @@ function SignIn() {
             {/* Divider */}
             <div className="flex items-center gap-3 my-4">
               <div className="flex-1 h-[1px] bg-gray-200" />
-              <span className="text-xs text-gray-400">
-                Hoặc đăng nhập với
-              </span>
+              <span className="text-xs text-gray-400">Hoặc đăng nhập với</span>
               <div className="flex-1 h-[1px] bg-gray-200" />
             </div>
 

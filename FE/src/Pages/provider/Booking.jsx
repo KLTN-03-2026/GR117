@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { IoSearch } from "react-icons/io5";
-import { FaCalendarCheck, FaCircleXmark, FaLocationDot, FaRegCircleCheck } from "react-icons/fa6";
+import { FaCircleXmark } from "react-icons/fa6";
+import { FiRefreshCw } from "react-icons/fi";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 
 const FILTERS = [
@@ -59,6 +60,8 @@ const getStatusClass = (status) =>
   STATUS_META[status]?.cls || "bg-slate-100 text-slate-600 border-slate-200";
 
 const canComplete = (status) => status === "confirmed";
+const getDisplayDate = (value) =>
+  value ? new Date(value).toLocaleDateString("vi-VN") : "Chưa có ngày";
 
 function Booking() {
   const [orders, setOrders] = useState([]);
@@ -67,6 +70,7 @@ function Booking() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [actionLoadingId, setActionLoadingId] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const accessToken = localStorage.getItem("accessToken");
 
@@ -102,6 +106,15 @@ function Booking() {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await fetchOrders();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const counts = useMemo(
     () =>
@@ -179,18 +192,8 @@ function Booking() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] p-6">
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
-          Đang tải danh sách đặt chỗ...
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="space-y-6">
+        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
           <div>
             <Breadcrumb />
             <h1
@@ -204,40 +207,86 @@ function Booking() {
               Quản lý đặt chỗ
             </h1>
           </div>
+
+          <button
+            type="button"
+            disabled
+            className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-[13px] font-medium text-[#f97316] opacity-70"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FiRefreshCw size={16} /> Làm mới
+            </span>
+          </button>
+        </div>
+
+        <div className="mx-6 rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
+          Đang tải danh sách đặt chỗ...
         </div>
       </div>
+    );
+  }
 
-      <div className="space-y-5 p-6">
+  return (
+    <div className="space-y-6">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+        <div>
+          <Breadcrumb />
+          <h1
+            style={{
+              fontFamily: '"Playfair Display", serif',
+              fontSize: "20px",
+              fontWeight: "700",
+              color: "rgb(26, 26, 46)",
+            }}
+          >
+            Quản lý đặt chỗ
+          </h1>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+          className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-[13px] font-medium text-[#f97316] transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          <span className="inline-flex items-center gap-2">
+            <FiRefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Đang tải..." : "Làm mới"}
+          </span>
+        </button>
+      </div>
+
+      <div className="space-y-5 px-6 pb-6">
         {error ? (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-3">
-          {FILTERS.map((filter) => {
-            const count = counts[filter.id] ?? counts.all;
-            const active = activeFilter === filter.id;
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-3">
+            {FILTERS.map((filter) => {
+              const count = counts[filter.id] ?? counts.all;
+              const active = activeFilter === filter.id;
 
-            return (
-              <button
-                key={filter.id}
-                type="button"
-                onClick={() => setActiveFilter(filter.id)}
-                className={`rounded-full border px-4 py-2.5 text-sm font-medium transition ${
-                  active
-                    ? "border-[#f97316] bg-[#f97316] text-white"
-                    : "border-slate-200 bg-white text-slate-600 hover:border-[#f97316] hover:text-[#f97316]"
-                }`}
-              >
-                {filter.label} ({count})
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.id)}
+                  className={`rounded-full border px-4 py-2.5 text-sm font-medium transition ${
+                    active
+                      ? "border-[#f97316] bg-[#f97316] text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-[#f97316] hover:text-[#f97316]"
+                  }`}
+                >
+                  {filter.label} ({count})
+                </button>
+              );
+            })}
+          </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row">
-          <div className="relative flex-1">
+          <div className="relative w-full lg:max-w-sm">
             <IoSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
             <input
               type="text"
@@ -249,122 +298,124 @@ function Booking() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           {filteredOrders.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
               Chưa có dữ liệu booking
             </div>
           ) : (
-            filteredOrders.map((order) => {
-              const orderId = getOrderId(order);
-              const bookingStatus = getStatusLabel(order.status);
-              const statusClass = getStatusClass(order.status);
-              const isAwaitingConfirm = order.status === "awaiting_confirm";
-              const isConfirmed = canComplete(order.status);
-              const departureDate = getDepartureDate(order);
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1100px] text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-gray-500">
+                    <th className="px-3 py-3 font-medium">Khách hàng</th>
+                    <th className="px-3 py-3 font-medium">Dịch vụ</th>
+                    <th className="px-3 py-3 font-medium">Ngày khởi hành</th>
+                    <th className="px-3 py-3 font-medium">Khách / Mã</th>
+                    <th className="px-3 py-3 font-medium">Tổng tiền</th>
+                    <th className="px-3 py-3 font-medium">Trạng thái</th>
+                    <th className="px-3 py-3 font-medium">Thao tác</th>
+                  </tr>
+                </thead>
 
-              return (
-                <div
-                  key={orderId}
-                  className="rounded-[26px] border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(15,23,42,0.06)]"
-                >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-lg font-bold text-white">
-                        {getInitial(getCustomerName(order))}
-                      </div>
+                <tbody>
+                  {filteredOrders.map((order) => {
+                    const orderId = getOrderId(order);
+                    const bookingStatus = getStatusLabel(order.status);
+                    const statusClass = getStatusClass(order.status);
+                    const isAwaitingConfirm = order.status === "awaiting_confirm";
+                    const isConfirmed = canComplete(order.status);
+                    const departureDate = getDepartureDate(order);
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-[16px] font-semibold text-slate-900">
-                            {getCustomerName(order)}
-                          </h3>
-                          {getCustomerPhone(order) ? (
-                            <span className="text-sm text-slate-400">
-                              {getCustomerPhone(order)}
-                            </span>
-                          ) : null}
+                    return (
+                      <tr
+                        key={orderId}
+                        className="border-b border-gray-100 transition-colors hover:bg-[#f8fafc]"
+                      >
+                        <td className="px-3 py-4 text-left">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-900">
+                              {getCustomerName(order)}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {getCustomerPhone(order) || "Không có SĐT"}
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-3 py-4 text-left">
+                          <p className="max-w-[260px] truncate font-medium text-slate-700">
+                            {getServiceName(order)}
+                          </p>
+                        </td>
+
+                        <td className="whitespace-nowrap px-3 py-4 text-left text-slate-700">
+                          {getDisplayDate(departureDate)}
+                        </td>
+
+                        <td className="px-3 py-4 text-left text-slate-600">
+                          <div className="space-y-1">
+                            <p>{order.numPeople || 0} khách</p>
+                            <p className="text-xs text-slate-400">
+                              #{String(orderId).slice(-6)}
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-3 py-4 text-left font-semibold text-[#f97316]">
+                          {formatMoney(order.totalPrice)}
+                        </td>
+
+                        <td className="px-3 py-4 text-left">
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusClass}`}
                           >
                             {bookingStatus}
                           </span>
-                        </div>
+                        </td>
 
-                        <p className="mt-1 truncate text-left text-[15px] text-slate-600">
-                          {getServiceName(order)}
-                        </p>
+                        <td className="px-3 py-4 text-left">
+                          <div className="flex flex-wrap gap-2">
+                            {isAwaitingConfirm ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={actionLoadingId === orderId}
+                                  onClick={() => updateOrder(orderId, "confirmed")}
+                                  className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 px-4 py-2.5 text-sm font-medium text-emerald-600 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-70"
+                                >
+                                  Xác nhận
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={actionLoadingId === orderId}
+                                  onClick={() => updateOrder(orderId, "cancelled")}
+                                  className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+                                >
+                                  <FaCircleXmark size={15} />
+                                  Từ chối
+                                </button>
+                              </>
+                            ) : null}
 
-                        <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-400">
-                          <span className="inline-flex items-center gap-1.5">
-                            <FaCalendarCheck className="text-slate-300" />
-                            {departureDate
-                              ? new Date(departureDate).toLocaleDateString("vi-VN")
-                              : "Chưa có ngày"}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <FaLocationDot className="text-slate-300" />
-                            {order?.serviceId?.location ||
-                              order?.serviceId?.destination ||
-                              order?.serviceId?.region ||
-                              order?.tourSnapshot?.location ||
-                              "Chưa có địa điểm"}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <FaRegCircleCheck className="text-slate-300" />
-                            {order.numPeople || 0} khách
-                          </span>
-                          <span>#{orderId.slice(-6)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-3">
-                      <div className="text-right text-[22px] font-extrabold text-[#f97316]">
-                        {formatMoney(order.totalPrice)}
-                      </div>
-
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {isAwaitingConfirm ? (
-                          <>
-                            <button
-                              type="button"
-                              disabled={actionLoadingId === orderId}
-                              onClick={() => updateOrder(orderId, "confirmed")}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 px-4 py-2.5 text-sm font-medium text-emerald-600 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-70"
-                            >
-                              <FaRegCircleCheck size={15} />
-                              Xác nhận
-                            </button>
-                            <button
-                              type="button"
-                              disabled={actionLoadingId === orderId}
-                              onClick={() => updateOrder(orderId, "cancelled")}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
-                            >
-                              <FaCircleXmark size={15} />
-                              Từ chối
-                            </button>
-                          </>
-                        ) : null}
-
-                        {isConfirmed ? (
-                          <button
-                            type="button"
-                            disabled={actionLoadingId === orderId}
-                            onClick={() => updateOrder(orderId, "completed")}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-green-200 px-4 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            <FaRegCircleCheck size={15} />
-                            Hoàn tất
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+                            {isConfirmed ? (
+                              <button
+                                type="button"
+                                disabled={actionLoadingId === orderId}
+                                onClick={() => updateOrder(orderId, "completed")}
+                                className="inline-flex items-center gap-2 rounded-2xl border border-green-200 px-4 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-70"
+                              >
+                                Hoàn tất
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
