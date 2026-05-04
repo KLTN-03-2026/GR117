@@ -1,4 +1,4 @@
-﻿import Header from "../Components/shared/Header.jsx";
+import Header from "../Components/shared/Header.jsx";
 import Footer from "../Components/shared/Footer.jsx";
 import Sidebar from "../Components/shared/Sidebar.jsx";
 import { Outlet } from "react-router-dom";

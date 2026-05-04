@@ -6,9 +6,11 @@ import {
   IoShieldCheckmarkOutline,
   IoTicketOutline,
   IoBusinessOutline,
+  IoWalletOutline,
 } from "react-icons/io5";
 
 import TotalSystem from "./TotalSystem";
+import Revenue from "./Revenue";
 import ServiceManagement from "./ServiceManagement";
 import AccountManagement from "./AccountManagement";
 import BookingManagement from "./BookingManagement";
@@ -17,13 +19,14 @@ import ProviderManagement from "./ProviderManagement";
 const tabs = [
   { id: "overview", label: "Tong quan", icon: IoBarChartOutline },
   { id: "services", label: "Dich vu", icon: IoPricetagOutline },
+  { id: "revenue", label: "Doanh thu", icon: IoWalletOutline },
   { id: "accounts", label: "Tai khoan", icon: IoPeopleOutline },
   { id: "providers", label: "Nha cung cap", icon: IoBusinessOutline },
   { id: "bookings", label: "Don hang", icon: IoTicketOutline },
 ];
 
-const DashboardAdmin = () => {
-  const [tab, setTab] = useState("overview");
+const DashboardAdmin = ({ initialTab = "overview" } = {}) => {
+  const [tab, setTab] = useState(initialTab);
   const cardClass = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 
   return (
@@ -65,6 +68,7 @@ const DashboardAdmin = () => {
 
         <div className={cardClass}>
           {tab === "overview" ? <TotalSystem /> : null}
+          {tab === "revenue" ? <Revenue /> : null}
           {tab === "services" ? <ServiceManagement /> : null}
           {tab === "accounts" ? <AccountManagement /> : null}
           {tab === "providers" ? <ProviderManagement /> : null}

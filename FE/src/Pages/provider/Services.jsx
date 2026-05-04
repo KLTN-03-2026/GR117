@@ -167,7 +167,7 @@ const Services = () => {
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div>
-            <div className="mb-0.5 flex items-center gap-2 text-[12px] text-gray-400">
+            <div className="mb-0.5 flex items-center gap-2 text-[12px] text-gray-400 font-medium">
               <span>Dashboard</span>
               <span>{">"}</span>
               <span className="text-[#f97316]">Dịch vụ</span>

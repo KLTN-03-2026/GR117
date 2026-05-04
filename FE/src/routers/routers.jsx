@@ -28,6 +28,7 @@ import AccountManagement from "../Pages/admin/AccountManagement.jsx";
 import BookingManagement from "../Pages/admin/BookingManagement.jsx";
 import DetailServices from "../Pages/client/DetailServers.jsx";
 import Error404 from "../Pages/client/Error404.jsx";
+import ProviderLayout from "../layout/ProviderLayout.jsx";
 
 function Routers() {
   const user = jwt();
@@ -63,6 +64,8 @@ function Routers() {
         <Route path="/admin" element={<LayoutAdmin />}>
           <Route index element={<DashboardAdmin />} />
           <Route path="dashboard" element={<Navigate to="/admin" replace />} />
+          <Route path="revenue" element={<DashboardAdmin initialTab="revenue" />} />
+          <Route path="Revenue" element={<Navigate to="revenue" replace />} />
           <Route path="servicemanager" element={<ServiceManagement />} />
           <Route path="ServiceManager" element={<Navigate to="servicemanager" replace />} />
           <Route path="accountmanager" element={<AccountManagement />} />
@@ -73,7 +76,7 @@ function Routers() {
       </Route>
 
       <Route element={<ProtectedRoute roles={["provider"]} />}>
-        <Route path="/provider" element={<LayoutAdmin />}>
+        <Route path="/provider" element={<ProviderLayout />}>
           <Route index element={<DashboardProvider />} />
           <Route path="dashboard" element={<Navigate to="/provider" replace />} />
           <Route path="services" element={<Services />} />

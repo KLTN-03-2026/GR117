@@ -46,6 +46,10 @@ const orderSchema = new mongoose.Schema(
     },
     discountAmount: { type: Number, default: 0 },
     finalPrice: { type: Number, default: 0 },
+    refundRate: { type: Number, default: 0 },
+    refundAmount: { type: Number, default: 0 },
+    refundPolicy: { type: String, default: "" },
+    cancelledAt: { type: Date, default: null },
     status: {
       type: String,
       enum: [

@@ -416,10 +416,6 @@ export default function ProviderSchedule() {
           <h2 className="text-[18px] font-semibold text-gray-900">
             Danh sách lịch khởi hành
           </h2>
-          <div className="flex items-center gap-2 text-[12px] text-gray-400">
-            <FiCalendar size={15} />
-            <span>{schedules.length} lịch</span>
-          </div>
         </div>
 
         <ProviderScheduleTable

@@ -31,7 +31,11 @@ function Breadcrumb() {
   const [scope, section] = segments;
   const rootRoute = ROOT_ROUTES[scope];
 
-  if (!rootRoute || !section || pathname.toLowerCase() === rootRoute.to.toLowerCase()) {
+  if (
+    !rootRoute ||
+    !section ||
+    pathname.toLowerCase() === rootRoute.to.toLowerCase()
+  ) {
     return null;
   }
 
@@ -39,13 +43,16 @@ function Breadcrumb() {
 
   return (
     <div className="mb-2 flex items-center gap-1.5 text-[13px] leading-none">
-      <Link to={rootRoute.to} className="text-slate-400 transition hover:text-slate-600">
+      <Link
+        to={rootRoute.to}
+        className="text-slate-400 transition hover:text-slate-600"
+      >
         {rootRoute.label}
       </Link>
 
       <span className="text-slate-300">{">"}</span>
 
-      <span className="font-medium text-slate-900">
+      <span className="text-[#f97316]">
         {PAGE_LABELS[normalizedSection] || section}
       </span>
     </div>

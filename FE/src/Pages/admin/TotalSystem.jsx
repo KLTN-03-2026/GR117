@@ -37,6 +37,9 @@ const TotalSystem = () => {
   const pendingServices = Array.isArray(stats?.serviceStats)
     ? stats.serviceStats.find((item) => item._id === "pending")?.count || 0
     : 0;
+  const totalOrders = Number(stats?.totalOrders || 0);
+  const totalRevenue = Number(stats?.totalRevenue || 0);
+  const totalReviews = Number(stats?.totalReviews || 0);
 
   return (
     <div className="space-y-6">
@@ -61,7 +64,7 @@ const TotalSystem = () => {
 
         <div className="rounded-2xl bg-orange-50 p-5">
           <IoTicketOutline className="text-2xl text-orange-500 mb-3" />
-          <p className="text-left mb-3 mt-4 text-3xl font-bold text-slate-900">11</p>
+          <p className="text-left mb-3 mt-4 text-3xl font-bold text-slate-900">{totalOrders || "--"}</p>
           <p className="text-left mb-3 text-sm text-slate-500">Tổng đơn hàng</p>
         </div>
 
@@ -75,13 +78,15 @@ const TotalSystem = () => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-2xl bg-slate-50 p-5">
           <h3 className="text-left text-sm font-semibold text-slate-900">Doanh thu</h3>
-          <p className="text-left mt-3 text-3xl font-bold text-orange-500 p-2">500</p>
+          <p className="text-left mt-3 text-3xl font-bold text-orange-500 p-2">
+            {totalRevenue ? totalRevenue.toLocaleString("vi-VN") + "đ" : "--"}
+          </p>
           <p className="text-left mt-2 text-sm text-slate-400">Doanh thu trong tháng</p>
         </div>
 
         <div className="rounded-2xl bg-slate-50 p-5">
           <h3 className="text-left text-sm font-semibold text-slate-900">Đánh giá</h3>
-          <p className="text-left mt-3 text-3xl font-bold text-orange-500 p-2">100</p>
+          <p className="text-left mt-3 text-3xl font-bold text-orange-500 p-2">{totalReviews || "--"}</p>
           <p className="text-left mt-2 text-sm text-slate-400">Tổng số lượng đánh giá</p>
         </div>
       </div>

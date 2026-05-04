@@ -2,6 +2,50 @@ const Order = require("../models/Order.js");
 const Schedule = require("../models/Schedule.js");
 const Coupon = require("../models/Coupon.js");
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+const getRefundPolicy = (departureDate) => {
+  if (!departureDate) {
+    return {
+      allowed: false,
+      refundRate: 0,
+      refundAmount: 0,
+      refundPolicy: "Khong xac dinh duoc ngay khoi hanh",
+      message: "Khong xac dinh duoc ngay khoi hanh de tinh hoan tien",
+    };
+  }
+
+  const diffDays = Math.ceil(
+    (new Date(departureDate).getTime() - Date.now()) / MS_PER_DAY,
+  );
+
+  if (diffDays >= 7) {
+    return {
+      allowed: true,
+      refundRate: 0.95,
+      refundPolicy: "Huy truoc 7 ngay - hoan 95%",
+      message: "Da ap dung chinh sach hoan 95% do huy truoc 7 ngay",
+    };
+  }
+
+  if (diffDays >= 3) {
+    return {
+      allowed: true,
+      refundRate: 0.9,
+      refundPolicy: "Huy tu 3 den 6 ngay - hoan 90%",
+      message: "Da ap dung chinh sach hoan 90% do huy tu 3 den 6 ngay",
+    };
+  }
+
+  return {
+    allowed: false,
+    refundRate: 0,
+    refundAmount: 0,
+    refundPolicy: "Khong cho phep huy trong vong 3 ngay truoc khoi hanh",
+    message: "Khong the huy tour trong vong 3 ngay truoc khoi hanh",
+  };
+};
+
 const releaseScheduleSlots = async (order) => {
   const schedule = await Schedule.findById(order.scheduleId);
   if (!schedule) return;
@@ -204,12 +248,33 @@ module.exports.cancelMyOrder = async (req, res) => {
       });
     }
 
+    const departureDate =
+      order?.tourSnapshot?.departureDate ||
+      (order.scheduleId ? (await Schedule.findById(order.scheduleId))?.departureDate : null);
+    const refundPolicy = getRefundPolicy(departureDate);
+
+    if (order.paymentStatus === "paid" && !refundPolicy.allowed) {
+      return res.status(400).json({
+        message: refundPolicy.message,
+      });
+    }
+
     if (order.status !== "cancelled") {
       await releaseScheduleSlots(order);
     }
 
+    const paidAmount = Number(order.finalPrice || order.totalPrice || 0);
+    const refundAmount =
+      order.paymentStatus === "paid"
+        ? Math.floor(paidAmount * Number(refundPolicy.refundRate || 0))
+        : 0;
+
     order.status = "cancelled";
-    if (order.paymentStatus === "paid") {
+    order.cancelledAt = new Date();
+    order.refundRate = Number(refundPolicy.refundRate || 0);
+    order.refundAmount = refundAmount;
+    order.refundPolicy = refundPolicy.refundPolicy || "";
+    if (order.paymentStatus === "paid" && refundAmount > 0) {
       order.paymentStatus = "refunded";
     }
 
@@ -218,7 +283,7 @@ module.exports.cancelMyOrder = async (req, res) => {
     return res.status(200).json({
       message:
         order.paymentStatus === "refunded"
-          ? "Da huy don va ghi nhan hoan tien"
+          ? `Da huy don va hoan ${refundPolicy.refundRate * 100}%`
           : "Da huy don thanh cong",
       data: order,
     });

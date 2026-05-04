@@ -10,11 +10,18 @@ import {
   FaTrash,
   FaUser,
   FaStar,
+  FaWallet,
+  FaArrowDownLong,
+  FaArrowUpRightFromSquare,
+  FaCreditCard,
+  FaShieldHalved,
+  FaFilter,
 } from "react-icons/fa6";
 import { jwt } from "../../utils/jwt";
 
 const tabs = [
   { id: "orders", label: "Đơn hàng", icon: FaTicket },
+  { id: "wallet", label: "Ví của tôi", icon: FaWallet },
   { id: "history", label: "Lịch sử", icon: FaClock },
   { id: "favorites", label: "Yêu thích", icon: FaHeart },
   { id: "profile", label: "Thông tin cá nhân", icon: FaUser },
@@ -22,7 +29,10 @@ const tabs = [
 ];
 
 const bookingStatusMap = {
-  awaiting_payment: { label: "Chờ thanh toán", cls: "bg-yellow-100 text-yellow-700" },
+  awaiting_payment: {
+    label: "Chờ thanh toán",
+    cls: "bg-yellow-100 text-yellow-700",
+  },
   awaiting_confirm: { label: "Chờ xác nhận", cls: "bg-blue-100 text-blue-700" },
   confirmed: { label: "Đã xác nhận", cls: "bg-green-100 text-green-700" },
   rejected: { label: "Bị từ chối", cls: "bg-red-100 text-red-700" },
@@ -37,6 +47,21 @@ const paymentStatusMap = {
   refunded: { label: "Đã hoàn tiền", cls: "text-blue-600" },
 };
 
+const walletTxMeta = {
+  payment: {
+    label: "Thanh toán tour",
+    cls: "bg-orange-50 text-orange-600",
+    icon: FaArrowUpRightFromSquare,
+    sign: "out",
+  },
+  refund: {
+    label: "Hoàn tiền",
+    cls: "bg-emerald-50 text-emerald-600",
+    icon: FaArrowDownLong,
+    sign: "in",
+  },
+};
+
 const formatMoney = (value) =>
   Number(value || 0).toLocaleString("vi-VN") + " đ";
 
@@ -49,7 +74,9 @@ const getServiceName = (order) =>
   "Chưa có tên tour";
 
 const getDepartureDate = (order) =>
-  order?.tourSnapshot?.departureDate || order?.scheduleId?.departureDate || null;
+  order?.tourSnapshot?.departureDate ||
+  order?.scheduleId?.departureDate ||
+  null;
 
 function UserDashboard() {
   const location = useLocation();
@@ -80,6 +107,7 @@ function UserDashboard() {
     rating: 5,
     comment: "",
   });
+  const [walletFilter, setWalletFilter] = useState("all");
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -94,7 +122,9 @@ function UserDashboard() {
   }
 
   const accessToken = localStorage.getItem("accessToken");
-  const currentUserId = String(user.userId || user.id || currentUser?._id || currentUser?.id || "");
+  const currentUserId = String(
+    user.userId || user.id || currentUser?._id || currentUser?.id || "",
+  );
   const searchParams = new URLSearchParams(location.search);
   const vnpayStatus = searchParams.get("vnpayStatus");
   const callbackOrderId = searchParams.get("orderId");
@@ -117,7 +147,9 @@ function UserDashboard() {
       ]);
 
       const profileData = profileRes.data?.data || {};
-      const ordersData = Array.isArray(ordersRes.data?.data) ? ordersRes.data.data : [];
+      const ordersData = Array.isArray(ordersRes.data?.data)
+        ? ordersRes.data.data
+        : [];
 
       setProfile({
         fullName: profileData.fullName || currentUser?.fullName || "",
@@ -158,7 +190,9 @@ function UserDashboard() {
       );
       fetchDashboard();
     } else if (vnpayStatus === "failed") {
-      setNotice("Thanh toan VNPAY chua thanh cong hoac chu ky xac thuc khong hop le.");
+      setNotice(
+        "Thanh toan VNPAY chua thanh cong hoac chu ky xac thuc khong hop le.",
+      );
     }
 
     const timer = window.setTimeout(() => {
@@ -174,6 +208,65 @@ function UserDashboard() {
   const historyOrders = orders.filter((order) =>
     ["completed", "cancelled", "rejected"].includes(order.status),
   );
+
+  const walletSummary = useMemo(() => {
+    const transactions = [];
+    let totalPaid = 0;
+    let totalRefund = 0;
+
+    orders.forEach((order) => {
+      const orderId = getOrderId(order);
+      const amount = Number(order?.totalPrice || 0);
+      const serviceName = getServiceName(order);
+      const createdAt =
+        order?.updatedAt || order?.createdAt || new Date().toISOString();
+
+      if (order?.paymentStatus === "paid") {
+        totalPaid += amount;
+        transactions.push({
+          id: `payment-${orderId}`,
+          type: "payment",
+          amount,
+          note: `Thanh toán tour ${serviceName}`,
+          createdAt,
+        });
+      }
+
+      if (order?.paymentStatus === "refunded") {
+        totalRefund += amount;
+        transactions.push({
+          id: `refund-${orderId}`,
+          type: "refund",
+          amount,
+          note: `Hoàn tiền tour ${serviceName}`,
+          createdAt,
+        });
+      }
+    });
+
+    const sortedTransactions = transactions.sort((a, b) =>
+      String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
+    );
+
+    return {
+      totalPaid,
+      totalRefund,
+      balance: totalRefund,
+      transactions: sortedTransactions,
+      totalBookings: orders.filter(
+        (order) => String(order?.userId) === String(currentUserId),
+      ).length,
+    };
+  }, [orders, currentUserId]);
+
+  const filteredWalletTransactions = useMemo(() => {
+    if (walletFilter === "all") return walletSummary.transactions;
+    return walletSummary.transactions.filter((tx) =>
+      walletFilter === "in"
+        ? walletTxMeta[tx.type]?.sign === "in"
+        : walletTxMeta[tx.type]?.sign === "out",
+    );
+  }, [walletFilter, walletSummary.transactions]);
 
   const serviceIds = useMemo(() => {
     const ids = new Set();
@@ -257,7 +350,9 @@ function UserDashboard() {
       );
       setNotice("Cập nhật thông tin thành công!");
     } catch (updateError) {
-      setError(updateError?.response?.data?.message || "Không thể cập nhật hồ sơ.");
+      setError(
+        updateError?.response?.data?.message || "Không thể cập nhật hồ sơ.",
+      );
     } finally {
       setSavingProfile(false);
     }
@@ -301,7 +396,9 @@ function UserDashboard() {
       setShowReviewForm(false);
       fetchDashboard();
     } catch (reviewError) {
-      setError(reviewError?.response?.data?.message || "Không thể gửi đánh giá.");
+      setError(
+        reviewError?.response?.data?.message || "Không thể gửi đánh giá.",
+      );
     } finally {
       setSubmittingReview(false);
     }
@@ -315,7 +412,9 @@ function UserDashboard() {
     order?.paymentStatus === "unpaid" && order?.status !== "cancelled";
   const canReview = (order) =>
     order.status === "completed" &&
-    !reviews.find((review) => String(review.orderId) === String(getOrderId(order)));
+    !reviews.find(
+      (review) => String(review.orderId) === String(getOrderId(order)),
+    );
 
   const handleUserCancel = async (order) => {
     const orderId = getOrderId(order);
@@ -325,7 +424,11 @@ function UserDashboard() {
       return;
     }
 
-    if (!["awaiting_payment", "awaiting_confirm", "confirmed"].includes(order.status)) {
+    if (
+      !["awaiting_payment", "awaiting_confirm", "confirmed"].includes(
+        order.status,
+      )
+    ) {
       setError("Don nay hien khong the huy o trang thai hien tai.");
       setNotice("");
       return;
@@ -353,7 +456,8 @@ function UserDashboard() {
 
       setDetailId((prev) => (prev === orderId ? "" : prev));
       setNotice(
-        res.data?.message || `Da huy don #${String(orderId).slice(-6)} thanh cong.`,
+        res.data?.message ||
+          `Da huy don #${String(orderId).slice(-6)} thanh cong.`,
       );
       await fetchDashboard();
     } catch (cancelError) {
@@ -382,7 +486,9 @@ function UserDashboard() {
   };
 
   const handleCancel = (orderId) => {
-    setNotice(`Đơn #${String(orderId).slice(-6)}: hiện backend chưa có endpoint hủy từ user.`);
+    setNotice(
+      `Đơn #${String(orderId).slice(-6)}: hiện backend chưa có endpoint hủy từ user.`,
+    );
     console.log("cancel order", orderId);
   };
 
@@ -441,9 +547,13 @@ function UserDashboard() {
   };
 
   const handlePay = (orderId) => {
-    setNotice(`Đơn #${String(orderId).slice(-6)}: hiện dashboard chưa nối VNPAY.`);
+    setNotice(
+      `Đơn #${String(orderId).slice(-6)}: hiện dashboard chưa nối VNPAY.`,
+    );
     console.log("pay order", orderId);
   };
+
+  const walletTxCount = walletSummary.transactions.length;
 
   const BookingTable = ({
     list,
@@ -454,39 +564,67 @@ function UserDashboard() {
       <table className="w-full min-w-[980px]" style={{ fontSize: 14 }}>
         <thead>
           <tr className="border-b border-slate-200">
-            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">Mã đơn</th>
-            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">Dịch vụ</th>
-            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">Ngày KH</th>
-            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">Tổng tiền</th>
-            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">Trạng thái</th>
-            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">Thanh toán</th>
-            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">Thao tác</th>
+            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">
+              Mã đơn
+            </th>
+            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">
+              Dịch vụ
+            </th>
+            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">
+              Ngày KH
+            </th>
+            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">
+              Tổng tiền
+            </th>
+            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">
+              Trạng thái
+            </th>
+            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">
+              Thanh toán
+            </th>
+            <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500">
+              Thao tác
+            </th>
           </tr>
         </thead>
         <tbody>
           {list.map((order) => {
             const orderId = getOrderId(order);
-            const bookingStatus = bookingStatusMap[order.status] || bookingStatusMap.awaiting_confirm;
-            const paymentStatus = paymentStatusMap[order.paymentStatus] || paymentStatusMap.unpaid;
+            const bookingStatus =
+              bookingStatusMap[order.status] ||
+              bookingStatusMap.awaiting_confirm;
+            const paymentStatus =
+              paymentStatusMap[order.paymentStatus] || paymentStatusMap.unpaid;
             const departureDate = getDepartureDate(order);
 
             return (
-              <tr key={orderId} className="border-b border-slate-100 hover:bg-[#f8fafc]">
-                <td className="px-4 py-4 align-top text-slate-700">#{orderId.slice(-6)}</td>
+              <tr
+                key={orderId}
+                className="border-b border-slate-100 hover:bg-[#f8fafc]"
+              >
+                <td className="px-4 py-4 align-top text-slate-700">
+                  #{orderId.slice(-6)}
+                </td>
                 <td className="px-4 py-4 align-top">
                   <p className="max-w-[260px] truncate text-left font-medium text-slate-900">
                     {getServiceName(order)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">{order.numPeople} người</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {order.numPeople} người
+                  </p>
                 </td>
                 <td className="px-4 py-4 align-top text-slate-600">
-                  {departureDate ? new Date(departureDate).toLocaleDateString("vi-VN") : "Chưa có"}
+                  {departureDate
+                    ? new Date(departureDate).toLocaleDateString("vi-VN")
+                    : "Chưa có"}
                 </td>
                 <td className="px-4 py-4 align-top font-semibold text-[#f97316]">
                   {formatMoney(order.totalPrice)}
                 </td>
                 <td className="px-4 py-4 align-top">
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${bookingStatus.cls}`}>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${bookingStatus.cls}`}
+                  >
                     {bookingStatus.label}
                   </span>
                 </td>
@@ -579,10 +717,10 @@ function UserDashboard() {
                 </span>
               </h1>
               <p className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500">
-                Đây là nơi bạn xem tổng quan tài khoản, các đơn đã đặt và thông tin cá nhân.
+                Đây là nơi bạn xem tổng quan tài khoản, các đơn đã đặt và thông
+                tin cá nhân.
               </p>
             </div>
-
           </div>
         </div>
 
@@ -622,16 +760,88 @@ function UserDashboard() {
         </div>
 
         <div className="rounded-[28px] bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
+          {tab === "wallet" ? (
+            <div>
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-[20px] font-semibold text-slate-900">
+                    Ví của tôi
+                  </h2>
+                  <p className="text-muted-foreground text-[13px]">
+                    Theo dõi thanh toán và hoàn tiền
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="relative mb-6 overflow-hidden rounded-2xl p-6 text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #f97316 0%, #f59e0b 100%)",
+                }}
+              >
+                <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
+                <div className="absolute -bottom-6 -right-10 h-32 w-32 rounded-full bg-white/5" />
+                <div className="relative">
+                  <div
+                    className="mb-3 flex items-center gap-2 text-white/80"
+                    style={{ fontSize: 13 }}
+                  >
+                    <FaWallet size={16} /> Số dư hoàn tiền khả dụng
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 700,
+                      letterSpacing: "-0.5px",
+                    }}
+                  >
+                    {formatMoney(walletSummary.balance)}
+                  </p>
+                  <p className="mt-1 text-white/70" style={{ fontSize: 12 }}>
+                    Tự động trả về tài khoản nguồn khi hủy hoặc hoàn tiền tour
+                  </p>
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNotice(
+                          "Tính năng liên kết ngân hàng sẽ được bổ sung sau.",
+                        )
+                      }
+                      className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-[#f97316] transition hover:bg-white/95"
+                      style={{ fontSize: 13, fontWeight: 600 }}
+                    >
+                      <FaCreditCard size={14} /> Liên kết ngân hàng
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWalletFilter("all")}
+                      className="rounded-lg border border-white/20 bg-white/15 px-4 py-2 text-white backdrop-blur transition hover:bg-white/25"
+                      style={{ fontSize: 13, fontWeight: 500 }}
+                    >
+                      Lịch sử
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {tab === "orders" ? (
             <div>
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">Đơn hàng đang xử lý</h2>
+              <h2 className="mb-4 text-xl font-semibold text-slate-900">
+                Đơn hàng đang xử lý
+              </h2>
               <BookingTable list={activeOrders} allowActions />
             </div>
           ) : null}
 
           {tab === "history" ? (
             <div>
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">Lịch sử đặt dịch vụ</h2>
+              <h2 className="mb-4 text-xl font-semibold text-slate-900">
+                Lịch sử đặt dịch vụ
+              </h2>
               <BookingTable
                 list={historyOrders}
                 allowActions={false}
@@ -643,7 +853,9 @@ function UserDashboard() {
           {tab === "profile" ? (
             <div className="space-y-4">
               <div className="space-y-4">
-                <h2 className="mb-2 text-xl font-semibold text-slate-900">Thông tin cá nhân</h2>
+                <h2 className="mb-2 text-xl font-semibold text-slate-900">
+                  Thông tin cá nhân
+                </h2>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
@@ -651,18 +863,26 @@ function UserDashboard() {
                     <input
                       value={profile.fullName}
                       onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, fullName: e.target.value }))
+                        setProfile((prev) => ({
+                          ...prev,
+                          fullName: e.target.value,
+                        }))
                       }
                       className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
                     />
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-sm text-slate-500">Số điện thoại</span>
+                    <span className="text-sm text-slate-500">
+                      Số điện thoại
+                    </span>
                     <input
                       value={profile.phone}
                       onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, phone: e.target.value }))
+                        setProfile((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
                       }
                       className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
                     />
@@ -696,7 +916,9 @@ function UserDashboard() {
                 <h2 className="text-xl font-semibold text-slate-900">
                   Địa điểm / dịch vụ đã lưu
                 </h2>
-                <p className="text-sm text-slate-500">{favoriteServices.length} mục</p>
+                <p className="text-sm text-slate-500">
+                  {favoriteServices.length} mục
+                </p>
               </div>
 
               {favoriteServices.length === 0 ? (
@@ -708,7 +930,8 @@ function UserDashboard() {
                   {favoriteServices.map((service) => {
                     const serviceId = service?._id || service?.id;
                     const serviceName = service?.serviceName || "Chưa có tên";
-                    const serviceLocation = service?.location || "Chưa có địa điểm";
+                    const serviceLocation =
+                      service?.location || "Chưa có địa điểm";
                     const serviceImage =
                       service?.images?.[0] ||
                       service?.imageUrl ||
@@ -734,18 +957,28 @@ function UserDashboard() {
                             <h3 className="mt-1 line-clamp-1 text-lg font-semibold text-slate-900">
                               {serviceName}
                             </h3>
-                            <p className="mt-1 text-sm text-slate-500">{serviceLocation}</p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {serviceLocation}
+                            </p>
                           </div>
 
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-slate-600">{serviceRating.toFixed(1)} sao</span>
-                            <span className="text-slate-400">{reviewCount} đánh giá</span>
+                            <span className="text-slate-600">
+                              {serviceRating.toFixed(1)} sao
+                            </span>
+                            <span className="text-slate-400">
+                              {reviewCount} đánh giá
+                            </span>
                           </div>
 
                           <button
                             type="button"
                             onClick={() =>
-                              navigate(serviceId ? `/services/${serviceId}` : "/destination")
+                              navigate(
+                                serviceId
+                                  ? `/services/${serviceId}`
+                                  : "/destination",
+                              )
                             }
                             className="w-full rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-2.5 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-orange-200"
                           >
@@ -763,8 +996,12 @@ function UserDashboard() {
           {tab === "reviews" ? (
             <div>
               <div className="mb-5 flex items-center justify-between gap-4">
-                <h2 className="text-xl font-semibold text-slate-900">Đánh giá của tôi</h2>
-                <p className="text-sm text-slate-500">{reviews.length} đánh giá</p>
+                <h2 className="text-xl font-semibold text-slate-900">
+                  Đánh giá của tôi
+                </h2>
+                <p className="text-sm text-slate-500">
+                  {reviews.length} đánh giá
+                </p>
               </div>
 
               {reviews.length === 0 ? (
@@ -774,19 +1011,30 @@ function UserDashboard() {
               ) : (
                 <div className="space-y-4">
                   {reviews.map((review) => (
-                    <div key={review._id || review.id} className="rounded-2xl bg-[#f8fafc] p-5">
+                    <div
+                      key={review._id || review.id}
+                      className="rounded-2xl bg-[#f8fafc] p-5"
+                    >
                       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                           <p className="font-semibold text-slate-900">
                             {review?.serviceId?.serviceName || "Dịch vụ"}
                           </p>
                           <p className="text-sm text-slate-500">
-                            {review?.userId?.fullName || currentUser?.fullName || "Khách hàng"}
+                            {review?.userId?.fullName ||
+                              currentUser?.fullName ||
+                              "Khách hàng"}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 text-[#f59e0b]">
-                          {Array.from({ length: Number(review.rating || 0) }).map((_, index) => (
-                            <FaStar key={index} size={14} className="fill-current" />
+                          {Array.from({
+                            length: Number(review.rating || 0),
+                          }).map((_, index) => (
+                            <FaStar
+                              key={index}
+                              size={14}
+                              className="fill-current"
+                            />
                           ))}
                         </div>
                       </div>
@@ -795,7 +1043,9 @@ function UserDashboard() {
                         {review.comment || "Không có nội dung đánh giá."}
                       </p>
                       <p className="mt-2 text-xs text-slate-400">
-                        {review.createdAt ? new Date(review.createdAt).toLocaleString("vi-VN") : ""}
+                        {review.createdAt
+                          ? new Date(review.createdAt).toLocaleString("vi-VN")
+                          : ""}
                       </p>
                     </div>
                   ))}
@@ -804,7 +1054,6 @@ function UserDashboard() {
             </div>
           ) : null}
         </div>
-
       </div>
 
       {detailId ? (
@@ -815,8 +1064,11 @@ function UserDashboard() {
           {(() => {
             const order = orders.find((item) => getOrderId(item) === detailId);
             if (!order) return null;
-            const bookingStatus = bookingStatusMap[order.status] || bookingStatusMap.awaiting_confirm;
-            const paymentStatus = paymentStatusMap[order.paymentStatus] || paymentStatusMap.unpaid;
+            const bookingStatus =
+              bookingStatusMap[order.status] ||
+              bookingStatusMap.awaiting_confirm;
+            const paymentStatus =
+              paymentStatusMap[order.paymentStatus] || paymentStatusMap.unpaid;
 
             return (
               <div
@@ -834,7 +1086,9 @@ function UserDashboard() {
                     [
                       "Ngày khởi hành",
                       getDepartureDate(order)
-                        ? new Date(getDepartureDate(order)).toLocaleDateString("vi-VN")
+                        ? new Date(getDepartureDate(order)).toLocaleDateString(
+                            "vi-VN",
+                          )
                         : "Chưa có",
                     ],
                     ["Số người", `${order.numPeople || 0} người`],
@@ -844,12 +1098,19 @@ function UserDashboard() {
                     ["Ghi chú", order.note || "Không có"],
                     [
                       "Ngày đặt",
-                      order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "",
+                      order.createdAt
+                        ? new Date(order.createdAt).toLocaleString("vi-VN")
+                        : "",
                     ],
                   ].map(([label, value]) => (
-                    <div key={label} className="flex justify-between gap-4 border-b border-slate-100 pb-2">
+                    <div
+                      key={label}
+                      className="flex justify-between gap-4 border-b border-slate-100 pb-2"
+                    >
                       <span className="text-slate-500">{label}</span>
-                      <span className="text-right font-medium text-slate-900">{value}</span>
+                      <span className="text-right font-medium text-slate-900">
+                        {value}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -876,11 +1137,17 @@ function UserDashboard() {
             className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-2 text-xl font-semibold text-slate-900">Đánh giá dịch vụ</h3>
-            <p className="mb-5 text-sm text-slate-500">{reviewForm.serviceName}</p>
+            <h3 className="mb-2 text-xl font-semibold text-slate-900">
+              Đánh giá dịch vụ
+            </h3>
+            <p className="mb-5 text-sm text-slate-500">
+              {reviewForm.serviceName}
+            </p>
 
             <div className="mb-5">
-              <label className="mb-2 block text-sm text-slate-500">Số sao</label>
+              <label className="mb-2 block text-sm text-slate-500">
+                Số sao
+              </label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -907,7 +1174,9 @@ function UserDashboard() {
             </div>
 
             <label className="mb-5 block">
-              <span className="mb-2 block text-sm text-slate-500">Bình luận</span>
+              <span className="mb-2 block text-sm text-slate-500">
+                Bình luận
+              </span>
               <textarea
                 value={reviewForm.comment}
                 onChange={(e) =>

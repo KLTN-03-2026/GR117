@@ -9,7 +9,6 @@ function CapacityCell({ booked, max }) {
       <span className="font-semibold text-gray-700">
         {booked}/{max}
       </span>
-      <span className="text-[12px] text-gray-400">{pct}%</span>
     </div>
   );
 }
@@ -28,22 +27,40 @@ export default function ProviderScheduleTable({
       <table className="w-full" style={{ fontSize: 14 }}>
         <thead>
           <tr className="border-b border-gray-200">
-            <th className="px-3 py-3 text-left text-gray-500" style={{ fontWeight: 500, fontSize: 13 }}>
+            <th
+              className="px-3 py-3 text-left text-gray-500"
+              style={{ fontWeight: 500, fontSize: 13 }}
+            >
               Dịch vụ
             </th>
-            <th className="px-3 py-3 text-left text-gray-500" style={{ fontWeight: 500, fontSize: 13 }}>
+            <th
+              className="px-3 py-3 text-left text-gray-500"
+              style={{ fontWeight: 500, fontSize: 13 }}
+            >
               Ngày khởi hành
             </th>
-            <th className="px-3 py-3 text-left text-gray-500" style={{ fontWeight: 500, fontSize: 13 }}>
+            <th
+              className="px-3 py-3 text-left text-gray-500"
+              style={{ fontWeight: 500, fontSize: 13 }}
+            >
               Ngày kết thúc
             </th>
-            <th className="px-3 py-3 text-left text-gray-500" style={{ fontWeight: 500, fontSize: 13 }}>
+            <th
+              className="px-3 py-3 text-left text-gray-500"
+              style={{ fontWeight: 500, fontSize: 13 }}
+            >
               Chỗ đặt
             </th>
-            <th className="px-3 py-3 text-left text-gray-500" style={{ fontWeight: 500, fontSize: 13 }}>
+            <th
+              className="px-3 py-3 text-left text-gray-500"
+              style={{ fontWeight: 500, fontSize: 13 }}
+            >
               Trạng thái
             </th>
-            <th className="px-3 py-3 text-left text-gray-500" style={{ fontWeight: 500, fontSize: 13 }}>
+            <th
+              className="px-3 py-3 text-left text-gray-500"
+              style={{ fontWeight: 500, fontSize: 13 }}
+            >
               Thao tác
             </th>
           </tr>
@@ -51,7 +68,9 @@ export default function ProviderScheduleTable({
 
         <tbody>
           {schedules.map((schedule) => {
-            const service = getService(schedule.service_id || schedule.serviceId);
+            const service = getService(
+              schedule.service_id || schedule.serviceId,
+            );
             const st = statusConfig[schedule.status] || statusConfig.open;
 
             return (
@@ -61,7 +80,9 @@ export default function ProviderScheduleTable({
               >
                 <td className="px-3 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-left font-medium">{service?.name || "?"}</p>
+                    <p className="truncate text-left font-medium">
+                      {service?.name || "?"}
+                    </p>
                     <p className="flex items-center gap-1 text-[12px] text-gray-400">
                       <FiMapPin size={11} />
                       {service?.location || "?"}
@@ -142,7 +163,9 @@ export default function ProviderScheduleTable({
       </table>
 
       {schedules.length === 0 ? (
-        <p className="py-10 text-center text-gray-400">Chưa có lịch khởi hành nào</p>
+        <p className="py-10 text-center text-gray-400">
+          Chưa có lịch khởi hành nào
+        </p>
       ) : null}
     </div>
   );

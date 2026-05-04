@@ -223,7 +223,9 @@ export default function Coupons() {
       const res = await axios.get("/api/coupons/my-coupons", { headers });
       setCoupons(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (fetchError) {
-      setError(fetchError?.response?.data?.message || "Không tải được mã giảm giá.");
+      setError(
+        fetchError?.response?.data?.message || "Không tải được mã giảm giá.",
+      );
     } finally {
       setLoading(false);
     }
@@ -312,7 +314,9 @@ export default function Coupons() {
       closeModal();
       await fetchCoupons();
     } catch (submitError) {
-      setError(submitError?.response?.data?.message || "Không lưu được mã giảm giá.");
+      setError(
+        submitError?.response?.data?.message || "Không lưu được mã giảm giá.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -338,7 +342,9 @@ export default function Coupons() {
       setNotice("Đã xóa mã giảm giá.");
       await fetchCoupons();
     } catch (deleteError) {
-      setError(deleteError?.response?.data?.message || "Không xóa được mã giảm giá.");
+      setError(
+        deleteError?.response?.data?.message || "Không xóa được mã giảm giá.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -398,7 +404,9 @@ export default function Coupons() {
         </div>
 
         {loading ? (
-          <div className="py-10 text-center text-gray-500">Đang tải mã giảm giá...</div>
+          <div className="py-10 text-center text-gray-500">
+            Đang tải mã giảm giá...
+          </div>
         ) : coupons.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-12 text-center text-gray-500">
             Chưa có mã giảm giá nào.
@@ -421,7 +429,8 @@ export default function Coupons() {
 
               <tbody>
                 {coupons.map((coupon) => {
-                  const status = STATUS_CONFIG[coupon.status] || STATUS_CONFIG.active;
+                  const status =
+                    STATUS_CONFIG[coupon.status] || STATUS_CONFIG.active;
                   return (
                     <tr
                       key={coupon._id}
@@ -429,30 +438,41 @@ export default function Coupons() {
                     >
                       <td className="px-3 py-4">
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900">{coupon.code}</p>
+                          <p className="font-semibold text-slate-900">
+                            {coupon.code}
+                          </p>
                           <p className="mt-1 text-xs text-slate-400">
-                            {Array.isArray(coupon.serviceIds) && coupon.serviceIds.length > 0
+                            {Array.isArray(coupon.serviceIds) &&
+                            coupon.serviceIds.length > 0
                               ? `${coupon.serviceIds.length} dịch vụ`
                               : "Áp dụng cho toàn bộ dịch vụ"}
                           </p>
                         </div>
                       </td>
                       <td className="px-3 py-4 text-slate-600">
-                        {DISCOUNT_TYPE_LABEL[coupon.discountType] || coupon.discountType || "—"}
+                        {DISCOUNT_TYPE_LABEL[coupon.discountType] ||
+                          coupon.discountType ||
+                          "—"}
                       </td>
-                      <td className="px-3 py-4 font-medium text-slate-900">
+                      <td className="px-3 py-4 font-medium text-slate-">
                         {formatDiscountValue(coupon)}
                       </td>
                       <td className="px-3 py-4 text-slate-600">
-                        {Number(coupon.minOrderValue || 0).toLocaleString("vi-VN")}đ
+                        {Number(coupon.minOrderValue || 0).toLocaleString(
+                          "vi-VN",
+                        )}
+                        đ
                       </td>
                       <td className="px-3 py-4 text-slate-600">
-                        {Number(coupon.usedCount || 0)}/{Number(coupon.maxUsage || 0)}
+                        {Number(coupon.usedCount || 0)}/
+                        {Number(coupon.maxUsage || 0)}
                       </td>
                       <td className="px-3 py-4 text-slate-600">
                         <div className="whitespace-nowrap">
                           <p>{formatDate(coupon.startDate)}</p>
-                          <p className="text-xs text-slate-400">đến {formatDate(coupon.endDate)}</p>
+                          <p className="text-xs text-slate-400">
+                            đến {formatDate(coupon.endDate)}
+                          </p>
                         </div>
                       </td>
                       <td className="px-3 py-4">
