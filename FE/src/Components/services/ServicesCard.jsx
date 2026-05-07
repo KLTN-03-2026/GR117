@@ -107,6 +107,7 @@ const ServicesCard = ({
   const reviewCount = getReviewCount(service);
   const image = getImage(service);
   const [favoriteToast, setFavoriteToast] = useState("");
+  const hasRating = reviewCount > 0 && rating > 0;
 
   const handleEdit = (e) => {
     e.preventDefault();
@@ -335,17 +336,41 @@ const ServicesCard = ({
             <h3 className="mt-3 line-clamp-1 text-lg font-semibold text-slate-800">
               {serviceName}
             </h3>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-400">
-              <span className="flex items-center gap-1">
-                <IoLocationOutline />
-                {destination}
-              </span>
-              <span>{getCategory(service) || "Khac"}</span>
-              <span>{duration}</span>
-            </div>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+            <span className="flex items-center gap-1">
+              <IoLocationOutline />
+              {destination}
+            </span>
+            <span>{getCategory(service) || "Khac"}</span>
+            <span>{duration}</span>
           </div>
 
-          <div className="shrink-0 text-right">
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            {hasRating ? (
+              <>
+                <div className="flex items-center gap-0.5 text-[#f59e0b]">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <FaStar
+                      key={index}
+                      size={12}
+                      className={index < Math.round(rating) ? "fill-current" : "text-slate-200"}
+                    />
+                  ))}
+                </div>
+                <span className="font-medium text-slate-700">
+                  {rating.toFixed(1)}
+                </span>
+                <span className="text-slate-400">
+                  ({reviewCount} đánh giá)
+                </span>
+              </>
+            ) : (
+              <span className="text-slate-400">Chưa có đánh giá</span>
+            )}
+          </div>
+        </div>
+
+        <div className="shrink-0 text-right">
             <p className="text-xl font-bold text-orange-500">
               {price > 0 ? formatPrice(price) : "Liên hệ"}
             </p>
@@ -385,6 +410,29 @@ const ServicesCard = ({
           <p className="line-clamp-1 text-left text-sm text-gray-500">
             {destination}
           </p>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          {hasRating ? (
+            <>
+              <div className="flex items-center gap-0.5 text-[#f59e0b]">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <FaStar
+                    key={index}
+                    size={12}
+                    className={index < Math.round(rating) ? "fill-current" : "text-slate-200"}
+                  />
+                ))}
+              </div>
+              <span className="font-medium text-slate-700">
+                {rating.toFixed(1)}
+              </span>
+              <span className="text-slate-400">
+                ({reviewCount} đánh giá)
+              </span>
+            </>
+          ) : (
+            <span className="text-slate-400">Chưa có đánh giá</span>
+          )}
         </div>
         <p className="line-clamp-1 text-left text-[13px] text-slate-400">
           {duration}

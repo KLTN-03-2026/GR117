@@ -21,6 +21,7 @@ import UserDashboard from "../Pages/client/UserDashboard.jsx";
 import ProviderSchedule from "../Pages/provider/ProviderSchedule.jsx";
 import Booking from "../Pages/provider/Booking.jsx";
 import Revenue from "../Pages/provider/Revenue.jsx";
+import Reconciliation from "../Pages/provider/Reconciliation.jsx";
 import Coupons from "../Pages/provider/Coupons.jsx";
 import BookingConfirm from "../Pages/client/BookingConfirm.jsx";
 import ServiceManagement from "../Pages/admin/ServiceManagement.jsx";
@@ -93,6 +94,8 @@ function Routers() {
           <Route path="Booking" element={<Navigate to="booking" replace />} />
           <Route path="revenue" element={<Revenue />} />
           <Route path="Revenue" element={<Navigate to="revenue" replace />} />
+          <Route path="reconciliation" element={<Reconciliation />} />
+          <Route path="Reconciliation" element={<Navigate to="reconciliation" replace />} />
           <Route path="coupons" element={<Coupons />} />
           <Route path="Coupons" element={<Navigate to="coupons" replace />} />
         </Route>

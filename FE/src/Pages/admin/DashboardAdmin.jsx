@@ -17,21 +17,22 @@ import BookingManagement from "./BookingManagement";
 import ProviderManagement from "./ProviderManagement";
 
 const tabs = [
-  { id: "overview", label: "Tong quan", icon: IoBarChartOutline },
-  { id: "services", label: "Dich vu", icon: IoPricetagOutline },
+  { id: "overview", label: "Tổng quan", icon: IoBarChartOutline },
+  { id: "services", label: "Dịch vụ", icon: IoPricetagOutline },
   { id: "revenue", label: "Doanh thu", icon: IoWalletOutline },
-  { id: "accounts", label: "Tai khoan", icon: IoPeopleOutline },
-  { id: "providers", label: "Nha cung cap", icon: IoBusinessOutline },
-  { id: "bookings", label: "Don hang", icon: IoTicketOutline },
+  { id: "accounts", label: "Tài khoản", icon: IoPeopleOutline },
+  { id: "providers", label: "Nhà cung cấp", icon: IoBusinessOutline },
+  { id: "bookings", label: "Đơn hàng", icon: IoTicketOutline },
 ];
 
 const DashboardAdmin = ({ initialTab = "overview" } = {}) => {
   const [tab, setTab] = useState(initialTab);
-  const cardClass = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
+  const cardClass =
+    "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-6">
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 pt-0 pb-8">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-500">
             <IoShieldCheckmarkOutline className="text-xl" />

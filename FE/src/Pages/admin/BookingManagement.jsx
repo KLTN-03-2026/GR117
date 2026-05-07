@@ -27,7 +27,12 @@ const formatDate = (value) => {
   return date.toISOString().slice(0, 10);
 };
 
-const getOrderId = (order) => order?._id || order?.id || "";
+const getOrderId = (order) =>
+  order?.orderCode ||
+  order?.paymentInfo?.orderInfo ||
+  order?._id ||
+  order?.id ||
+  "";
 
 const getCustomerName = (order) =>
   order?.customerInfo?.name || order?.userId?.fullName || "Khách hàng";
@@ -170,7 +175,7 @@ function BookingManagement() {
                     className="border-t border-slate-100 hover:bg-slate-50/60"
                   >
                     <td className="px-4 py-4 font-medium text-slate-900">
-                      {orderId ? orderId.slice(-6) : "--"}
+                      {orderId || "--"}
                     </td>
                     <td className="px-4 py-4 text-slate-700">
                       {getCustomerName(booking)}

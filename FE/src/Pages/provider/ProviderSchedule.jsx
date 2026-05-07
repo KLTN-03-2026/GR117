@@ -411,7 +411,7 @@ export default function ProviderSchedule() {
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="mx-[27px] rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[18px] font-semibold text-gray-900">
             Danh sách lịch khởi hành

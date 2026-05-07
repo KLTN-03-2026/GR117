@@ -413,7 +413,7 @@ module.exports.getAllService = async (req, res) => {
             {
               $match: {
                 $expr: {
-                  $eq: [{ $toString: "$serviceID" }, { $toString: "$$sId" }],
+                  $eq: [{ $toString: "$serviceId" }, { $toString: "$$sId" }],
                 },
               },
             },

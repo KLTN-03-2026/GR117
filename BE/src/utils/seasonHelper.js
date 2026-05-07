@@ -7,9 +7,9 @@ const SEASON_BY_MONTH = {
   6: "summer",
   7: "summer",
   8: "summer",
-  9: "rainy",
-  10: "rainy",
-  11: "rainy",
+  9: "autumn",
+  10: "autumn",
+  11: "autumn",
   12: "winter",
 };
 

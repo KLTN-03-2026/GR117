@@ -1,5 +1,6 @@
 const Schedule = require("../models/Schedule.js");
 const Service = require("../models/Service.js");
+const Order = require("../models/Order.js");
 
 //  TẠO LỊCH KHỞI HÀNH MỚI (PROVIDER)
 module.exports.createSchedule = async (req, res) => {
@@ -99,6 +100,21 @@ module.exports.updateSchedule = async (req, res) => {
       { maxSlots, status, departureDate, endDate: endDate || null },
       { new: true },
     );
+
+    // Đồng bộ ngày khởi hành mới cho các đơn hàng còn đang xử lý để user thấy lịch mới
+    if (departureDate) {
+      await Order.updateMany(
+        {
+          scheduleId: schedule._id,
+          status: { $nin: ["completed", "cancelled"] },
+        },
+        {
+          $set: {
+            "tourSnapshot.departureDate": updatedSchedule.departureDate,
+          },
+        },
+      );
+    }
 
     return res
       .status(200)

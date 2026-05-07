@@ -3,6 +3,7 @@ import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import {
   FaArrowDownLong,
   FaArrowUpRightFromSquare,
+  FaArrowRotateLeft,
   FaBuilding,
   FaCircleCheck,
   FaDollarSign,
@@ -12,8 +13,26 @@ import {
   FaWallet,
   FaXmark,
 } from "react-icons/fa6";
+import RevenueByProvider from "./RevenueByProvider.jsx";
 
 const fmtVND = (n) => `${Number(n || 0).toLocaleString("vi-VN")}đ`;
+
+const fmtDateTime = (value) => {
+  if (!value || value === "-") return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  const pad = (num) => String(num).padStart(2, "0");
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+};
 
 const withdrawalStatusMap = {
   pending: {
@@ -21,7 +40,7 @@ const withdrawalStatusMap = {
     cls: "bg-amber-50 text-amber-700 border border-amber-200",
   },
   approved: {
-    label: "Đã duyệt",
+    label: "Đã chi trả",
     cls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   },
   rejected: {
@@ -42,25 +61,25 @@ const txMetaMap = {
     direction: "in",
   },
   commission: {
-    label: "Hoa hồng",
+    label: "Hoa hồng hệ thống",
     className: "bg-purple-50 text-purple-600",
     iconClassName: "text-purple-600",
     direction: "in",
   },
   payout: {
-    label: "Giải ngân partner",
+    label: "Giải ngân",
     className: "bg-orange-50 text-orange-600",
     iconClassName: "text-orange-600",
     direction: "out",
   },
   refund: {
-    label: "Hoàn tiền user",
+    label: "Hoàn tiền",
     className: "bg-amber-50 text-amber-600",
     iconClassName: "text-amber-600",
     direction: "out",
   },
   withdrawal: {
-    label: "Rút tiền partner",
+    label: "Rút tiền provider",
     className: "bg-red-50 text-red-600",
     iconClassName: "text-red-600",
     direction: "out",
@@ -70,7 +89,7 @@ const txMetaMap = {
 function MetricCard({ label, value, icon: Icon, color }) {
   return (
     <div className="rounded-2xl border border-gray-50 bg-white p-3 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-0 flex items-center justify-between">
         <div
           className="flex h-10 w-10 items-center justify-center rounded-xl"
           style={{ background: `${color}18` }}
@@ -147,7 +166,9 @@ function TransactionRow({ item }) {
         )}
       </div>
       <div className="min-w-0 flex-1 text-left">
-        <p className="text-left text-sm font-medium">{meta.label} </p>
+        <p className="text-left text-sm font-medium">
+          {item.title || meta.label}
+        </p>
         <p className="truncate text-left text-[11px] text-muted-foreground">
           {item.note}
         </p>
@@ -164,7 +185,7 @@ function TransactionRow({ item }) {
           {fmtVND(item.amount)}
         </p>
         <p className="text-muted-foreground" style={{ fontSize: 11 }}>
-          {item.createdAt}
+          {fmtDateTime(item.createdAt)}
         </p>
       </div>
     </div>
@@ -177,7 +198,6 @@ function WithdrawalRow({
   processingId,
   onReject,
   onApprove,
-  onPaid,
 }) {
   const withdrawalId = item.id || item._id;
 
@@ -193,7 +213,7 @@ function WithdrawalRow({
               {item.partnerName || item?.provider_id?.fullName || "Chưa có"}
             </p>
             <p className="text-muted-foreground text-xs">
-              #{withdrawalId} · {item.createdAt}
+              #{withdrawalId} · {fmtDateTime(item.createdAt)}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-[12px]">
               <div>
@@ -253,16 +273,6 @@ function WithdrawalRow({
               </button>
             </div>
           ) : null}
-          {item.status === "approved" ? (
-            <button
-              onClick={() => onPaid(withdrawalId)}
-              className="mt-3 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-              type="button"
-              disabled={processingId === withdrawalId}
-            >
-              Đánh dấu đã chi trả
-            </button>
-          ) : null}
         </div>
       </div>
     </div>
@@ -280,8 +290,8 @@ function RefundRow({ item }) {
   const refundRate = Number(item?.refundRate || 0);
   return (
     <div className="flex items-center gap-3 px-5 py-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
-        <FaRotateRight size={16} className="text-emerald-600" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50">
+        <FaArrowRotateLeft size={16} className="text-amber-600" />
       </div>
       <div className="min-w-0 flex-1 text-left">
         <p className="text-sm font-medium">{customerName}</p>
@@ -433,36 +443,69 @@ function Revenue() {
   );
 
   const txList = useMemo(() => {
-    const rows = [
-      {
-        id: "total-collected",
+    const getCustomerName = (order) =>
+      order?.customerInfo?.name || order?.userId?.fullName || "Khách hàng";
+    const getProviderName = (order) =>
+      order?.provider_id?.fullName || "Provider";
+    const getServiceName = (order) =>
+      order?.serviceId?.serviceName ||
+      order?.tourSnapshot?.name ||
+      "không có tên tour";
+    const getCommissionAmount = (order) =>
+      Math.floor(Number(order?.totalPrice || 0) * 0.1);
+    const getProviderNet = (order) =>
+      Math.max(Number(order?.totalPrice || 0) - getCommissionAmount(order), 0);
+
+    const paidOrders = [...orders].filter(
+      (order) =>
+        order?.paymentStatus === "paid" && order?.status !== "cancelled",
+    );
+
+    const rows = paidOrders.flatMap((order) => {
+      const orderId = order?._id || order?.id;
+      const customerName = getCustomerName(order);
+      const providerName = getProviderName(order);
+      const serviceName = getServiceName(order);
+      const orderDate = fmtDateTime(order?.createdAt);
+      const completedDate = fmtDateTime(order?.updatedAt || order?.createdAt);
+
+      const paymentRow = {
+        id: `payment-${orderId}`,
         type: "payment",
-        note: "Tổng doanh thu đã thu từ khách hàng",
-        amount: totalCollected,
-        createdAt: "-",
-      },
-      {
-        id: "commission",
+        title: "Thanh toán",
+        note: `Khách hàng ${customerName} đã thanh toán cho tour ${serviceName} của đối tác ${providerName}`,
+        amount: Number(order?.totalPrice || 0),
+        createdAt: orderDate,
+        sortTime: new Date(order?.createdAt || 0).getTime(),
+      };
+
+      const commissionRow = {
+        id: `commission-${orderId}`,
         type: "commission",
-        note: "Hoa hồng hệ thống từ đơn đã hoàn tất",
-        amount: commissionRevenue,
-        createdAt: "-",
-      },
-      {
-        id: "provider-payout",
-        type: "payout",
-        note: "Khoáº£n cáº§n chi tráº£ cho provider",
-        amount: providerPayout,
-        createdAt: "-",
-      },
-      {
-        id: "held-revenue",
-        type: "withdrawal",
-        note: "Doanh thu đang giữ hộ chờ hoàn tất tour",
-        amount: heldRevenue,
-        createdAt: "-",
-      },
-    ];
+        title: "Hoa hồng hệ thống",
+        note: `Hệ thống giữ hoa hồng của đơn ${serviceName}`,
+        amount: getCommissionAmount(order),
+        createdAt: orderDate,
+        sortTime: new Date(order?.createdAt || 0).getTime() + 1,
+      };
+
+      const payoutRow =
+        order?.status === "completed"
+          ? {
+              id: `payout-${orderId}`,
+              type: "payout",
+              title: "Giải ngân ",
+              note: `Giải ngân cho đối tác ${providerName}`,
+              amount: getProviderNet(order),
+              createdAt: completedDate,
+              sortTime:
+                new Date(order?.updatedAt || order?.createdAt || 0).getTime() +
+                2,
+            }
+          : null;
+
+      return [paymentRow, commissionRow, payoutRow].filter(Boolean);
+    });
 
     const refundRows = [...orders]
       .filter(
@@ -473,13 +516,16 @@ function Revenue() {
       .map((order) => ({
         id: `refund-${order?._id || order?.id}`,
         type: "refund",
-        note: `Hoàn tiền tour ${
+        title: "Hoàn tiền ",
+        note: `Hoàn tiền cho khách hàng ${order?.customerInfo?.name || order?.userId?.fullName || "khách hàng"} của tour ${
           order?.serviceId?.serviceName ||
           order?.tourSnapshot?.name ||
           "không có tên tour"
         }`,
         amount: Number(order?.refundAmount || order?.totalPrice || 0),
-        createdAt: order?.updatedAt || order?.createdAt || "-",
+        createdAt: fmtDateTime(order?.updatedAt || order?.createdAt),
+        sortTime:
+          new Date(order?.updatedAt || order?.createdAt || 0).getTime() + 3,
       }));
 
     rows.push(...refundRows);
@@ -492,9 +538,15 @@ function Revenue() {
         item.id.toLowerCase().includes(keyword)
       );
     });
-  }, [search, totalCollected, commissionRevenue, providerPayout, heldRevenue]);
+  }, [orders, search]);
 
-  const sortedTx = txList;
+  const sortedTx = useMemo(
+    () =>
+      [...txList].sort(
+        (a, b) => Number(b.sortTime || 0) - Number(a.sortTime || 0),
+      ),
+    [txList],
+  );
 
   const withdrawalList = useMemo(
     () =>
@@ -536,30 +588,17 @@ function Revenue() {
     });
     const result = await res.json();
     if (!res.ok)
-      throw new Error(result.message || "Khong the cap nhat rut tien");
+      throw new Error(result.message || "Không thể cập nhật yêu cầu rút tiền");
   };
 
   const handleApprove = async (id) => {
     try {
       setProcessingId(id);
       setError("");
-      await patchWithdrawal(id, "approved");
-      await reloadData();
-    } catch (err) {
-      setError(err?.message || "Khong the duyet rut tien");
-    } finally {
-      setProcessingId("");
-    }
-  };
-
-  const handlePaid = async (id) => {
-    try {
-      setProcessingId(id);
-      setError("");
       await patchWithdrawal(id, "paid");
       await reloadData();
     } catch (err) {
-      setError(err?.message || "Khong the cap nhat da chi tra");
+      setError(err?.message || "Không thể duyệt yêu cầu");
     } finally {
       setProcessingId("");
     }
@@ -579,7 +618,7 @@ function Revenue() {
       setRejectReason("");
       await reloadData();
     } catch (err) {
-      setError(err?.message || "Khong the tu choi yeu cau");
+      setError(err?.message || "Không thể từ chối yêu cầu");
     } finally {
       setProcessingId("");
     }
@@ -667,6 +706,11 @@ function Revenue() {
             count={refundList.length}
             onClick={() => handleTabChange("refunds")}
           />
+          <TabButton
+            active={tab === "providers"}
+            label="Provider"
+            onClick={() => handleTabChange("providers")}
+          />
         </div>
 
         {tab === "transactions" && (
@@ -692,6 +736,8 @@ function Revenue() {
           </div>
         )}
 
+        {tab === "providers" && <RevenueByProvider />}
+
         {/* Withdrawals */}
         {tab === "withdrawals" && (
           <div className="space-y-3">
@@ -710,7 +756,6 @@ function Revenue() {
                   processingId={processingId}
                   onReject={setRejectId}
                   onApprove={handleApprove}
-                  onPaid={handlePaid}
                 />
               ))
             )}

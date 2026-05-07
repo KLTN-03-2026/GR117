@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { FiEdit2, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiPlus, FiTrash2, FiX } from "react-icons/fi";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 
 const emptyForm = {
@@ -42,7 +42,6 @@ function CouponFormModal({
   onClose,
   onSubmit,
   onChange,
-  onReset,
 }) {
   if (!open) return null;
 
@@ -54,17 +53,15 @@ function CouponFormModal({
             <h2 className="text-xl font-semibold text-slate-900">
               {isEdit ? "Cập nhật mã giảm giá" : "Thêm mã giảm giá"}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Thiết lập mã áp dụng cho dịch vụ của bạn.
-            </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+            aria-label="Đóng"
           >
-            Đóng
+            <FiX size={18} />
           </button>
         </div>
 
@@ -157,26 +154,7 @@ function CouponFormModal({
             </label>
           </div>
 
-          <label className="space-y-2 block">
-            <span className="text-sm text-slate-500">
-              Áp dụng cho dịch vụ nào? Nhập ID, cách nhau bằng dấu phẩy
-            </span>
-            <textarea
-              value={form.serviceIds}
-              onChange={(e) => onChange("serviceIds", e.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
-            />
-          </label>
-
           <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onReset}
-              className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-medium text-slate-600"
-            >
-              Làm mới
-            </button>
             <button
               type="submit"
               disabled={isSubmitting}
@@ -395,7 +373,7 @@ export default function Coupons() {
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="mx-[27px] rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-[18px] font-semibold text-gray-900">
             Danh sách mã giảm giá
@@ -454,7 +432,7 @@ export default function Coupons() {
                           coupon.discountType ||
                           "—"}
                       </td>
-                      <td className="px-3 py-4 font-medium text-slate-">
+                      <td className="px-3 py-4 font-medium text-slate-600">
                         {formatDiscountValue(coupon)}
                       </td>
                       <td className="px-3 py-4 text-slate-600">
@@ -519,7 +497,6 @@ export default function Coupons() {
         onClose={closeModal}
         onSubmit={handleSubmit}
         onChange={updateForm}
-        onReset={resetForm}
       />
     </div>
   );

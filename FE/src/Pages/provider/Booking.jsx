@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { IoSearch } from "react-icons/io5";
-import { FaCircleXmark } from "react-icons/fa6";
+import { FaCircleCheck, FaCircleXmark } from "react-icons/fa6";
 import { FiRefreshCw } from "react-icons/fi";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 
@@ -36,25 +36,33 @@ const STATUS_META = {
   },
 };
 
-const formatMoney = (value) =>
-  Number(value || 0).toLocaleString("vi-VN") + "đ";
+const formatMoney = (value) => Number(value || 0).toLocaleString("vi-VN") + "đ";
 
 const getOrderId = (order) => order?._id || order?.id || "";
 
 const getServiceName = (order) =>
-  order?.tourSnapshot?.name || order?.serviceId?.serviceName || "Chưa có tên tour";
+  order?.tourSnapshot?.name ||
+  order?.serviceId?.serviceName ||
+  "Chưa có tên tour";
 
 const getDepartureDate = (order) =>
-  order?.tourSnapshot?.departureDate || order?.scheduleId?.departureDate || null;
+  order?.tourSnapshot?.departureDate ||
+  order?.scheduleId?.departureDate ||
+  null;
 
 const getCustomerName = (order) =>
   order?.customerInfo?.name || order?.customerInfo?.fullName || "Khách hàng";
 
 const getCustomerPhone = (order) => order?.customerInfo?.phone || "";
 
-const getInitial = (name) => String(name || "K").trim().charAt(0).toUpperCase() || "K";
+const getInitial = (name) =>
+  String(name || "K")
+    .trim()
+    .charAt(0)
+    .toUpperCase() || "K";
 
-const getStatusLabel = (status) => STATUS_META[status]?.label || status || "Chưa rõ";
+const getStatusLabel = (status) =>
+  STATUS_META[status]?.label || status || "Chưa rõ";
 
 const getStatusClass = (status) =>
   STATUS_META[status]?.cls || "bg-slate-100 text-slate-600 border-slate-200";
@@ -148,7 +156,8 @@ function Booking() {
         serviceName.includes(keyword) ||
         phone.includes(keyword);
 
-      const matchStatus = activeFilter === "all" || order.status === activeFilter;
+      const matchStatus =
+        activeFilter === "all" || order.status === activeFilter;
 
       return matchSearch && matchStatus;
     });
@@ -174,7 +183,9 @@ function Booking() {
       const updated = res.data?.data;
       if (updated) {
         setOrders((prev) =>
-          prev.map((item) => (getOrderId(item) === orderId ? { ...item, ...updated } : item)),
+          prev.map((item) =>
+            getOrderId(item) === orderId ? { ...item, ...updated } : item,
+          ),
         );
       } else {
         await fetchOrders();
@@ -250,7 +261,10 @@ function Booking() {
           className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-[13px] font-medium text-[#f97316] transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
         >
           <span className="inline-flex items-center gap-2">
-            <FiRefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            <FiRefreshCw
+              size={16}
+              className={refreshing ? "animate-spin" : ""}
+            />
             {refreshing ? "Đang tải..." : "Làm mới"}
           </span>
         </button>
@@ -298,7 +312,7 @@ function Booking() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="mx-[27px] rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
           {filteredOrders.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
               Chưa có dữ liệu booking
@@ -323,7 +337,8 @@ function Booking() {
                     const orderId = getOrderId(order);
                     const bookingStatus = getStatusLabel(order.status);
                     const statusClass = getStatusClass(order.status);
-                    const isAwaitingConfirm = order.status === "awaiting_confirm";
+                    const isAwaitingConfirm =
+                      order.status === "awaiting_confirm";
                     const isConfirmed = canComplete(order.status);
                     const departureDate = getDepartureDate(order);
 
@@ -368,32 +383,40 @@ function Booking() {
 
                         <td className="px-3 py-4 text-left">
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusClass}`}
+                            className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium bg-blue-100 text-blue-700 border-blue-200 ${statusClass}`}
                           >
                             {bookingStatus}
                           </span>
                         </td>
 
                         <td className="px-3 py-4 text-left">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-nowrap items-center gap-2">
                             {isAwaitingConfirm ? (
                               <>
                                 <button
                                   type="button"
                                   disabled={actionLoadingId === orderId}
-                                  onClick={() => updateOrder(orderId, "confirmed")}
-                                  className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 px-4 py-2.5 text-sm font-medium text-emerald-600 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-70"
+                                  onClick={() =>
+                                    updateOrder(orderId, "confirmed")
+                                  }
+                                  title="Xác nhận"
+                                  aria-label="Xác nhận"
+                                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-emerald-600 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
-                                  Xác nhận
+                                  <FaCircleCheck size={18} />
                                 </button>
+
                                 <button
                                   type="button"
                                   disabled={actionLoadingId === orderId}
-                                  onClick={() => updateOrder(orderId, "cancelled")}
-                                  className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
+                                  onClick={() =>
+                                    updateOrder(orderId, "cancelled")
+                                  }
+                                  title="Từ chối"
+                                  aria-label="Từ chối"
+                                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl  text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
-                                  <FaCircleXmark size={15} />
-                                  Từ chối
+                                  <FaCircleXmark size={18} />
                                 </button>
                               </>
                             ) : null}
@@ -402,8 +425,10 @@ function Booking() {
                               <button
                                 type="button"
                                 disabled={actionLoadingId === orderId}
-                                onClick={() => updateOrder(orderId, "completed")}
-                                className="inline-flex items-center gap-2 rounded-2xl border border-green-200 px-4 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-70"
+                                onClick={() =>
+                                  updateOrder(orderId, "completed")
+                                }
+                                className="inline-flex whitespace-nowrap items-center gap-2 rounded-2xl border border-green-200 px-4 py-2.5 text-sm font-medium text-green-700 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-70"
                               >
                                 Hoàn tất
                               </button>

@@ -1,6 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { IoSearch } from "react-icons/io5";
+import {
+  FaCircleCheck,
+  FaCircleXmark,
+  FaEye,
+  FaLockOpen,
+  FaTrashCan,
+} from "react-icons/fa6";
+
+function LockIcon(props) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      {...props}
+    >
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
 
 const statusMeta = {
   pending: {
@@ -186,6 +215,8 @@ const ProviderManagement = () => {
     const userStatus = String(item?.providerID?.status || "").toLowerCase();
     const rowState = getRowState(item);
     const disabled = actionLoadingId === userId;
+    const iconButtonClass =
+      "inline-flex h-11 w-11 shrink-0 items-center justify-center transition disabled:cursor-not-allowed disabled:opacity-60";
 
     if (rowState === "pending") {
       return (
@@ -194,13 +225,17 @@ const ProviderManagement = () => {
             type="button"
             disabled={disabled}
             onClick={() => setSelectedProvider(item)}
-            className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Xem chi tiết"
+            aria-label="Xem chi tiết"
+            className={`${iconButtonClass} text-sky-600`}
           >
-            Xem chi tiet
+            <FaEye size={14} />
           </button>
           <button
             type="button"
             disabled={disabled}
+            title="Duyệt"
+            aria-label="Duyệt"
             onClick={() =>
               callProtectedPatch(
                 `/api/admin/approve-provider/${userId}`,
@@ -209,13 +244,15 @@ const ProviderManagement = () => {
                 "approved",
               )
             }
-            className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${iconButtonClass} text-emerald-600`}
           >
-            Duyet
+            <FaCircleCheck size={14} />
           </button>
           <button
             type="button"
             disabled={disabled}
+            title="Từ chối"
+            aria-label="Từ chối"
             onClick={() =>
               callProtectedPatch(
                 `/api/admin/reject-provider/${userId}`,
@@ -224,17 +261,9 @@ const ProviderManagement = () => {
                 "rejected",
               )
             }
-            className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${iconButtonClass} text-rose-600`}
           >
-            Tu choi
-          </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => deleteProvider(userId)}
-            className="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Xoa
+            <FaCircleXmark size={14} />
           </button>
         </>
       );
@@ -246,15 +275,19 @@ const ProviderManagement = () => {
           <button
             type="button"
             disabled={disabled}
+            title="Xem chi tiết"
+            aria-label="Xem chi tiết"
             onClick={() => setSelectedProvider(item)}
-            className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${iconButtonClass} text-sky-600`}
           >
-            Xem chi tiet
+            <FaEye size={14} />
           </button>
           {userStatus === "locked" ? (
             <button
               type="button"
               disabled={disabled}
+              title="Mở khóa"
+              aria-label="Mở khóa"
               onClick={() =>
                 callProtectedPatch(
                   `/api/admin/unlock-account/${userId}`,
@@ -262,14 +295,16 @@ const ProviderManagement = () => {
                   "active",
                 )
               }
-              className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`${iconButtonClass} text-sky-600`}
             >
-              Mo khoa
+              <FaLockOpen size={14} />
             </button>
           ) : (
             <button
               type="button"
               disabled={disabled}
+              title="Khóa"
+              aria-label="Khóa"
               onClick={() =>
                 callProtectedPatch(
                   `/api/admin/lock-account/${userId}`,
@@ -277,18 +312,20 @@ const ProviderManagement = () => {
                   "locked",
                 )
               }
-              className="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`${iconButtonClass} text-slate-600`}
             >
-              Khoa
+              <LockIcon />
             </button>
           )}
           <button
             type="button"
             disabled={disabled}
+            title="Xóa"
+            aria-label="Xóa"
             onClick={() => deleteProvider(userId)}
-            className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${iconButtonClass} text-rose-600`}
           >
-            Xoa
+            <FaTrashCan size={14} />
           </button>
         </>
       );
@@ -300,18 +337,22 @@ const ProviderManagement = () => {
           <button
             type="button"
             disabled={disabled}
+            title="Xem chi tiết"
+            aria-label="Xem chi tiết"
             onClick={() => setSelectedProvider(item)}
-            className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${iconButtonClass} text-sky-600`}
           >
-            Xem chi tiet
+            <FaEye size={14} />
           </button>
           <button
             type="button"
             disabled={disabled}
+            title="Xóa"
+            aria-label="Xóa"
             onClick={() => deleteProvider(userId)}
-            className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${iconButtonClass} text-rose-600`}
           >
-            Xoa
+            <FaTrashCan size={14} />
           </button>
         </>
       );
@@ -322,18 +363,22 @@ const ProviderManagement = () => {
         <button
           type="button"
           disabled={disabled}
+          title="Xem chi tiết"
+          aria-label="Xem chi tiết"
           onClick={() => setSelectedProvider(item)}
-          className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className={`${iconButtonClass} text-sky-600`}
         >
-          Xem chi tiet
+          <FaEye size={14} />
         </button>
         <button
           type="button"
           disabled={disabled}
+          title="Xóa"
+          aria-label="Xóa"
           onClick={() => deleteProvider(userId)}
-          className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className={`${iconButtonClass} text-rose-600`}
         >
-          Xoa
+          <FaTrashCan size={14} />
         </button>
       </>
     );
@@ -370,7 +415,7 @@ const ProviderManagement = () => {
             <tr>
               <th className="px-4 py-3 text-left font-medium">STT</th>
               <th className="px-4 py-3 text-left font-medium">
-                Ten doanh nghiep
+                Tên doanh nghiệp
               </th>
               <th className="px-4 py-3 text-left font-medium">Email</th>
               <th className="px-4 py-3 text-left font-medium">SDT</th>
@@ -385,10 +430,8 @@ const ProviderManagement = () => {
           <tbody>
             {filteredProviders.length > 0 ? (
               filteredProviders.map((item, index) => {
-                const profileStatusKey = String(
-                  item?.status || "",
-                ).toLowerCase();
-                const meta = statusMeta[profileStatusKey] || statusMeta.default;
+                const rowState = getRowState(item);
+                const meta = statusMeta[rowState] || statusMeta.default;
 
                 return (
                   <tr key={item._id}>
@@ -415,17 +458,10 @@ const ProviderManagement = () => {
                         >
                           {meta.label}
                         </span>
-                        {String(
-                          item?.providerID?.status || "",
-                        ).toLowerCase() === "locked" ? (
-                          <span className="text-xs font-medium text-slate-500">
-                            Tai khoan dang bi khoa
-                          </span>
-                        ) : null}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-left">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-nowrap gap-2">
                         {renderActions(item)}
                       </div>
                     </td>
@@ -438,7 +474,7 @@ const ProviderManagement = () => {
                   colSpan="8"
                   className="px-4 py-16 text-center text-slate-400"
                 >
-                  Chua co du lieu nha cung cap
+                  Chưa có nhà cung cấp nào
                 </td>
               </tr>
             )}

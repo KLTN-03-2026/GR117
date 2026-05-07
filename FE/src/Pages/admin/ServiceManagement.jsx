@@ -4,6 +4,24 @@ import axios from "axios";
 import { TiTickOutline } from "react-icons/ti";
 import { AiOutlineCloseCircle } from "react-icons/ai";
 
+const getServiceRating = (item) => {
+  const ratingValue = Number(
+    item?.rating ?? item?.avgRating ?? item?.averageRating ?? item?.score ?? 0,
+  );
+  return Number.isFinite(ratingValue) ? ratingValue : 0;
+};
+
+const getServiceReviewCount = (item) => {
+  const reviewCountValue = Number(
+    item?.reviewCount ??
+      item?.totalReviews ??
+      item?.reviewsCount ??
+      item?.reviewTotal ??
+      0,
+  );
+  return Number.isFinite(reviewCountValue) ? reviewCountValue : 0;
+};
+
 const ServiceManagement = () => {
   const [serviceSearch, setServiceSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -171,6 +189,15 @@ const ServiceManagement = () => {
             {filtered.length > 0 ? (
               filtered.map((item, index) => {
                 const st = statusLabel(item.status);
+                const rating = getServiceRating(item);
+                const reviewCount = getServiceReviewCount(item);
+                const hasReviewInfo = rating > 0 || reviewCount > 0;
+                const reviewLabel =
+                  rating > 0 && reviewCount > 0
+                    ? `${rating.toFixed(1)} (${reviewCount})`
+                    : rating > 0
+                      ? `${rating.toFixed(1)}`
+                      : "--";
 
                 return (
                   <tr key={item._id}>
@@ -178,7 +205,11 @@ const ServiceManagement = () => {
                     <td className="text-left px-4 py-3">{item.serviceName}</td>
                     <td className="text-left px-4 py-3">{item.providerName || item.nameProvider}</td>
                     <td className="text-left px-4 py-3">{Number(item.price ?? item.prices ?? 0).toLocaleString("vi-VN")} VNĐ</td>
-                    <td className="text-left px-4 py-3">--</td>
+                    <td className="text-left px-4 py-3">
+                      <span className="text-slate-500">
+                        {hasReviewInfo ? reviewLabel : "--"}
+                      </span>
+                    </td>
                     <td className="text-left px-4 py-3">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${st.cls}`}>
                         {st.text}

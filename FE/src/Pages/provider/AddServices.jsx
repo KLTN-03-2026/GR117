@@ -10,12 +10,20 @@ const EMPTY_FORM = {
   price: "",
   location: "",
   category: "",
+  season: "",
   duration: "",
   images: "",
   highlights: "",
   includes: "",
   itinerary: "",
 };
+
+const SEASON_OPTIONS = [
+  { value: "spring", label: "Xuân" },
+  { value: "summer", label: "Hạ" },
+  { value: "autumn", label: "Thu" },
+  { value: "winter", label: "Đông" },
+];
 
 const AddServices = () => {
   const navigate = useNavigate();
@@ -116,6 +124,10 @@ const AddServices = () => {
     payload.append("prices", String(Number(formData.price)));
     payload.append("location", formData.location.trim());
     payload.append("category", formData.category);
+    payload.append(
+      "seasonTags",
+      JSON.stringify(formData.season ? [formData.season] : []),
+    );
     payload.append("duration", formData.duration.trim());
     payload.append("highlight", JSON.stringify(splitLines(formData.highlights)));
     payload.append("includes", JSON.stringify(splitLines(formData.includes)));
@@ -213,7 +225,7 @@ const AddServices = () => {
               </div>
 
               <div>
-                <div className="grid gap-6 md:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <label className={labelClass}>Địa điểm</label>
                     <input
@@ -236,6 +248,22 @@ const AddServices = () => {
                       {categories.map((item) => (
                         <option key={item._id} value={item._id}>
                           {item.categoryName || item.name || item.slug}
+                        </option>
+                      ))}
+                      </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Mùa phù hợp</label>
+                    <select
+                      name="season"
+                      value={formData.season}
+                      onChange={handleChange}
+                      className={inputClass}
+                    >
+                      <option value="">Chọn mùa</option>
+                      {SEASON_OPTIONS.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
                         </option>
                       ))}
                     </select>
@@ -370,5 +398,4 @@ const AddServices = () => {
 };
 
 export default AddServices;
-
 

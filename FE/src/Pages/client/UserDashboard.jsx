@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -13,7 +13,6 @@ import {
   FaWallet,
   FaArrowDownLong,
   FaArrowUpRightFromSquare,
-  FaCreditCard,
   FaShieldHalved,
   FaFilter,
 } from "react-icons/fa6";
@@ -67,6 +66,24 @@ const formatMoney = (value) =>
 
 const getOrderId = (order) => order?._id || order?.id || "";
 
+const getOrderCode = (order) =>
+  order?.orderCode ||
+  `OD${String(order?._id || order?.id || "")
+    .replace(/\D/g, "")
+    .slice(-4)
+    .padStart(4, "0")}`;
+
+const getBillCode = (order) => {
+  const billCode =
+    order?.paymentInfo?.transactionNo ||
+    order?.paymentInfo?.billCode ||
+    order?.paymentInfo?.paymentCode ||
+    order?.billCode ||
+    order?.billNo ||
+    order?.paymentNo;
+  return billCode || "Chưa có";
+};
+
 const getServiceName = (order) =>
   order?.tourSnapshot?.name ||
   order?.serviceId?.serviceName ||
@@ -74,8 +91,8 @@ const getServiceName = (order) =>
   "Chưa có tên tour";
 
 const getDepartureDate = (order) =>
-  order?.tourSnapshot?.departureDate ||
   order?.scheduleId?.departureDate ||
+  order?.tourSnapshot?.departureDate ||
   null;
 
 function UserDashboard() {
@@ -125,10 +142,22 @@ function UserDashboard() {
   const currentUserId = String(
     user.userId || user.id || currentUser?._id || currentUser?.id || "",
   );
-  const searchParams = new URLSearchParams(location.search);
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
   const vnpayStatus = searchParams.get("vnpayStatus");
   const callbackOrderId = searchParams.get("orderId");
+  const callbackOrderCode = searchParams.get("orderCode");
   const callbackUpdated = searchParams.get("updated");
+  const displayOrderCode = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "OD0000";
+    if (/^OD\d{4}$/i.test(raw)) return raw.toUpperCase();
+
+    const digits = raw.replace(/\D/g, "").slice(-4).padStart(4, "0");
+    return `OD${digits}`;
+  };
 
   const fetchDashboard = async () => {
     try {
@@ -183,24 +212,32 @@ function UserDashboard() {
     if (!vnpayStatus) return;
 
     if (vnpayStatus === "success") {
+      const orderCode = callbackOrderCode || displayOrderCode(callbackOrderId);
+      setTab("orders");
       setNotice(
         callbackUpdated === "1"
-          ? `Thanh toan VNPAY thanh cong. Don #${String(callbackOrderId || "").slice(-6)} da duoc cap nhat.`
+          ? `Thanh toan VNPAY thanh cong. Don ${orderCode} da duoc cap nhat.`
           : "Thanh toan VNPAY thanh cong. Dashboard dang tai lai du lieu moi nhat.",
       );
       fetchDashboard();
     } else if (vnpayStatus === "failed") {
       setNotice(
-        "Thanh toan VNPAY chua thanh cong hoac chu ky xac thuc khong hop le.",
+        "Thanh toán VNPAY chưa thành công hoặc chữ ký xác thực không hợp lệ.",
       );
     }
 
     const timer = window.setTimeout(() => {
       navigate("/user/dashboard", { replace: true });
-    }, 1500);
+    }, 3000);
 
     return () => window.clearTimeout(timer);
-  }, [vnpayStatus, callbackOrderId, callbackUpdated, navigate]);
+  }, [
+    vnpayStatus,
+    callbackOrderId,
+    callbackOrderCode,
+    callbackUpdated,
+    navigate,
+  ]);
 
   const activeOrders = orders.filter(
     (order) => !["completed", "cancelled", "rejected"].includes(order.status),
@@ -418,6 +455,7 @@ function UserDashboard() {
 
   const handleUserCancel = async (order) => {
     const orderId = getOrderId(order);
+    const orderCode = displayOrderCode(orderId);
 
     if (!accessToken) {
       setError("Ban can dang nhap de huy don.");
@@ -435,7 +473,7 @@ function UserDashboard() {
     }
 
     const confirmed = window.confirm(
-      `Ban chac chan muon huy don #${String(orderId).slice(-6)}?`,
+      `Ban chac chan muon huy don ${orderCode}?`,
     );
     if (!confirmed) return;
 
@@ -455,10 +493,7 @@ function UserDashboard() {
       );
 
       setDetailId((prev) => (prev === orderId ? "" : prev));
-      setNotice(
-        res.data?.message ||
-          `Da huy don #${String(orderId).slice(-6)} thanh cong.`,
-      );
+      setNotice(res.data?.message || `Da huy don ${orderCode} thanh cong.`);
       await fetchDashboard();
     } catch (cancelError) {
       setError(
@@ -485,9 +520,40 @@ function UserDashboard() {
     }
   };
 
+  const handleRemoveFavorite = async (serviceId) => {
+    if (!serviceId || !accessToken) return;
+
+    try {
+      setError("");
+      setNotice("");
+
+      await axios.patch(
+        `/api/users/favorites/${serviceId}/toggle`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      setFavoriteServices((prev) =>
+        prev.filter(
+          (item) => String(item?._id || item?.id) !== String(serviceId),
+        ),
+      );
+      setNotice("Đã xóa khỏi danh sách đã lưu.");
+    } catch (removeError) {
+      setError(
+        removeError?.response?.data?.message ||
+          "Không thể xóa khỏi danh sách đã lưu.",
+      );
+    }
+  };
+
   const handleCancel = (orderId) => {
     setNotice(
-      `Đơn #${String(orderId).slice(-6)}: hiện backend chưa có endpoint hủy từ user.`,
+      `Đơn ${displayOrderCode(orderId)}: hiện backend chưa có endpoint hủy từ user.`,
     );
     console.log("cancel order", orderId);
   };
@@ -548,7 +614,7 @@ function UserDashboard() {
 
   const handlePay = (orderId) => {
     setNotice(
-      `Đơn #${String(orderId).slice(-6)}: hiện dashboard chưa nối VNPAY.`,
+      `Đơn ${displayOrderCode(orderId)}: hiện dashboard chưa nối VNPAY.`,
     );
     console.log("pay order", orderId);
   };
@@ -590,6 +656,7 @@ function UserDashboard() {
         <tbody>
           {list.map((order) => {
             const orderId = getOrderId(order);
+            const orderCode = getOrderCode(order);
             const bookingStatus =
               bookingStatusMap[order.status] ||
               bookingStatusMap.awaiting_confirm;
@@ -603,7 +670,7 @@ function UserDashboard() {
                 className="border-b border-slate-100 hover:bg-[#f8fafc]"
               >
                 <td className="px-4 py-4 align-top text-slate-700">
-                  #{orderId.slice(-6)}
+                  {orderCode}
                 </td>
                 <td className="px-4 py-4 align-top">
                   <p className="max-w-[260px] truncate text-left font-medium text-slate-900">
@@ -804,15 +871,11 @@ function UserDashboard() {
                   <div className="mt-5 flex gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        setNotice(
-                          "Tính năng liên kết ngân hàng sẽ được bổ sung sau.",
-                        )
-                      }
+                      onClick={() => setTab("history")}
                       className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-[#f97316] transition hover:bg-white/95"
                       style={{ fontSize: 13, fontWeight: 600 }}
                     >
-                      <FaCreditCard size={14} /> Liên kết ngân hàng
+                      <FaClock size={14} /> Lịch sử
                     </button>
                     <button
                       type="button"
@@ -828,25 +891,42 @@ function UserDashboard() {
             </div>
           ) : null}
 
+          {tab === "history" ? (
+            <div>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Lịch sử đơn hàng
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Các đơn đã hoàn tất, đã hủy hoặc bị từ chối
+                  </p>
+                </div>
+                <p className="text-sm text-slate-500">
+                  {historyOrders.length} đơn
+                </p>
+              </div>
+
+              {historyOrders.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 px-5 py-14 text-center text-slate-500">
+                  Chưa có lịch sử đơn hàng
+                </div>
+              ) : (
+                <BookingTable
+                  list={historyOrders}
+                  allowActions={false}
+                  allowReviewAction
+                />
+              )}
+            </div>
+          ) : null}
+
           {tab === "orders" ? (
             <div>
               <h2 className="mb-4 text-xl font-semibold text-slate-900">
                 Đơn hàng đang xử lý
               </h2>
               <BookingTable list={activeOrders} allowActions />
-            </div>
-          ) : null}
-
-          {tab === "history" ? (
-            <div>
-              <h2 className="mb-4 text-xl font-semibold text-slate-900">
-                Lịch sử đặt dịch vụ
-              </h2>
-              <BookingTable
-                list={historyOrders}
-                allowActions={false}
-                allowReviewAction
-              />
             </div>
           ) : null}
 
@@ -971,19 +1051,31 @@ function UserDashboard() {
                             </span>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate(
-                                serviceId
-                                  ? `/services/${serviceId}`
-                                  : "/destination",
-                              )
-                            }
-                            className="w-full rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-2.5 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-orange-200"
-                          >
-                            Xem chi tiết
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(
+                                  serviceId
+                                    ? `/services/${serviceId}`
+                                    : "/destination",
+                                )
+                              }
+                              className="flex-1 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-2.5 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-orange-200"
+                            >
+                              Xem chi tiết
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFavorite(serviceId)}
+                              className="flex h-11 w-11 items-center justify-center rounded-xl border border-rose-200 text-rose-500 transition hover:bg-rose-50"
+                              title="Xóa khỏi danh sách"
+                              aria-label="Xóa khỏi danh sách"
+                            >
+                              <FaTrash size={14} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1076,7 +1168,7 @@ function UserDashboard() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 className="mb-4 text-xl font-semibold text-slate-900">
-                  Chi tiết đơn #{getOrderId(order).slice(-6)}
+                  Chi tiết đơn hàng
                 </h3>
 
                 <div className="space-y-3 text-sm text-slate-700">
@@ -1095,7 +1187,17 @@ function UserDashboard() {
                     ["Tổng tiền", formatMoney(order.totalPrice)],
                     ["Trạng thái", bookingStatus.label],
                     ["Thanh toán", paymentStatus.label],
-                    ["Ghi chú", order.note || "Không có"],
+                    ["Mã đơn hàng", getOrderCode(order)],
+                    [
+                      "Mã bill",
+                      getBillCode(order),
+                    ],
+                    [
+                      "Phương thức thanh toán",
+                      order?.paymentInfo?.paymentMethod ||
+                        order?.paymentInfo?.method ||
+                        "Chưa có",
+                    ],
                     [
                       "Ngày đặt",
                       order.createdAt

@@ -13,6 +13,7 @@ import {
   FaXmark,
   FaBriefcase,
   FaWallet,
+  FaTableColumns,
 } from "react-icons/fa6";
 
 const DARK = "#1a1a2e";
@@ -62,6 +63,12 @@ function ProviderLayout() {
         label: "Doanh thu",
         path: "/provider/revenue",
         icon: FaWallet,
+      },
+      {
+        id: "reconciliation",
+        label: "Đối soát thanh toán",
+        path: "/provider/reconciliation",
+        icon: FaTableColumns,
       },
     ],
     [],

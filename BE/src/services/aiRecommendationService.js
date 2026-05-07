@@ -10,8 +10,24 @@ const {
 const getCurrentWeatherTagFromSeason = (season) => {
   if (season === "summer") return "hot";
   if (season === "winter") return "cool";
-  if (season === "rainy") return "rainy";
+  if (season === "autumn") return "all";
   return "all";
+};
+
+const matchesSeasonTag = (serviceTags, season) => {
+  if (!Array.isArray(serviceTags) || !season || season === "all") {
+    return false;
+  }
+
+  if (season === "autumn") {
+    return serviceTags.includes("autumn") || serviceTags.includes("rainy");
+  }
+
+  if (season === "rainy") {
+    return serviceTags.includes("rainy") || serviceTags.includes("autumn");
+  }
+
+  return serviceTags.includes(season);
 };
 
 const buildServiceScore = (service, context, bookingCountMap) => {
@@ -38,7 +54,7 @@ const buildServiceScore = (service, context, bookingCountMap) => {
   score += Number(serviceObject.viewCount || 0) * 1.5;
   score += Number(bookingCountMap.get(String(serviceObject._id)) || 0) * 4;
 
-  if (season !== "all" && seasonTags.includes(season)) score += 40;
+  if (matchesSeasonTag(seasonTags, season)) score += 40;
   if (context.month && bestMonths.includes(Number(context.month))) score += 25;
   if (weatherTag !== "all" && weatherTags.includes(weatherTag)) score += 20;
   if (isHoliday) score += 15;

@@ -4,6 +4,21 @@ const Coupon = require("../models/Coupon.js");
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
+const generateOrderCode = async () => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = `OD${String(Math.floor(Math.random() * 10000)).padStart(
+      4,
+      "0",
+    )}`;
+    // 2 chữ + 4 số để khách và provider đối chiếu nhanh.
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await Order.exists({ orderCode: candidate });
+    if (!exists) return candidate;
+  }
+
+  return `OD${String(Date.now()).slice(-4)}`;
+};
+
 const getRefundPolicy = (departureDate) => {
   if (!departureDate) {
     return {
@@ -60,6 +75,17 @@ const releaseScheduleSlots = async (order) => {
   }
 
   await schedule.save();
+};
+
+const getLatestDepartureDate = async (order) => {
+  if (order?.scheduleId) {
+    const schedule = await Schedule.findById(order.scheduleId).select(
+      "departureDate",
+    );
+    if (schedule?.departureDate) return schedule.departureDate;
+  }
+
+  return order?.tourSnapshot?.departureDate || null;
 };
 
 // Tao don dat tour moi cho user, co xu ly coupon neu duoc gui len.
@@ -162,12 +188,14 @@ module.exports.createOrder = async (req, res) => {
     const finalPrice = Math.max(baseTotalPrice - discountAmount, 0);
     const normalizedPaymentFlow =
       String(paymentFlow || "").toLowerCase() === "vnpay" ? "vnpay" : "manual";
+    const orderCode = await generateOrderCode();
 
     const newOrder = await Order.create({
       userId: req.user.id,
       serviceId: service._id,
       scheduleId: schedule._id,
       provider_id: service.provider_id,
+      orderCode,
       tourSnapshot: {
         name: service.serviceName,
         departureDate: schedule.departureDate,
@@ -213,6 +241,7 @@ module.exports.getMyOrders = async (req, res) => {
   try {
     const myOrders = await Order.find({ userId: req.user.id })
       .populate("serviceId", "serviceName images")
+      .populate("scheduleId", "departureDate")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ data: myOrders });
@@ -248,9 +277,7 @@ module.exports.cancelMyOrder = async (req, res) => {
       });
     }
 
-    const departureDate =
-      order?.tourSnapshot?.departureDate ||
-      (order.scheduleId ? (await Schedule.findById(order.scheduleId))?.departureDate : null);
+    const departureDate = await getLatestDepartureDate(order);
     const refundPolicy = getRefundPolicy(departureDate);
 
     if (order.paymentStatus === "paid" && !refundPolicy.allowed) {

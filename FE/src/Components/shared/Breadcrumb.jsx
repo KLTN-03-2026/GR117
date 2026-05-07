@@ -23,6 +23,7 @@ const PAGE_LABELS = {
   booking: "Đặt chỗ",
   coupons: "Mã giảm giá",
   revenue: "Doanh thu",
+  reconciliation: "Đối soát thanh toán",
 };
 
 function Breadcrumb() {

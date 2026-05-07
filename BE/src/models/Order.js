@@ -36,6 +36,7 @@ const orderSchema = new mongoose.Schema(
       phone: { type: String, required: true },
     },
     numPeople: { type: Number, required: true, min: 1 },
+    orderCode: { type: String, default: "" },
     originalPrice: { type: Number, default: 0 },
     totalPrice: { type: Number, required: true },
     couponCode: { type: String, default: "" },
@@ -50,6 +51,15 @@ const orderSchema = new mongoose.Schema(
     refundAmount: { type: Number, default: 0 },
     refundPolicy: { type: String, default: "" },
     cancelledAt: { type: Date, default: null },
+    paidAt: { type: Date, default: null },
+    paymentInfo: {
+      paymentMethod: { type: String, default: "" },
+      transactionNo: { type: String, default: "" },
+      bankCode: { type: String, default: "" },
+      payDate: { type: String, default: "" },
+      orderInfo: { type: String, default: "" },
+      amount: { type: Number, default: 0 },
+    },
     status: {
       type: String,
       enum: [

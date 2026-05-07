@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import {
   FaWallet,
   FaChartLine,
   FaClock,
   FaCircleCheck,
+  FaPercent,
   FaMoneyBill1Wave,
   FaXmark,
   FaBuilding,
@@ -16,18 +17,22 @@ const wdMap = {
   pending: {
     label: "Chờ duyệt",
     cls: "bg-amber-50 text-amber-700 border border-amber-200",
+    dot: "bg-amber-500",
   },
   approved: {
-    label: "Đã duyệt",
+    label: "Đã chi trả",
     cls: "bg-blue-50 text-blue-700 border border-blue-200",
+    dot: "bg-blue-500",
   },
   rejected: {
     label: "Từ chối",
     cls: "bg-red-50 text-red-600 border border-red-200",
+    dot: "bg-red-500",
   },
   paid: {
     label: "Đã chi trả",
     cls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    dot: "bg-emerald-500",
   },
 };
 
@@ -55,8 +60,9 @@ function Revenue() {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const result = await res.json();
-    if (!res.ok)
-      throw new Error(result.message || "Khong the tai thong ke doanh thu");
+    if (!res.ok) {
+      throw new Error(result.message || "Không thể tải thống kê doanh thu");
+    }
     setStats(result.data || null);
   };
 
@@ -65,8 +71,9 @@ function Revenue() {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const result = await res.json();
-    if (!res.ok)
-      throw new Error(result.message || "Khong the tai danh sach rut tien");
+    if (!res.ok) {
+      throw new Error(result.message || "Không thể tải danh sách rút tiền");
+    }
     setWithdrawals(Array.isArray(result.data) ? result.data : []);
     setWithdrawalSummary(result.summary || null);
   };
@@ -77,7 +84,7 @@ function Revenue() {
       setError("");
       await Promise.all([fetchStats(), fetchWithdrawals()]);
     } catch (err) {
-      setError(err?.message || "Khong the tai du lieu doanh thu");
+      setError(err?.message || "Không thể tải dữ liệu doanh thu");
     } finally {
       setLoading(false);
     }
@@ -116,8 +123,8 @@ function Revenue() {
   const availableBalance = Number(withdrawalSummary?.availableBalance || 0);
   const paidWithdrawals = Number(withdrawalSummary?.paidWithdrawals || 0);
   const totalRevenue = Number(stats?.providerRevenue || 0);
+  const platformFee = Number(stats?.commissionRevenue || 0);
   const heldRevenue = Number(stats?.heldGrossRevenue || 0);
-  const commissionRevenue = Number(stats?.commissionRevenue || 0);
 
   const openWithdrawForm = () => {
     setWithdrawError("");
@@ -159,7 +166,7 @@ function Revenue() {
       });
       const result = await res.json();
       if (!res.ok) {
-        throw new Error(result.message || "Khong the tao yeu cau rut tien");
+        throw new Error(result.message || "Không thể tạo yêu cầu rút tiền");
       }
 
       setShowWdForm(false);
@@ -172,7 +179,7 @@ function Revenue() {
       });
       await reloadData();
     } catch (err) {
-      setWithdrawError(err?.message || "Khong the tao yeu cau rut tien");
+      setWithdrawError(err?.message || "Không thể tạo yêu cầu rút tiền");
     } finally {
       setSubmittingWithdrawal(false);
     }
@@ -181,20 +188,18 @@ function Revenue() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8fafc]">
-        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
-          <div>
-            <Breadcrumb />
-            <h1
-              style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: "20px",
-                fontWeight: "700",
-                color: "rgb(26, 26, 46)",
-              }}
-            >
-              Quản lý doanh thu
-            </h1>
-          </div>
+        <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+          <Breadcrumb />
+          <h1
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: "20px",
+              fontWeight: "700",
+              color: "rgb(26, 26, 46)",
+            }}
+          >
+            Quản lý doanh thu
+          </h1>
         </div>
         <div className="p-6">
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
@@ -247,42 +252,44 @@ function Revenue() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
           {[
             {
               label: "Tổng doanh thu",
               value: totalRevenue,
               icon: FaChartLine,
               color: "#f97316",
-              sub: "90% sau khi hoàn tất",
+            },
+            {
+              label: "Phí sàn",
+              value: platformFee,
+              icon: FaPercent,
+              color: "#8b5cf6",
             },
             {
               label: "Khả dụng (rút được)",
               value: availableBalance,
               icon: FaWallet,
               color: "#10b981",
-              sub: "Có thể rút ngay",
             },
             {
               label: "Đang giữ hộ",
               value: heldRevenue,
               icon: FaClock,
               color: "#f59e0b",
-              sub: "Chờ hoàn tất tour",
             },
             {
               label: "Đã rút",
               value: paidWithdrawals,
               icon: FaCircleCheck,
               color: "#3b82f6",
-              sub: "Tổng tiền đã nhận",
             },
           ].map((item) => (
             <div
               key={item.label}
-              className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+              className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
             >
-              <div className="relative mb-0 flex items-center">
+              <div className="relative min-h-[69px]">
                 <div
                   className="flex h-10 w-10 items-center justify-center rounded-xl"
                   style={{ background: `${item.color}18` }}
@@ -291,19 +298,20 @@ function Revenue() {
                 </div>
 
                 <p
-                  className="absolute left-1/2 -translate-x-1/2"
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
                   style={{
-                    fontSize: 19,
-                    fontWeight: 700,
+                    fontSize: 16,
+                    fontWeight: 600,
                     color: "#1a1a2e",
-                    margin: 0,
+                    margin: 10,
+                    width: "100%",
                   }}
                 >
                   {fmtVND(item.value)}
                 </p>
               </div>
               <p
-                className="mt-1 text-muted-foreground"
+                className="mt-0 text-center text-muted-foreground"
                 style={{ fontSize: 12 }}
               >
                 {item.label}
@@ -313,10 +321,21 @@ function Revenue() {
         </div>
 
         <div className="bg-white border border-gray-100 rounded-2xl">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 style={{ fontSize: 15, fontWeight: 600 }}>Lịch sử rút tiền</h3>
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 600 }}>
+                Lịch sử rút tiền
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                {myWd.length} yêu cầu,{" "}
+                {myWd.filter((item) => item.status === "pending").length} chờ
+                duyệt,{" "}
+                {myWd.filter((item) => item.status === "rejected").length} bị từ
+                chối
+              </p>
+            </div>
           </div>
-          <div className="divide-y divide-gray-100 max-h-[420px] overflow-y-auto">
+          <div className="max-h-[420px] divide-y divide-gray-100 overflow-y-auto">
             {myWd.length === 0 && (
               <p
                 className="py-10 text-center text-muted-foreground"
@@ -326,32 +345,57 @@ function Revenue() {
               </p>
             )}
             {myWd.map((w) => (
-              <div key={w.id} className="px-5 py-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>
-                    {fmtVND(w.amount)}
-                  </p>
-                  <span
-                    className={`px-2 py-0.5 rounded-full ${wdMap[w.status]?.cls || wdMap.pending.cls}`}
-                    style={{ fontSize: 11, fontWeight: 500 }}
-                  >
-                    {wdMap[w.status]?.label || wdMap.pending.label}
-                  </span>
+              <div key={w.id} className="px-5 py-4">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                        Yêu cầu rút tiền
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">
+                        {fmtVND(w.amount)}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        #{w.requestCode}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${wdMap[w.status]?.cls || wdMap.pending.cls}`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${wdMap[w.status]?.dot || wdMap.pending.dot}`}
+                      />
+                      {wdMap[w.status]?.label || wdMap.pending.label}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-slate-400">Ngân hàng</p>
+                      <p className="mt-1 font-medium text-slate-700">
+                        {w.bankName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Tài khoản</p>
+                      <p className="mt-1 font-medium text-slate-700">
+                        {w.bankAccount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Thời gian</p>
+                      <p className="mt-1 font-medium text-slate-700">
+                        {w.createdAt}
+                      </p>
+                    </div>
+                  </div>
+
+                  {w.rejectReason ? (
+                    <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      Lý do từ chối: {w.rejectReason}
+                    </div>
+                  ) : null}
                 </div>
-                <p className="text-muted-foreground" style={{ fontSize: 11 }}>
-                  Mã yêu cầu: #{w.requestCode}
-                </p>
-                <p className="text-muted-foreground" style={{ fontSize: 12 }}>
-                  {w.bankName} · {w.bankAccount}
-                </p>
-                <p className="text-muted-foreground" style={{ fontSize: 11 }}>
-                  {w.createdAt}
-                </p>
-                {w.rejectReason && (
-                  <p className="text-red-600 mt-1" style={{ fontSize: 11 }}>
-                    Lý do: {w.rejectReason}
-                  </p>
-                )}
               </div>
             ))}
           </div>
@@ -360,60 +404,30 @@ function Revenue() {
 
       {showWdForm ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
           onClick={() => setShowWdForm(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl sm:p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-5 flex items-center justify-between">
-              <h3 style={{ fontSize: 18, fontWeight: 600 }}>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 style={{ fontSize: 16, fontWeight: 600 }}>
                 Yêu cầu rút tiền
               </h3>
               <button
                 onClick={() => setShowWdForm(false)}
                 className="text-muted-foreground hover:text-black"
               >
-                <FaXmark size={18} />
+                <FaXmark size={16} />
               </button>
             </div>
 
-            <div className="mb-5 rounded-xl border border-orange-100 bg-gradient-to-br from-orange-50 to-amber-50 px-4 py-3">
-              <p className="text-muted-foreground" style={{ fontSize: 12 }}>
-                Số dư khả dụng
-              </p>
-              <p style={{ fontSize: 22, fontWeight: 700, color: "#f97316" }}>
-                {fmtVND(availableBalance)}
-              </p>
-            </div>
-
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <div>
                 <label
-                  className="mb-1.5 block text-muted-foreground"
-                  style={{ fontSize: 12 }}
-                >
-                  Số tiền
-                </label>
-                <input
-                  value={form.amount}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      amount: e.target.value.replace(/\D/g, ""),
-                    }))
-                  }
-                  placeholder="500000"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 14 }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="mb-1.5 block text-muted-foreground"
-                  style={{ fontSize: 12 }}
+                  className="mb-1 block text-muted-foreground"
+                  style={{ fontSize: 11 }}
                 >
                   Ngân hàng
                 </label>
@@ -422,15 +436,15 @@ function Revenue() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, bankName: e.target.value }))
                   }
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 14 }}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
+                  style={{ fontSize: 13 }}
                 />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block text-muted-foreground"
-                  style={{ fontSize: 12 }}
+                  className="mb-1 block text-muted-foreground"
+                  style={{ fontSize: 11 }}
                 >
                   Số tài khoản
                 </label>
@@ -442,15 +456,15 @@ function Revenue() {
                       accountNumber: e.target.value.replace(/\D/g, ""),
                     }))
                   }
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 14 }}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
+                  style={{ fontSize: 13 }}
                 />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block text-muted-foreground"
-                  style={{ fontSize: 12 }}
+                  className="mb-1 block text-muted-foreground"
+                  style={{ fontSize: 11 }}
                 >
                   Chủ tài khoản
                 </label>
@@ -463,15 +477,36 @@ function Revenue() {
                     }))
                   }
                   placeholder="NGUYEN VAN A"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 14 }}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
+                  style={{ fontSize: 13 }}
                 />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block text-muted-foreground"
-                  style={{ fontSize: 12 }}
+                  className="mb-1 block text-muted-foreground"
+                  style={{ fontSize: 11 }}
+                >
+                  Số tiền
+                </label>
+                <input
+                  value={form.amount}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      amount: e.target.value.replace(/\D/g, ""),
+                    }))
+                  }
+                  placeholder="500000"
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
+                  style={{ fontSize: 13 }}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="mb-1 block text-muted-foreground"
+                  style={{ fontSize: 11 }}
                 >
                   Ghi chú
                 </label>
@@ -480,41 +515,33 @@ function Revenue() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, note: e.target.value }))
                   }
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 14 }}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
+                  style={{ fontSize: 13 }}
                 />
               </div>
             </div>
 
-            <div className="mt-4 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-              <FaBuilding size={14} className="mt-0.5 text-blue-600" />
-              <p className="text-blue-800" style={{ fontSize: 11 }}>
-                Admin sẽ duyệt và chuyển khoản theo quy trình rút tiền của hệ
-                thống.
-              </p>
-            </div>
-
             {withdrawError ? (
-              <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
                 {withdrawError}
               </div>
             ) : null}
 
-            <div className="mt-5 flex gap-3">
+            <div className="mt-4 flex gap-2.5">
               <button
                 onClick={() => setShowWdForm(false)}
-                className="flex-1 rounded-xl bg-[#f0f4f8] py-2.5"
-                style={{ fontSize: 13, fontWeight: 500 }}
+                className="flex-1 rounded-xl bg-[#f0f4f8] py-2"
+                style={{ fontSize: 12.5, fontWeight: 500 }}
               >
                 Hủy
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submittingWithdrawal}
-                className="flex-1 rounded-xl py-2.5 text-white disabled:cursor-not-allowed disabled:opacity-70"
+                className="flex-1 rounded-xl py-2 text-white disabled:cursor-not-allowed disabled:opacity-70"
                 style={{
                   background: "linear-gradient(90deg, #f97316, #f59e0b)",
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: 600,
                 }}
               >

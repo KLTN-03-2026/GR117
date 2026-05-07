@@ -54,7 +54,12 @@ const buildProviderRevenue = async (providerId) => {
   ]);
 
   const paidWithdrawalAgg = await Withdrawal.aggregate([
-    { $match: { provider_id: providerObjectId, status: "paid" } },
+    {
+      $match: {
+        provider_id: providerObjectId,
+        status: { $in: ["approved", "paid"] },
+      },
+    },
     {
       $group: {
         _id: null,
@@ -208,8 +213,13 @@ module.exports.updateWithdrawalStatus = async (req, res) => {
       return res.status(400).json({ message: "Chi co the duyet yeu cau dang cho xu ly" });
     }
 
-    if (nextStatus === "paid" && withdrawal.status !== "approved") {
-      return res.status(400).json({ message: "Chi co the danh dau da chi tra sau khi da duyet" });
+    if (
+      nextStatus === "paid" &&
+      !["pending", "approved"].includes(withdrawal.status)
+    ) {
+      return res.status(400).json({
+        message: "Chi co the danh dau da chi tra khi yeu cau con hop le",
+      });
     }
 
     if (nextStatus === "rejected" && !["pending", "approved"].includes(withdrawal.status)) {
@@ -229,6 +239,9 @@ module.exports.updateWithdrawalStatus = async (req, res) => {
     }
 
     if (nextStatus === "paid") {
+      if (!withdrawal.approvedAt) {
+        withdrawal.approvedAt = new Date();
+      }
       withdrawal.paidAt = new Date();
     }
 
