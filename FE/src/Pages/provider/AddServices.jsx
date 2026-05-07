@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ButtonBack from "../../Components/shared/ButtonBack";
 import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
@@ -10,7 +10,7 @@ const EMPTY_FORM = {
   price: "",
   location: "",
   category: "",
-  season: "",
+  seasons: [],
   duration: "",
   images: "",
   highlights: "",
@@ -25,15 +25,37 @@ const SEASON_OPTIONS = [
   { value: "winter", label: "Đông" },
 ];
 
+const CATEGORY_ORDER = [
+  "bien-dao",
+  "nui",
+  "thanh-pho",
+  "van-hoa",
+  "mao-hiem",
+  "kham-pha",
+  "am-thuc",
+];
+
+const CATEGORY_LABELS = {
+  "bien-dao": "Biển đảo",
+  nui: "Núi",
+  "thanh-pho": "Thành phố",
+  "van-hoa": "Văn hóa",
+  "mao-hiem": "Mạo hiểm",
+  "kham-pha": "Khám phá",
+  "am-thuc": "Ẩm thực",
+};
+
 const AddServices = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [categories, setCategories] = useState([]);
+  const [seasonOpen, setSeasonOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [itineraryFile, setItineraryFile] = useState(null);
+  const seasonDropdownRef = useRef(null);
 
   let currentUser = null;
   try {
@@ -47,13 +69,37 @@ const AddServices = () => {
       try {
         const res = await fetch("/api/categories");
         const result = await res.json();
-        setCategories(Array.isArray(result.data) ? result.data : []);
+        const allowedCategories = Array.isArray(result.data)
+          ? result.data.filter((item) =>
+              CATEGORY_ORDER.includes(String(item?.slug || "").trim()),
+            )
+          : [];
+        allowedCategories.sort(
+          (a, b) =>
+            CATEGORY_ORDER.indexOf(String(a?.slug || "")) -
+            CATEGORY_ORDER.indexOf(String(b?.slug || "")),
+        );
+        setCategories(allowedCategories);
       } catch {
         setCategories([]);
       }
     };
 
     fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (
+        seasonDropdownRef.current &&
+        !seasonDropdownRef.current.contains(event.target)
+      ) {
+        setSeasonOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   const handleChange = (e) => {
@@ -64,6 +110,18 @@ const AddServices = () => {
   const handleImagesChange = (e) => {
     const value = e.target.value;
     setFormData((prev) => ({ ...prev, images: value }));
+  };
+
+  const toggleSeason = (seasonValue) => {
+    setFormData((prev) => {
+      const exists = prev.seasons.includes(seasonValue);
+      return {
+        ...prev,
+        seasons: exists
+          ? prev.seasons.filter((item) => item !== seasonValue)
+          : [...prev.seasons, seasonValue],
+      };
+    });
   };
 
   const handleImageChange = (e) => {
@@ -124,10 +182,7 @@ const AddServices = () => {
     payload.append("prices", String(Number(formData.price)));
     payload.append("location", formData.location.trim());
     payload.append("category", formData.category);
-    payload.append(
-      "seasonTags",
-      JSON.stringify(formData.season ? [formData.season] : []),
-    );
+    payload.append("seasonTags", JSON.stringify(formData.seasons));
     payload.append("duration", formData.duration.trim());
     payload.append("highlight", JSON.stringify(splitLines(formData.highlights)));
     payload.append("includes", JSON.stringify(splitLines(formData.includes)));
@@ -247,26 +302,53 @@ const AddServices = () => {
                       <option value="">Chọn danh mục</option>
                       {categories.map((item) => (
                         <option key={item._id} value={item._id}>
-                          {item.categoryName || item.name || item.slug}
+                          {CATEGORY_LABELS[item.slug] ||
+                            item.categoryName ||
+                            item.name ||
+                            item.slug}
                         </option>
                       ))}
                       </select>
                   </div>
-                  <div>
+                  <div ref={seasonDropdownRef} className="relative">
                     <label className={labelClass}>Mùa phù hợp</label>
-                    <select
-                      name="season"
-                      value={formData.season}
-                      onChange={handleChange}
-                      className={inputClass}
+                    <button
+                      type="button"
+                      onClick={() => setSeasonOpen((prev) => !prev)}
+                      className={`${inputClass} flex items-center justify-between text-left`}
                     >
-                      <option value="">Chọn mùa</option>
-                      {SEASON_OPTIONS.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
+                      <span className={formData.seasons.length ? "text-gray-700" : "text-gray-400"}>
+                        {formData.seasons.length > 0
+                          ? SEASON_OPTIONS.filter((item) =>
+                              formData.seasons.includes(item.value),
+                            )
+                              .map((item) => item.label)
+                              .join(", ")
+                          : "Chọn mùa"}
+                      </span>
+                      <span className="ml-3 text-gray-400">▾</span>
+                    </button>
+                    {seasonOpen && (
+                      <div className="absolute z-20 mt-2 w-full rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+                        {SEASON_OPTIONS.map((item) => {
+                          const checked = formData.seasons.includes(item.value);
+                          return (
+                            <label
+                              key={item.value}
+                              className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-orange-50"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleSeason(item.value)}
+                                className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-200"
+                              />
+                              <span>{item.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className={labelClass}>Thời lượng</label>
@@ -398,4 +480,3 @@ const AddServices = () => {
 };
 
 export default AddServices;
-

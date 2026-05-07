@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import ButtonBack from "../../Components/shared/ButtonBack";
 import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 import { fileToDataUrl } from "../../utils/fileToDataUrl.js";
 
@@ -10,6 +9,7 @@ const EMPTY_FORM = {
   price: "",
   location: "",
   category: "",
+  seasons: [],
   duration: "",
   images: "",
   highlights: "",
@@ -17,30 +17,90 @@ const EMPTY_FORM = {
   itinerary: "",
 };
 
+const SEASON_OPTIONS = [
+  { value: "spring", label: "Xuân" },
+  { value: "summer", label: "Hạ" },
+  { value: "autumn", label: "Thu" },
+  { value: "winter", label: "Đông" },
+];
+
+const CATEGORY_ORDER = [
+  "bien-dao",
+  "nui",
+  "thanh-pho",
+  "van-hoa",
+  "mao-hiem",
+  "kham-pha",
+  "am-thuc",
+];
+
+const CATEGORY_LABELS = {
+  "bien-dao": "Biển đảo",
+  nui: "Núi",
+  "thanh-pho": "Thành phố",
+  "van-hoa": "Văn hóa",
+  "mao-hiem": "Mạo hiểm",
+  "kham-pha": "Khám phá",
+  "am-thuc": "Ẩm thực",
+};
+
 const EditServices = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [seasonOpen, setSeasonOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [imageFile, setImageFile] = useState(null);
   const [itineraryFile, setItineraryFile] = useState(null);
+  const seasonDropdownRef = useRef(null);
+
+  let currentUser = null;
+  try {
+    currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  } catch {
+    currentUser = null;
+  }
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch("/api/categories");
         const result = await res.json();
-        setCategories(Array.isArray(result.data) ? result.data : []);
+        const allowedCategories = Array.isArray(result.data)
+          ? result.data.filter((item) =>
+              CATEGORY_ORDER.includes(String(item?.slug || "").trim()),
+            )
+          : [];
+        allowedCategories.sort(
+          (a, b) =>
+            CATEGORY_ORDER.indexOf(String(a?.slug || "")) -
+            CATEGORY_ORDER.indexOf(String(b?.slug || "")),
+        );
+        setCategories(allowedCategories);
       } catch {
         setCategories([]);
       }
     };
 
     fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (
+        seasonDropdownRef.current &&
+        !seasonDropdownRef.current.contains(event.target)
+      ) {
+        setSeasonOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   useEffect(() => {
@@ -69,6 +129,11 @@ const EditServices = () => {
             (Array.isArray(service.category)
               ? service.category[0]?._id || service.category[0] || ""
               : service.category || ""),
+          seasons: Array.isArray(service.seasonTags)
+            ? service.seasonTags
+                .map((item) => String(item || "").trim())
+                .filter(Boolean)
+            : [],
           duration: String(service.duration || ""),
           images:
             Array.isArray(service.images) && service.images.length > 0
@@ -103,12 +168,6 @@ const EditServices = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleItineraryFileChange = (e) => {
-    const file = e.target.files?.[0] || null;
-    setItineraryFile(file);
-    if (file) setMessage("");
-  };
-
   const handleImagesChange = (e) => {
     const value = e.target.value;
     setFormData((prev) => ({ ...prev, images: value }));
@@ -119,20 +178,42 @@ const EditServices = () => {
     setImageFile(file);
   };
 
+  const handleItineraryFileChange = async (e) => {
+    const file = e.target.files?.[0] || null;
+    setItineraryFile(file);
+    if (!file) return;
+    setSuccess(false);
+    setMessage("");
+  };
+
+  const toggleSeason = (seasonValue) => {
+    setFormData((prev) => {
+      const exists = prev.seasons.includes(seasonValue);
+      return {
+        ...prev,
+        seasons: exists
+          ? prev.seasons.filter((item) => item !== seasonValue)
+          : [...prev.seasons, seasonValue],
+      };
+    });
+  };
+
   const validateForm = () => {
-    if (!formData.name.trim()) return "Ten dich vu khong duoc de trong";
-    if (!formData.description.trim()) return "Mo ta khong duoc de trong";
-    if (!formData.location.trim()) return "Dia diem khong duoc de trong";
-    if (!formData.category) return "Vui long chon danh muc";
-    if (!formData.price || Number(formData.price) <= 0) return "Gia phai lon hon 0";
+    if (!formData.name.trim()) return "Tên dịch vụ không được để trống";
+    if (!formData.description.trim()) return "Mô tả không được để trống";
+    if (!formData.location.trim()) return "Địa điểm không được để trống";
+    if (!formData.category) return "Vui lòng chọn danh mục";
+    if (!formData.price || Number(formData.price) <= 0) return "Giá phải lớn hơn 0";
 
     const linkImages = splitLines(formData.images);
     if (linkImages.length === 0 && !imageFile) {
-      return "Vui long chon anh upload hoac nhap link anh";
+      return "Vui lòng chọn ảnh upload hoặc nhập link ảnh";
     }
 
     const invalidImage = linkImages.find((item) => !isValidImageUrl(item));
-    if (invalidImage) return "Image URL khong dung dinh dang";
+    if (invalidImage) {
+      return "Image URL không đúng định dạng";
+    }
 
     return "";
   };
@@ -150,16 +231,18 @@ const EditServices = () => {
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setMessage("Ban chua dang nhap hoac token da het han");
+      setMessage("Bạn chưa đăng nhập hoặc token đã hết hạn");
       return;
     }
 
     const payload = new FormData();
     payload.append("serviceName", formData.name.trim());
+    payload.append("nameProvider", currentUser?.fullName || currentUser?.email || "Provider");
     payload.append("description", formData.description.trim());
     payload.append("prices", String(Number(formData.price)));
     payload.append("location", formData.location.trim());
     payload.append("category", formData.category);
+    payload.append("seasonTags", JSON.stringify(formData.seasons));
     payload.append("duration", formData.duration.trim());
     payload.append("highlight", JSON.stringify(splitLines(formData.highlights)));
     payload.append("includes", JSON.stringify(splitLines(formData.includes)));
@@ -188,13 +271,13 @@ const EditServices = () => {
       const result = await res.json();
       if (res.ok) {
         setSuccess(true);
-        setMessage("Cap nhat dich vu thanh cong");
+        setMessage("Cập nhật dịch vụ thành công");
         navigate("/provider/services");
       } else {
-        setMessage(result.message || "Khong the cap nhat dich vu");
+        setMessage(result.message || "Không thể cập nhật dịch vụ");
       }
     } catch (error) {
-      setMessage(`Loi ket noi server: ${error.message}`);
+      setMessage(`Lỗi kết nối server: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -204,18 +287,16 @@ const EditServices = () => {
     "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100";
   const labelClass = "mb-1.5 block pl-1 text-sm font-semibold text-gray-700";
 
-  if (loading) return <p className="p-6">Dang tai du lieu...</p>;
+  if (loading) return <p className="p-6">Đang tải dữ liệu...</p>;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] px-4 py-6 md:px-6 md:py-10">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Sua dich vu</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Sửa dịch vụ</h1>
           </div>
-          <ButtonBack />
         </div>
-
         <div className="flex justify-center">
           <div className="w-full rounded-[28px] border border-orange-100 bg-white p-6 shadow-sm md:p-8">
             {message && (
@@ -234,25 +315,25 @@ const EditServices = () => {
               <div>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
-                    <label className={labelClass}>Ten dich vu</label>
+                    <label className={labelClass}>Tên dịch vụ</label>
                     <input
                       type="text"
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
-                      placeholder="Ten dich vu"
+                      placeholder="Tên dịch vụ"
                       className={inputClass}
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Gia</label>
+                    <label className={labelClass}>Giá</label>
                     <input
                       type="number"
                       min="0"
                       name="price"
                       value={formData.price}
                       onChange={handleChange}
-                      placeholder="VND"
+                      placeholder="VNĐ"
                       className={inputClass}
                     />
                   </div>
@@ -260,9 +341,9 @@ const EditServices = () => {
               </div>
 
               <div>
-                <div className="grid gap-6 md:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                   <div>
-                    <label className={labelClass}>Dia diem</label>
+                    <label className={labelClass}>Địa điểm</label>
                     <input
                       type="text"
                       name="location"
@@ -272,29 +353,72 @@ const EditServices = () => {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Danh muc</label>
+                    <label className={labelClass}>Danh mục</label>
                     <select
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
                       className={inputClass}
                     >
-                      <option value="">Chon danh muc</option>
+                      <option value="">Chọn danh mục</option>
                       {categories.map((item) => (
                         <option key={item._id} value={item._id}>
-                          {item.categoryName || item.name || item.slug}
+                          {CATEGORY_LABELS[item.slug] ||
+                            item.categoryName ||
+                            item.name ||
+                            item.slug}
                         </option>
                       ))}
                     </select>
                   </div>
+                  <div ref={seasonDropdownRef} className="relative">
+                    <label className={labelClass}>Mùa phù hợp</label>
+                    <button
+                      type="button"
+                      onClick={() => setSeasonOpen((prev) => !prev)}
+                      className={`${inputClass} flex items-center justify-between text-left`}
+                    >
+                      <span className={formData.seasons.length ? "text-gray-700" : "text-gray-400"}>
+                        {formData.seasons.length > 0
+                          ? SEASON_OPTIONS.filter((item) =>
+                              formData.seasons.includes(item.value),
+                            )
+                              .map((item) => item.label)
+                              .join(", ")
+                          : "Chọn mùa"}
+                      </span>
+                      <span className="ml-3 text-gray-400">▾</span>
+                    </button>
+                    {seasonOpen && (
+                      <div className="absolute z-20 mt-2 w-full rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+                        {SEASON_OPTIONS.map((item) => {
+                          const checked = formData.seasons.includes(item.value);
+                          return (
+                            <label
+                              key={item.value}
+                              className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-orange-50"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleSeason(item.value)}
+                                className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-200"
+                              />
+                              <span>{item.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                   <div>
-                    <label className={labelClass}>Thoi luong</label>
+                    <label className={labelClass}>Thời lượng</label>
                     <input
                       type="text"
                       name="duration"
                       value={formData.duration}
                       onChange={handleChange}
-                      placeholder="VD: 5 ngay 4 dem"
+                      placeholder="VD: 5 ngày 4 đêm"
                       className={inputClass}
                     />
                   </div>
@@ -304,24 +428,22 @@ const EditServices = () => {
               <div>
                 <div className="space-y-6">
                   <div>
-                    <label className={labelClass}>Mo ta</label>
+                    <label className={labelClass}>Mô tả</label>
                     <textarea
                       name="description"
                       value={formData.description}
                       onChange={handleChange}
                       rows="4"
-                      placeholder="Mo ta dich vu..."
+                      placeholder="Mô tả dịch vụ..."
                       className={inputClass}
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Anh</label>
+                    <label className={labelClass}>Ảnh</label>
                     <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div>
-                          <p className="text-sm font-semibold text-gray-700">
-                            Anh tu may
-                          </p>
+                          <p className="text-sm font-semibold text-gray-700">Ảnh từ máy</p>
                           <input
                             id="service-image-upload-edit"
                             type="file"
@@ -336,24 +458,22 @@ const EditServices = () => {
                             Upload file
                           </label>
                           <p className="mt-3 text-sm text-gray-500">
-                            {imageFile ? imageFile.name : "Giu anh hien tai neu khong chon anh moi"}
+                            {imageFile ? imageFile.name : "Giữ ảnh hiện tại nếu không chọn ảnh mới"}
                           </p>
                         </div>
 
                         <div>
-                          <p className="text-sm font-semibold text-gray-700">
-                            Anh tu link
-                          </p>
+                          <p className="text-sm font-semibold text-gray-700">Ảnh từ link</p>
                           <textarea
                             name="images"
                             value={formData.images}
                             onChange={handleImagesChange}
                             rows="3"
-                            placeholder="Dan link anh (moi dong 1 link)"
+                            placeholder="Dán link ảnh (mỗi dòng 1 link)"
                             className={`${inputClass} mt-3`}
                           />
                           <p className="mt-2 text-xs text-gray-500">
-                            Anh dau tien se la thumbnail cua dich vu, cac anh con lai se hien khi bam xem them anh.
+                            Ảnh đầu tiên sẽ là thumbnail của dịch vụ, các ảnh còn lại sẽ hiện khi bấm xem thêm ảnh.
                           </p>
                         </div>
                       </div>
@@ -361,7 +481,7 @@ const EditServices = () => {
                   </div>
                   <div className="grid gap-6 md:grid-cols-2">
                     <div>
-                      <label className={labelClass}>Diem noi bat</label>
+                      <label className={labelClass}>Điểm nổi bật</label>
                       <textarea
                         name="highlights"
                         value={formData.highlights}
@@ -371,7 +491,7 @@ const EditServices = () => {
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Bao gom</label>
+                      <label className={labelClass}>Bao gồm</label>
                       <textarea
                         name="includes"
                         value={formData.includes}
@@ -382,7 +502,7 @@ const EditServices = () => {
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>Lich trinh Excel</label>
+                    <label className={labelClass}>Lịch trình Excel</label>
                     <input
                       type="file"
                       accept=".xlsx,.xls,.csv"
@@ -390,7 +510,7 @@ const EditServices = () => {
                       className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-600 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
                     />
                     <p className="mt-2 text-xs text-gray-500">
-                      Chon file Excel neu muon cap nhat lai lich trinh, neu khong thi giu nguyen lich trinh cu.
+                      Chọn file Excel nếu muốn cập nhật lại lịch trình, nếu không thì giữ nguyên lịch trình cũ.
                     </p>
                   </div>
                 </div>
@@ -402,14 +522,14 @@ const EditServices = () => {
                   onClick={() => navigate("/provider/services")}
                   className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-gray-700 transition hover:bg-gray-50"
                 >
-                  Huy
+                  Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 font-semibold text-white transition hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {submitting ? "Dang luu..." : "Luu thay doi"}
+                  {submitting ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
               </div>
             </form>

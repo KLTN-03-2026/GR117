@@ -7,6 +7,7 @@ const port = process.env.PORT || 5000;
 const db = require("./src/config/connectDB.js");
 const cors = require("cors");
 const router = require("./src/routes/indexRoute.js");
+const { ensureDefaultCategories } = require("./src/utils/ensureDefaultCategories.js");
 
 // Middleware
 app.use(cors());
@@ -22,7 +23,13 @@ router(app);
 
 // Ket noi MongoDB
 db.connectDB().then(() => {
-  app.listen(port, () => {
-    console.log(`server bat dau tren cong ${port}`);
-  });
+  ensureDefaultCategories()
+    .catch((error) => {
+      console.error("Khong the khoi tao danh muc mac dinh:", error.message);
+    })
+    .finally(() => {
+      app.listen(port, () => {
+        console.log(`server bat dau tren cong ${port}`);
+      });
+    });
 });

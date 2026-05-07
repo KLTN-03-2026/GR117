@@ -51,12 +51,12 @@ const buildServiceScore = (service, context, bookingCountMap) => {
   if (serviceObject.featured) score += 100;
   score += Number(serviceObject.rating || 0) * 20;
   score += Number(serviceObject.reviewCount || 0) * 3;
-  score += Number(serviceObject.viewCount || 0) * 1.5;
+  score += Number(serviceObject.viewCount || 0) * 0.5;
   score += Number(bookingCountMap.get(String(serviceObject._id)) || 0) * 4;
 
-  if (matchesSeasonTag(seasonTags, season)) score += 40;
-  if (context.month && bestMonths.includes(Number(context.month))) score += 25;
-  if (weatherTag !== "all" && weatherTags.includes(weatherTag)) score += 20;
+  if (matchesSeasonTag(seasonTags, season)) score += 80;
+  if (context.month && bestMonths.includes(Number(context.month))) score += 20;
+  if (weatherTag !== "all" && weatherTags.includes(weatherTag)) score += 10;
   if (isHoliday) score += 15;
 
   if (categoryFilter) {
@@ -69,11 +69,11 @@ const buildServiceScore = (service, context, bookingCountMap) => {
   }
 
   if (locationFilter && serviceLocation.includes(locationFilter)) {
-    score += 10;
+    score += 6;
   }
 
   if (budgetRange && serviceBudget === budgetRange) {
-    score += 10;
+    score += 6;
   }
 
   const createdAt = new Date(serviceObject.createdAt || 0).getTime();
