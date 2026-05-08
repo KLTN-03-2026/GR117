@@ -24,6 +24,29 @@ const normalizeText = (text) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
+const budgetLabelMap = {
+  under2: "Dưới 2 triệu",
+  "2to5": "2 - 5 triệu",
+  over5: "Trên 5 triệu",
+};
+
+const seasonLabelMap = {
+  spring: "Mùa xuân",
+  summer: "Mùa hè",
+  autumn: "Mùa thu",
+  winter: "Mùa đông",
+  rainy: "Mùa mưa",
+};
+
+const seasonOptions = [
+  { value: "all", label: "Tất cả mùa" },
+  { value: "spring", label: "Mùa xuân" },
+  { value: "summer", label: "Mùa hè" },
+  { value: "autumn", label: "Mùa thu" },
+  { value: "winter", label: "Mùa đông" },
+  { value: "rainy", label: "Mùa mưa" },
+];
+
 const getCategoryText = (category) => {
   if (Array.isArray(category)) {
     return category[0]?.categoryName || category[0] || "";
@@ -59,6 +82,7 @@ const Destination = () => {
   const [activeCategory, setActiveCategory] = useState("Tất cả");
   const [searchText, setSearchText] = useState("");
   const [budgetFilter, setBudgetFilter] = useState("all");
+  const [seasonFilter, setSeasonFilter] = useState("all");
   const [favoriteServiceIds, setFavoriteServiceIds] = useState([]);
   const [favoriteLoadingId, setFavoriteLoadingId] = useState("");
   const accessToken = localStorage.getItem("accessToken");
@@ -138,9 +162,11 @@ const Destination = () => {
     const keyword = params.get("q") || "";
     const categoryParam = params.get("category") || "";
     const budgetParam = params.get("budget") || "all";
+    const seasonParam = params.get("season") || "all";
 
     setSearchText(keyword);
     setBudgetFilter(budgetParam);
+    setSeasonFilter(seasonParam);
 
     if (categoryParam) {
       const matchedCategory =

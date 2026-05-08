@@ -33,7 +33,8 @@ const matchesSeasonTag = (serviceTags, season) => {
 const buildServiceScore = (service, context, bookingCountMap) => {
   const serviceObject = service.toObject ? service.toObject() : service;
   const season = context.season || getSeasonFromMonth(context.month);
-  const weatherTag = context.weatherTag || getCurrentWeatherTagFromSeason(season);
+  const weatherTag =
+    context.weatherTag || getCurrentWeatherTagFromSeason(season);
   const isHoliday = context.isHoliday;
   const budgetRange = normalizeText(context.budgetRange);
   const categoryFilter = normalizeText(context.category);
@@ -41,7 +42,9 @@ const buildServiceScore = (service, context, bookingCountMap) => {
 
   const seasonTags = normalizeTagList(serviceObject.seasonTags);
   const weatherTags = normalizeTagList(serviceObject.weatherTags);
-  const bestMonths = Array.isArray(serviceObject.bestMonths) ? serviceObject.bestMonths : [];
+  const bestMonths = Array.isArray(serviceObject.bestMonths)
+    ? serviceObject.bestMonths
+    : [];
   const categoryName = normalizeText(serviceObject?.category?.categoryName);
   const serviceLocation = normalizeText(serviceObject.location);
   const serviceBudget = normalizeText(serviceObject.budgetRange);
@@ -77,7 +80,10 @@ const buildServiceScore = (service, context, bookingCountMap) => {
   }
 
   const createdAt = new Date(serviceObject.createdAt || 0).getTime();
-  const ageInDays = Math.max(1, (Date.now() - createdAt) / (1000 * 60 * 60 * 24));
+  const ageInDays = Math.max(
+    1,
+    (Date.now() - createdAt) / (1000 * 60 * 60 * 24),
+  );
   score += Math.max(0, 20 - Math.min(20, ageInDays / 7));
 
   return score;
@@ -93,7 +99,9 @@ const buildBookingCountMap = async () => {
     },
   ]);
 
-  return new Map(counts.map((item) => [String(item._id), Number(item.count || 0)]));
+  return new Map(
+    counts.map((item) => [String(item._id), Number(item.count || 0)]),
+  );
 };
 
 module.exports.getRecommendations = async (query = {}) => {

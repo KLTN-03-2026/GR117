@@ -122,7 +122,7 @@ function Revenue() {
 
   const availableBalance = Number(withdrawalSummary?.availableBalance || 0);
   const paidWithdrawals = Number(withdrawalSummary?.paidWithdrawals || 0);
-  const totalRevenue = Number(stats?.providerRevenue || 0);
+  const totalRevenue = Number(stats?.totalRevenue ?? stats?.providerRevenue ?? 0);
   const platformFee = Number(stats?.commissionRevenue || 0);
   const heldRevenue = Number(stats?.heldGrossRevenue || 0);
 

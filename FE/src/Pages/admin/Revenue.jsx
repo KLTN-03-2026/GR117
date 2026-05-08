@@ -200,6 +200,11 @@ function WithdrawalRow({
   onApprove,
 }) {
   const withdrawalId = item.id || item._id;
+  const providerName =
+    item.partnerName ||
+    item?.provider_id?.fullName ||
+    item?.provider_id?.name ||
+    "Chưa có";
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -209,13 +214,15 @@ function WithdrawalRow({
             <FaBuilding size={18} className="text-[#f97316]" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold">
-              {item.partnerName || item?.provider_id?.fullName || "Chưa có"}
-            </p>
+            <p className="text-sm font-semibold">{providerName}</p>
             <p className="text-muted-foreground text-xs">
               #{withdrawalId} · {fmtDateTime(item.createdAt)}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-[12px]">
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Đối tác: </span>
+                {providerName}
+              </div>
               <div>
                 <span className="text-muted-foreground">Ngân hàng: </span>
                 {item.bankName}

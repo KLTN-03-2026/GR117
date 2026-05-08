@@ -2,8 +2,6 @@ const Order = require("../models/Order.js");
 const Schedule = require("../models/Schedule.js");
 const Coupon = require("../models/Coupon.js");
 
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
 const generateOrderCode = async () => {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const candidate = `OD${String(Math.floor(Math.random() * 10000)).padStart(
@@ -19,47 +17,6 @@ const generateOrderCode = async () => {
   return `OD${String(Date.now()).slice(-4)}`;
 };
 
-const getRefundPolicy = (departureDate) => {
-  if (!departureDate) {
-    return {
-      allowed: false,
-      refundRate: 0,
-      refundAmount: 0,
-      refundPolicy: "Khong xac dinh duoc ngay khoi hanh",
-      message: "Khong xac dinh duoc ngay khoi hanh de tinh hoan tien",
-    };
-  }
-
-  const diffDays = Math.ceil(
-    (new Date(departureDate).getTime() - Date.now()) / MS_PER_DAY,
-  );
-
-  if (diffDays >= 7) {
-    return {
-      allowed: true,
-      refundRate: 0.95,
-      refundPolicy: "Huy truoc 7 ngay - hoan 95%",
-      message: "Da ap dung chinh sach hoan 95% do huy truoc 7 ngay",
-    };
-  }
-
-  if (diffDays >= 3) {
-    return {
-      allowed: true,
-      refundRate: 0.9,
-      refundPolicy: "Huy tu 3 den 6 ngay - hoan 90%",
-      message: "Da ap dung chinh sach hoan 90% do huy tu 3 den 6 ngay",
-    };
-  }
-
-  return {
-    allowed: false,
-    refundRate: 0,
-    refundAmount: 0,
-    refundPolicy: "Khong cho phep huy trong vong 3 ngay truoc khoi hanh",
-    message: "Khong the huy tour trong vong 3 ngay truoc khoi hanh",
-  };
-};
 
 const releaseScheduleSlots = async (order) => {
   const schedule = await Schedule.findById(order.scheduleId);
@@ -75,17 +32,6 @@ const releaseScheduleSlots = async (order) => {
   }
 
   await schedule.save();
-};
-
-const getLatestDepartureDate = async (order) => {
-  if (order?.scheduleId) {
-    const schedule = await Schedule.findById(order.scheduleId).select(
-      "departureDate",
-    );
-    if (schedule?.departureDate) return schedule.departureDate;
-  }
-
-  return order?.tourSnapshot?.departureDate || null;
 };
 
 // Tao don dat tour moi cho user, co xu ly coupon neu duoc gui len.
@@ -242,6 +188,7 @@ module.exports.getMyOrders = async (req, res) => {
     const myOrders = await Order.find({ userId: req.user.id })
       .populate("serviceId", "serviceName images")
       .populate("scheduleId", "departureDate")
+      .populate("provider_id", "fullName")
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ data: myOrders });
@@ -277,31 +224,22 @@ module.exports.cancelMyOrder = async (req, res) => {
       });
     }
 
-    const departureDate = await getLatestDepartureDate(order);
-    const refundPolicy = getRefundPolicy(departureDate);
-
-    if (order.paymentStatus === "paid" && !refundPolicy.allowed) {
-      return res.status(400).json({
-        message: refundPolicy.message,
-      });
-    }
-
     if (order.status !== "cancelled") {
       await releaseScheduleSlots(order);
     }
 
     const paidAmount = Number(order.finalPrice || order.totalPrice || 0);
-    const refundAmount =
-      order.paymentStatus === "paid"
-        ? Math.floor(paidAmount * Number(refundPolicy.refundRate || 0))
-        : 0;
+    const wasPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+    const refundAmount = wasPaid ? paidAmount : 0;
 
     order.status = "cancelled";
     order.cancelledAt = new Date();
-    order.refundRate = Number(refundPolicy.refundRate || 0);
+    order.refundRate = wasPaid ? 1 : 0;
     order.refundAmount = refundAmount;
-    order.refundPolicy = refundPolicy.refundPolicy || "";
-    if (order.paymentStatus === "paid" && refundAmount > 0) {
+    order.refundPolicy = wasPaid
+      ? "Khach huy don - hoan 100%"
+      : "Huy don khi chua thanh toan";
+    if (wasPaid && refundAmount > 0) {
       order.paymentStatus = "refunded";
     }
 
@@ -309,8 +247,8 @@ module.exports.cancelMyOrder = async (req, res) => {
 
     return res.status(200).json({
       message:
-        order.paymentStatus === "refunded"
-          ? `Da huy don va hoan ${refundPolicy.refundRate * 100}%`
+        wasPaid
+          ? "Da huy don va hoan tien 100%"
           : "Da huy don thanh cong",
       data: order,
     });
@@ -368,13 +306,36 @@ module.exports.updateOrderStatus = async (req, res) => {
         .json({ message: "Ban khong co quyen xu ly don nay" });
     }
 
-    if (status === "cancelled" && order.status !== "cancelled") {
-      await releaseScheduleSlots(order);
-    }
-
     if (status === "completed" && order.status !== "confirmed") {
       return res.status(400).json({
         message: "Chi co the hoan tat tour khi don hang da duoc xac nhan",
+      });
+    }
+
+    if (status === "cancelled") {
+      if (order.status !== "cancelled") {
+        await releaseScheduleSlots(order);
+      }
+
+      const paidAmount = Number(order.finalPrice || order.totalPrice || 0);
+      const wasPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+
+      order.status = "cancelled";
+      order.cancelledAt = new Date();
+      order.refundRate = wasPaid ? 1 : 0;
+      order.refundAmount = wasPaid ? paidAmount : 0;
+      order.refundPolicy = wasPaid
+        ? "Provider huy tour - hoan 100%"
+        : "Huy tour khi chua thanh toan";
+      order.paymentStatus = wasPaid ? "refunded" : paymentStatus || order.paymentStatus;
+
+      await order.save();
+
+      return res.status(200).json({
+        message: wasPaid
+          ? "Cap nhat trang thai don hang thanh cong va da hoan tien"
+          : "Cap nhat trang thai don hang thanh cong",
+        data: order,
       });
     }
 

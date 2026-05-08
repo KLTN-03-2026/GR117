@@ -1174,7 +1174,12 @@ function UserDashboard() {
                 <div className="space-y-3 text-sm text-slate-700">
                   {[
                     ["Dịch vụ", getServiceName(order)],
-                    ["Đối tác", order?.provider_id?.fullName || "Chưa có"],
+                    [
+                      "Đối tác",
+                      order?.provider_id?.fullName ||
+                        order?.serviceId?.providerName ||
+                        "Chưa có",
+                    ],
                     [
                       "Ngày khởi hành",
                       getDepartureDate(order)

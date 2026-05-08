@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 
 const COMMISSION_RATE = 0.1;
 const ACTIVE_BOOKING_STATUSES = ["awaiting_payment", "awaiting_confirm", "confirmed"];
+const PAYMENT_REVENUE_STATUSES = ["paid", "refunded"];
 
 const toMoney = (value) => Math.max(0, Math.floor(Number(value || 0)));
 
@@ -50,7 +51,7 @@ module.exports.getPartnerStats = async (req, res) => {
       {
         $match: {
           provider_id: providerId,
-          paymentStatus: "paid",
+          paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
           status: { $ne: "cancelled" },
         },
       },
@@ -98,7 +99,12 @@ module.exports.getPartnerStats = async (req, res) => {
     const heldBreakdown = buildRevenueBreakdown(heldGrossRevenue);
 
     const orderStatusStats = await Order.aggregate([
-      { $match: { provider_id: providerId, paymentStatus: { $ne: "refunded" } } },
+      {
+        $match: {
+          provider_id: providerId,
+          paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
+        },
+      },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
@@ -107,7 +113,7 @@ module.exports.getPartnerStats = async (req, res) => {
       {
         $match: {
           provider_id: providerId,
-          paymentStatus: "paid",
+          paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
           status: { $ne: "cancelled" },
           createdAt: {
             $gte: new Date(`${currentYear}-01-01`),
@@ -169,7 +175,7 @@ module.exports.getAdminStats = async (req, res) => {
     const revenueData = await Order.aggregate([
       {
         $match: {
-          paymentStatus: "paid",
+          paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
           status: { $ne: "cancelled" },
         },
       },
@@ -204,6 +210,20 @@ module.exports.getAdminStats = async (req, res) => {
     const totalCollectedRevenue = revenueData[0]?.totalCollectedRevenue || 0;
     const completedRevenue = revenueData[0]?.completedRevenue || 0;
     const heldRevenue = revenueData[0]?.heldRevenue || 0;
+    const refundedAgg = await Order.aggregate([
+      {
+        $match: {
+          paymentStatus: "refunded",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          refundedRevenue: { $sum: "$refundAmount" },
+        },
+      },
+    ]);
+    const refundedRevenue = refundedAgg[0]?.refundedRevenue || 0;
     const completedBreakdown = buildRevenueBreakdown(completedRevenue);
     const heldBreakdown = buildRevenueBreakdown(heldRevenue);
 
@@ -249,7 +269,7 @@ module.exports.getAdminStats = async (req, res) => {
     const monthlyRevenue = await Order.aggregate([
       {
         $match: {
-          paymentStatus: "paid",
+          paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
           status: { $ne: "cancelled" },
         },
       },
@@ -279,6 +299,7 @@ module.exports.getAdminStats = async (req, res) => {
         totalCollectedRevenue,
         completedRevenue,
         heldRevenue,
+        refundedRevenue,
         commissionRevenue: completedBreakdown.commission,
         providerPayout: completedBreakdown.providerNet,
         heldCommissionRevenue: heldBreakdown.commission,

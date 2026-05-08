@@ -5,6 +5,7 @@ const Withdrawal = require("../models/Withdrawal.js");
 const COMMISSION_RATE = 0.1;
 const ACTIVE_BOOKING_STATUSES = ["awaiting_payment", "awaiting_confirm", "confirmed"];
 const RESERVED_WITHDRAWAL_STATUSES = ["pending", "approved", "paid"];
+const PAYMENT_REVENUE_STATUSES = ["paid", "refunded"];
 
 const toMoney = (value) => Math.max(0, Math.floor(Number(value || 0)));
 
@@ -17,7 +18,7 @@ const buildProviderRevenue = async (providerId) => {
     {
       $match: {
         provider_id: providerObjectId,
-        paymentStatus: "paid",
+        paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
         status: { $ne: "cancelled" },
       },
     },
@@ -92,6 +93,7 @@ const buildProviderRevenue = async (providerId) => {
 const formatWithdrawal = (item) => ({
   _id: item._id,
   provider_id: item.provider_id,
+  partnerName: item?.provider_id?.fullName || item?.providerName || "",
   amount: item.amount,
   bankName: item.bankName,
   accountName: item.accountName,
