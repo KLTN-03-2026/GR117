@@ -13,7 +13,6 @@ import {
   FaWallet,
   FaXmark,
 } from "react-icons/fa6";
-import RevenueByProvider from "./RevenueByProvider.jsx";
 
 const fmtVND = (n) => `${Number(n || 0).toLocaleString("vi-VN")}đ`;
 
@@ -114,12 +113,12 @@ function MetricCard({ label, value, icon: Icon, color }) {
   );
 }
 
-function TabButton({ active, label, count, onClick }) {
+function TabButton({ active, label, count, onClick, className = "" }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 transition ${
+      className={`flex items-center gap-2 rounded-lg px-4 py-2 transition ${className} ${
         active ? "bg-white text-[#f97316] shadow-sm" : "text-slate-500"
       }`}
       style={{ fontSize: 13, fontWeight: 500 }}
@@ -686,37 +685,22 @@ function Revenue() {
             icon={FaWallet}
             color="#3b82f6"
           />
-          <MetricCard
-            label="Yêu cầu chờ duyệt"
-            value={pendingWithdrawals.length}
-            icon={FaCircleCheck}
-            color="#f59e0b"
-          />
         </div>
 
-        <div className="flex w-fit gap-1 rounded-xl bg-[#f8fafc] p-1">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#f8fafc] p-2 lg:grid-cols-4">
           <TabButton
             active={tab === "transactions"}
             label="Giao dịch"
             count={sortedTx.length}
+            className="min-w-[140px] justify-center px-5 py-3"
             onClick={() => handleTabChange("transactions")}
-          />
-          <TabButton
-            active={tab === "withdrawals"}
-            label="Yêu cầu rút"
-            count={pendingWithdrawals.length}
-            onClick={() => handleTabChange("withdrawals")}
           />
           <TabButton
             active={tab === "refunds"}
             label="Hoàn tiền"
             count={refundList.length}
+            className="min-w-[140px] justify-center px-5 py-3"
             onClick={() => handleTabChange("refunds")}
-          />
-          <TabButton
-            active={tab === "providers"}
-            label="Provider"
-            onClick={() => handleTabChange("providers")}
           />
         </div>
 
@@ -742,33 +726,6 @@ function Revenue() {
             </div>
           </div>
         )}
-
-        {tab === "providers" && <RevenueByProvider />}
-
-        {/* Withdrawals */}
-        {tab === "withdrawals" && (
-          <div className="space-y-3">
-            {sortedWd.length === 0 ? (
-              <EmptyState
-                icon={FaCircleCheck}
-                title="Chưa có yêu cầu nào"
-                description="Các yêu cầu rút tiền của provider sẽ xuất hiện tại đây."
-              />
-            ) : (
-              sortedWd.map((w) => (
-                <WithdrawalRow
-                  key={w.id || w._id}
-                  item={w}
-                  statusMeta={wdMap[w.status] || wdMap.pending}
-                  processingId={processingId}
-                  onReject={setRejectId}
-                  onApprove={handleApprove}
-                />
-              ))
-            )}
-          </div>
-        )}
-
         {/* Refunds */}
         {tab === "refunds" && (
           <div className="bg-white border border-gray-100 rounded-2xl">

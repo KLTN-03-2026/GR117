@@ -4,7 +4,6 @@ import {
   FaFilter,
   FaMagnifyingGlass,
   FaRotateRight,
-  FaWallet,
 } from "react-icons/fa6";
 
 const ACTIVE_BOOKING_STATUSES = [
@@ -29,7 +28,6 @@ const providerLabel = (order) =>
 
 function RevenueByProvider() {
   const [orders, setOrders] = useState([]);
-  const [withdrawals, setWithdrawals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -41,19 +39,10 @@ function RevenueByProvider() {
       setLoading(true);
       setError("");
 
-      const [ordersRes, withdrawalsRes] = await Promise.all([
-        fetch("/api/orders/admin", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-        fetch("/api/withdrawals/admin", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-      ]);
-
-      const [ordersResult, withdrawalsResult] = await Promise.all([
-        ordersRes.json(),
-        withdrawalsRes.json(),
-      ]);
+      const ordersRes = await fetch("/api/orders/admin", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const ordersResult = await ordersRes.json();
 
       if (!ordersRes.ok) {
         throw new Error(
@@ -61,16 +50,7 @@ function RevenueByProvider() {
         );
       }
 
-      if (!withdrawalsRes.ok) {
-        throw new Error(
-          withdrawalsResult.message || "Không thể tải danh sách rút tiền",
-        );
-      }
-
       setOrders(Array.isArray(ordersResult.data) ? ordersResult.data : []);
-      setWithdrawals(
-        Array.isArray(withdrawalsResult.data) ? withdrawalsResult.data : [],
-      );
     } catch (err) {
       setError(err?.message || "Không thể tải dữ liệu theo provider");
     } finally {
@@ -94,9 +74,6 @@ function RevenueByProvider() {
           commissionRevenue: 0,
           refundRevenue: 0,
           heldRevenue: 0,
-          paidWithdrawals: 0,
-          availableBalance: 0,
-          pendingWithdrawals: 0,
           completedOrders: 0,
           activeOrders: 0,
           totalOrders: 0,
@@ -148,55 +125,27 @@ function RevenueByProvider() {
       }
     });
 
-    withdrawals.forEach((item) => {
-      const providerId = String(
-        item?.provider_id?._id || item?.provider_id || "unknown",
-      );
-      const name =
-        item?.provider_id?.fullName ||
-        item?.providerName ||
-        "Chưa có tên provider";
-      const row = ensureProvider(providerId, name);
-      const amount = toMoney(item?.amount);
-      const status = String(item?.status || "pending").toLowerCase();
-
-      if (status === "paid") {
-        row.paidWithdrawals += amount;
-      }
-
-      if (["pending", "approved", "paid"].includes(status)) {
-        row.availableBalance -= amount;
-      }
-
-      if (status === "pending") {
-        row.pendingWithdrawals += 1;
-      }
-    });
-
     return [...map.values()]
       .map((row) => {
         const providerGross = Math.max(row.totalRevenue, 0);
         const providerCommission = Math.max(row.commissionRevenue, 0);
         const providerNet = Math.max(providerGross - providerCommission, 0);
-        const availableBalance = Math.max(
-          providerNet + row.availableBalance,
-          0,
-        );
 
         return {
           ...row,
           providerGross,
           providerCommission,
           providerNet,
-          availableBalance,
+          availableBalance: providerNet,
         };
       })
       .sort((a, b) => b.providerGross - a.providerGross);
-  }, [orders, withdrawals]);
+  }, [orders]);
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     if (!keyword) return providerRows;
+
     return providerRows.filter((row) => {
       return (
         row.providerName.toLowerCase().includes(keyword) ||
@@ -225,7 +174,7 @@ function RevenueByProvider() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="text-sm font-semibold text-slate-900">
-              Quản lí doanh thu Provider
+              Quản lý doanh thu Provider
             </h3>
           </div>
 
@@ -259,15 +208,13 @@ function RevenueByProvider() {
                 <th className="px-3 py-2">Phí sàn</th>
                 <th className="px-3 py-2">Hoàn tiền</th>
                 <th className="px-3 py-2">Đang giữ hộ</th>
-                <th className="px-3 py-2">Đã rút</th>
                 <th className="px-3 py-2">Khả dụng</th>
-                <th className="px-3 py-2">Yêu cầu chờ</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6">
+                  <td colSpan={6} className="px-3 py-6">
                     <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
                       <FaFilter
                         className="mx-auto mb-2 text-slate-300"
@@ -311,14 +258,8 @@ function RevenueByProvider() {
                     <td className="px-3 py-4 text-sm font-medium text-slate-700">
                       {fmtVND(row.heldRevenue)}
                     </td>
-                    <td className="px-3 py-4 text-sm font-medium text-slate-700">
-                      {fmtVND(row.paidWithdrawals)}
-                    </td>
-                    <td className="px-3 py-4 text-sm font-medium text-slate-700">
-                      {fmtVND(row.availableBalance)}
-                    </td>
                     <td className="rounded-r-2xl px-3 py-4 text-sm font-medium text-slate-700">
-                      {row.pendingWithdrawals}
+                      {fmtVND(row.availableBalance)}
                     </td>
                   </tr>
                 ))

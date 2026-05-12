@@ -15,11 +15,13 @@ import ServiceManagement from "./ServiceManagement";
 import AccountManagement from "./AccountManagement";
 import BookingManagement from "./BookingManagement";
 import ProviderManagement from "./ProviderManagement";
+import RevenueByProvider from "./RevenueByProvider";
 
 const tabs = [
   { id: "overview", label: "Tổng quan", icon: IoBarChartOutline },
   { id: "services", label: "Dịch vụ", icon: IoPricetagOutline },
   { id: "revenue", label: "Doanh thu", icon: IoWalletOutline },
+  { id: "provider-revenue", label: "Doanh thu Provider", icon: IoBusinessOutline },
   { id: "accounts", label: "Tài khoản", icon: IoPeopleOutline },
   { id: "providers", label: "Nhà cung cấp", icon: IoBusinessOutline },
   { id: "bookings", label: "Đơn hàng", icon: IoTicketOutline },
@@ -70,6 +72,7 @@ const DashboardAdmin = ({ initialTab = "overview" } = {}) => {
         <div className={cardClass}>
           {tab === "overview" ? <TotalSystem /> : null}
           {tab === "revenue" ? <Revenue /> : null}
+          {tab === "provider-revenue" ? <RevenueByProvider /> : null}
           {tab === "services" ? <ServiceManagement /> : null}
           {tab === "accounts" ? <AccountManagement /> : null}
           {tab === "providers" ? <ProviderManagement /> : null}
