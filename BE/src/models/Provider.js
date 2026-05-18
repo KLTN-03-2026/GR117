@@ -36,6 +36,18 @@ const providerSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    bankAccountNumber: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    bankName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     // trạng thái duyệt
     status: {
       type: String,

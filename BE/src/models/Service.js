@@ -77,6 +77,12 @@ const serviceSchema = new mongoose.Schema(
       enum: ["low", "mid", "high"],
       default: "mid",
     },
+    cancellationPolicy: {
+      fullRefundDays: { type: Number, default: 10 },
+      partialRefundDays: { type: Number, default: 5 },
+      partialRefundRate: { type: Number, default: 0.7 },
+      lowRefundRate: { type: Number, default: 0.3 },
+    },
     itinerary: [itinerarySchema],
 
     //ảnh

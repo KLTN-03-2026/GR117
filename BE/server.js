@@ -8,6 +8,9 @@ const db = require("./src/config/connectDB.js");
 const cors = require("cors");
 const router = require("./src/routes/indexRoute.js");
 const { ensureDefaultCategories } = require("./src/utils/ensureDefaultCategories.js");
+const {
+  startRecommendationCacheCronJobs,
+} = require("./src/services/recommendationCacheCron.js");
 
 // Middleware
 app.use(cors());
@@ -28,6 +31,7 @@ db.connectDB().then(() => {
       console.error("Khong the khoi tao danh muc mac dinh:", error.message);
     })
     .finally(() => {
+      startRecommendationCacheCronJobs();
       app.listen(port, () => {
         console.log(`server bat dau tren cong ${port}`);
       });

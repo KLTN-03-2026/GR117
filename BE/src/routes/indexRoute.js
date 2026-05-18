@@ -11,7 +11,6 @@ const vnpayRoute = require("./vnpayRoute.js");
 const providerRoute = require("./providerRoutes.js");
 const aiRoute = require("./aiRoute.js");
 const couponRoute = require("./couponRoute.js");
-const withdrawalRoute = require("./withdrawalRoute.js");
 
 module.exports = function (app) {
   app.use("/api/auth", authRoute);
@@ -26,6 +25,5 @@ module.exports = function (app) {
   app.use("/api/provider", providerRoute);
   app.use("/api/ai", aiRoute);
   app.use("/api/coupons", couponRoute);
-  app.use("/api/withdrawals", withdrawalRoute);
   app.use("/api", vnpayRoute);
 };

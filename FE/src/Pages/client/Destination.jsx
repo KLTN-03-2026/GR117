@@ -10,12 +10,15 @@ import {
   FaCompass,
   FaChevronRight,
   FaFire,
-  FaSearch,
   FaMapMarkerAlt,
 } from "react-icons/fa";
+import { CiSearch } from "react-icons/ci";
+import { IoLocationOutline } from "react-icons/io5";
+import { RiCalendarScheduleLine } from "react-icons/ri";
 import ServicesCard from "../../Components/services/ServicesCard";
 import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { buildTrackingHeaders, getGuestId } from "../../utils/guest.js";
 
 const normalizeText = (text) =>
   String(text || "")
@@ -35,7 +38,6 @@ const seasonLabelMap = {
   summer: "Mùa hè",
   autumn: "Mùa thu",
   winter: "Mùa đông",
-  rainy: "Mùa mưa",
 };
 
 const seasonOptions = [
@@ -44,8 +46,22 @@ const seasonOptions = [
   { value: "summer", label: "Mùa hè" },
   { value: "autumn", label: "Mùa thu" },
   { value: "winter", label: "Mùa đông" },
-  { value: "rainy", label: "Mùa mưa" },
 ];
+
+const MONTH_SEASON_MAP = {
+  1: "spring",
+  2: "spring",
+  3: "spring",
+  4: "summer",
+  5: "summer",
+  6: "summer",
+  7: "autumn",
+  8: "autumn",
+  9: "autumn",
+  10: "winter",
+  11: "winter",
+  12: "winter",
+};
 
 const getCategoryText = (category) => {
   if (Array.isArray(category)) {
@@ -75,6 +91,31 @@ const getCategoryIcon = (categoryName) => {
   return <FaCompass size={14} />;
 };
 
+const getSeasonTags = (service) => {
+  const seasonTags = Array.isArray(service?.seasonTags)
+    ? service.seasonTags.map((item) => normalizeText(item)).filter(Boolean)
+    : [];
+
+  const bestMonths = Array.isArray(service?.bestMonths)
+    ? service.bestMonths
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item) && item >= 1 && item <= 12)
+    : [];
+
+  const monthMappedSeasons = bestMonths
+    .map((month) => MONTH_SEASON_MAP[month])
+    .filter(Boolean);
+
+  return [...new Set([...seasonTags, ...monthMappedSeasons])];
+};
+
+const matchesSeasonFilter = (service, seasonFilter) => {
+  if (seasonFilter === "all") return true;
+
+  const seasonTags = getSeasonTags(service);
+  return seasonTags.includes(normalizeText(seasonFilter));
+};
+
 const Destination = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -86,6 +127,7 @@ const Destination = () => {
   const [favoriteServiceIds, setFavoriteServiceIds] = useState([]);
   const [favoriteLoadingId, setFavoriteLoadingId] = useState("");
   const accessToken = localStorage.getItem("accessToken");
+  const guestId = useMemo(() => getGuestId(), []);
   const currentUser = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("currentUser") || "null");
@@ -95,9 +137,37 @@ const Destination = () => {
   }, []);
   const canManageFavorites = Boolean(
     currentUser &&
-      String(currentUser.role || "").toLowerCase() === "user" &&
-      accessToken,
+    String(currentUser.role || "").toLowerCase() === "user" &&
+    accessToken,
   );
+  const recordSearchBehavior = async () => {
+    try {
+      await axios.post(
+        "/api/users/behavior",
+        {
+          actionType: "search",
+          keyword: searchText.trim(),
+          category: activeCategory === "Tất cả" ? "" : activeCategory,
+          budgetRange:
+            budgetFilter === "all"
+              ? ""
+              : budgetFilter === "under2"
+                ? "low"
+                : budgetFilter === "2to5"
+                  ? "mid"
+                  : "high",
+          location: searchText.trim(),
+          season: seasonFilter === "all" ? "" : seasonFilter,
+          source: "destination_search",
+        },
+        {
+          headers: buildTrackingHeaders(accessToken),
+        },
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -126,7 +196,9 @@ const Destination = () => {
         });
 
         const favoriteIds = Array.isArray(res.data?.data)
-          ? res.data.data.map((item) => String(item?._id || item?.id)).filter(Boolean)
+          ? res.data.data
+              .map((item) => String(item?._id || item?.id))
+              .filter(Boolean)
           : [];
 
         setFavoriteServiceIds(favoriteIds);
@@ -136,7 +208,7 @@ const Destination = () => {
     };
 
     fetchFavorites();
-  }, [accessToken, canManageFavorites]);
+  }, [accessToken, canManageFavorites, guestId]);
 
   const categories = useMemo(() => {
     const categorySet = new Set();
@@ -191,10 +263,15 @@ const Destination = () => {
       const rawCategory = service?.category;
       if (Array.isArray(rawCategory)) {
         return rawCategory.some(
-          (item) => normalizeText(getCategoryText(item)) === normalizeText(activeCategory),
+          (item) =>
+            normalizeText(getCategoryText(item)) ===
+            normalizeText(activeCategory),
         );
       }
-      return normalizeText(getCategoryText(rawCategory)) === normalizeText(activeCategory);
+      return (
+        normalizeText(getCategoryText(rawCategory)) ===
+        normalizeText(activeCategory)
+      );
     });
   }, [Data, activeCategory]);
 
@@ -217,10 +294,11 @@ const Destination = () => {
         (budgetFilter === "under2" && price > 0 && price < 2000000) ||
         (budgetFilter === "2to5" && price >= 2000000 && price <= 5000000) ||
         (budgetFilter === "over5" && price > 5000000);
+      const matchSeason = matchesSeasonFilter(service, seasonFilter);
 
-      return matchKeyword && matchBudget;
+      return matchKeyword && matchBudget && matchSeason;
     });
-  }, [budgetFilter, searchText, visibleServices]);
+  }, [budgetFilter, searchText, seasonFilter, visibleServices]);
 
   const handleToggleFavorite = async (service) => {
     const serviceId = String(service?._id || service?.id || "");
@@ -256,6 +334,16 @@ const Destination = () => {
     } finally {
       setFavoriteLoadingId("");
     }
+  };
+
+  const handleSearch = () => {
+    recordSearchBehavior();
+    const params = new URLSearchParams();
+    if (searchText.trim()) params.set("q", searchText.trim());
+    if (activeCategory !== "Tất cả") params.set("category", activeCategory);
+    if (budgetFilter !== "all") params.set("budget", budgetFilter);
+    if (seasonFilter !== "all") params.set("season", seasonFilter);
+    navigate(`/destination${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   return (
@@ -296,24 +384,100 @@ const Destination = () => {
               12+ tour độc đáo · Giá tốt nhất · Đảm bảo hoàn tiền
             </p>
 
-            <div className="w-full max-w-4xl">
-              <div className="flex items-center gap-3 rounded-2xl bg-white p-2 pl-5 shadow-2xl">
-                <FaSearch className="text-gray-400" />
+            <div className="mt-4 grid  max-w-[2000px] grid-cols-1 gap-2.5 rounded-[22px] bg-white px-3.5 py-4 shadow-2xl md:grid-cols-2 lg:grid-cols-[minmax(250px,1.8fr)_minmax(170px,1fr)_minmax(170px,1fr)_minmax(170px,1fr)_auto] lg:items-center lg:gap-3 lg:px-3.5 lg:py-3">
+              <div className="flex min-w-0 items-center gap-2 min-h-[60px] px-1.5 lg:border-r border-gray-100">
+                <div>
+                  <IoLocationOutline className="ml-1 text-lg text-[#F78F10]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-[12px] leading-none">
+                    Tên địa điểm
+                  </p>
+                  <input
+                    type="text"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    placeholder="VD: Hạ Long, Đà Nẵng..."
+                    className="w-full bg-transparent text-[14px] leading-tight text-[#1a1a2e] outline-none"
+                  />
+                </div>
+              </div>
 
-                <input
-                  type="text"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Tìm theo địa điểm hoặc địa hình..."
-                  className="flex-1 outline-none text-[14px] text-gray-800"
-                />
+              <div className="flex min-w-0 items-center gap-2 min-h-[60px] px-1.5 lg:border-r border-gray-100">
+                <div>
+                  <RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-[12px] leading-none">
+                    Loại tour
+                  </p>
+                  <select
+                    value={activeCategory}
+                    onChange={(e) => setActiveCategory(e.target.value)}
+                    className="w-full bg-transparent text-[14px] leading-tight text-[#1a1a2e] outline-none"
+                  >
+                    {categories.map((category) => (
+                      <option key={category} value={getCategoryText(category)}>
+                        {getCategoryText(category)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
+              <div className="flex min-w-0 items-center gap-2 min-h-[60px] px-1.5 lg:border-r border-gray-100">
+                <div>
+                  <RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-[12px] leading-none">
+                    Ngân sách
+                  </p>
+                  <select
+                    value={budgetFilter}
+                    onChange={(e) => setBudgetFilter(e.target.value)}
+                    className="w-full bg-transparent text-[14px] leading-tight text-[#1a1a2e] outline-none"
+                  >
+                    <option value="all">Tất cả</option>
+                    <option value="under2">Dưới 2 triệu</option>
+                    <option value="2to5">2 - 5 triệu</option>
+                    <option value="over5">Trên 5 triệu</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex min-w-0 items-center gap-2 min-h-[60px] px-1.5 lg:border-r border-gray-100">
+                <div>
+                  <RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-gray-400 text-[12px] leading-none">Mùa</p>
+                  <select
+                    value={seasonFilter}
+                    onChange={(e) => setSeasonFilter(e.target.value)}
+                    className="w-full bg-transparent text-[14px] leading-tight text-[#1a1a2e] outline-none"
+                  >
+                    {seasonOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex min-h-[60px] items-center rounded-xl bg-white lg:justify-self-end lg:pl-0">
                 <button
                   type="button"
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white text-[14px] font-semibold"
+                  onClick={handleSearch}
+                  className="flex h-[60px] w-full items-center justify-center whitespace-nowrap rounded-xl rounded-l-none bg-gradient-to-r from-[#F78F10] to-[#F78F10] px-5 text-white transition-all hover:shadow-lg hover:shadow-orange-200 lg:min-w-[140px] lg:w-auto"
                 >
-                  <FaSearch size={14} />
-                  Tìm kiếm
+                  <div className="flex items-center gap-2">
+                    <CiSearch className="text-lg font-bold" />
+                    <p className="font-bold text-[13px] leading-none">
+                      Tìm kiếm
+                    </p>
+                  </div>
                 </button>
               </div>
             </div>
@@ -366,7 +530,9 @@ const Destination = () => {
                       service={service}
                       variant="destination"
                       showFavorite
-                      isFavorite={favoriteServiceIds.includes(String(serviceId))}
+                      isFavorite={favoriteServiceIds.includes(
+                        String(serviceId),
+                      )}
                       favoriteLoading={favoriteLoadingId === String(serviceId)}
                       onToggleFavorite={handleToggleFavorite}
                     />

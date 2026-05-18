@@ -1,189 +1,251 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import {
-  FaWallet,
   FaChartLine,
   FaClock,
-  FaCircleCheck,
   FaPercent,
-  FaMoneyBill1Wave,
-  FaXmark,
-  FaBuilding,
+  FaCircleCheck,
+  FaRotateRight,
+  FaFilter,
 } from "react-icons/fa6";
 
 const fmtVND = (n) => `${Number(n || 0).toLocaleString("vi-VN")}đ`;
-
-const wdMap = {
-  pending: {
-    label: "Chờ duyệt",
-    cls: "bg-amber-50 text-amber-700 border border-amber-200",
-    dot: "bg-amber-500",
-  },
-  approved: {
-    label: "Đã chi trả",
-    cls: "bg-blue-50 text-blue-700 border border-blue-200",
-    dot: "bg-blue-500",
-  },
-  rejected: {
-    label: "Từ chối",
-    cls: "bg-red-50 text-red-600 border border-red-200",
-    dot: "bg-red-500",
-  },
-  paid: {
-    label: "Đã chi trả",
-    cls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    dot: "bg-emerald-500",
-  },
+const fmtDateTime = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (num) => String(num).padStart(2, "0");
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
 };
+
+const COMMISSION_RATE = 0.2;
+
+function MetricCard({ label, value, icon: Icon, color }) {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+      <div className="mb-0 flex items-center justify-between">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-xl"
+          style={{ background: `${color}18` }}
+        >
+          <Icon size={18} style={{ color }} />
+        </div>
+        <p
+          style={{
+            fontSize: 19,
+            fontWeight: 700,
+            color: "#1a1a2e",
+            textAlign: "center",
+          }}
+        >
+          {fmtVND(value)}
+        </p>
+      </div>
+      <p className="mt-1 text-slate-500" style={{ fontSize: 12 }}>
+        {label}
+      </p>
+    </div>
+  );
+}
 
 function Revenue() {
   const [stats, setStats] = useState(null);
-  const [withdrawals, setWithdrawals] = useState([]);
-  const [withdrawalSummary, setWithdrawalSummary] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [withdrawError, setWithdrawError] = useState("");
-  const [showWdForm, setShowWdForm] = useState(false);
-  const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false);
-  const [form, setForm] = useState({
-    amount: "",
-    bankName: "Vietcombank",
-    accountNumber: "",
-    bankHolder: "",
-    note: "",
-  });
 
   const accessToken = localStorage.getItem("accessToken");
 
-  const fetchStats = async () => {
-    const res = await fetch("/api/stats/partner", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const result = await res.json();
-    if (!res.ok) {
-      throw new Error(result.message || "Không thể tải thống kê doanh thu");
-    }
-    setStats(result.data || null);
-  };
-
-  const fetchWithdrawals = async () => {
-    const res = await fetch("/api/withdrawals/provider", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const result = await res.json();
-    if (!res.ok) {
-      throw new Error(result.message || "Không thể tải danh sách rút tiền");
-    }
-    setWithdrawals(Array.isArray(result.data) ? result.data : []);
-    setWithdrawalSummary(result.summary || null);
-  };
-
-  const reloadData = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      await Promise.all([fetchStats(), fetchWithdrawals()]);
-    } catch (err) {
-      setError(err?.message || "Không thể tải dữ liệu doanh thu");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    reloadData();
-  }, []);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-  const withdrawalsSorted = useMemo(
-    () =>
-      [...withdrawals].sort((a, b) =>
-        String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
-      ),
-    [withdrawals],
+        const [statsRes, ordersRes] = await Promise.all([
+          fetch("/api/stats/partner", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+          fetch("/api/orders/provider", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+        ]);
+
+        const statsResult = await statsRes.json();
+        const ordersResult = await ordersRes.json();
+
+        if (!statsRes.ok) {
+          throw new Error(
+            statsResult.message || "Không thể tải thống kê doanh thu",
+          );
+        }
+
+        if (!ordersRes.ok) {
+          throw new Error(
+            ordersResult.message || "Không thể tải lịch sử doanh thu",
+          );
+        }
+
+        setStats(statsResult.data || null);
+        setOrders(Array.isArray(ordersResult.data) ? ordersResult.data : []);
+      } catch (err) {
+        setError(err?.message || "Không thể tải dữ liệu doanh thu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [accessToken]);
+
+  const totalRevenue = Number(
+    stats?.totalCollectedRevenue ?? stats?.totalRevenue ?? stats?.providerRevenue ?? 0,
   );
-
-  const myWd = useMemo(
-    () =>
-      withdrawalsSorted.map((w) => ({
-        ...w,
-        requestCode: w.code || w.requestCode || w.id || w._id,
-        id: w.id || w._id,
-        bankAccount: w.bankAccount || w.accountNumber,
-        createdAt: w.createdAt
-          ? new Date(w.createdAt).toLocaleString("vi-VN")
-          : w.requestedAt
-            ? new Date(w.requestedAt).toLocaleString("vi-VN")
-            : "",
-        rejectReason: w.rejectReason || w.adminNote || "",
-        status: w.status || "pending",
-      })),
-    [withdrawalsSorted],
-  );
-
-  const availableBalance = Number(withdrawalSummary?.availableBalance || 0);
-  const paidWithdrawals = Number(withdrawalSummary?.paidWithdrawals || 0);
-  const totalRevenue = Number(stats?.totalRevenue ?? stats?.providerRevenue ?? 0);
   const platformFee = Number(stats?.commissionRevenue || 0);
   const heldRevenue = Number(stats?.heldGrossRevenue || 0);
+  const availableBalance = Number(stats?.availableBalance || 0);
+  const isRefundedOrder = (order) =>
+    [
+      order?.refundStatus,
+      order?.paymentStatus,
+      order?.settlementStatus,
+      order?.escrowStatus,
+    ]
+      .map((value) => String(value || "").toLowerCase())
+      .some((value) => value === "succeeded" || value === "refunded");
 
-  const openWithdrawForm = () => {
-    setWithdrawError("");
-    setForm((prev) => ({
-      ...prev,
-      amount: String(Math.max(availableBalance, 0)),
-    }));
-    setShowWdForm(true);
-  };
+  const refundRevenue = Number(
+    orders.reduce((sum, order) => {
+      if (!isRefundedOrder(order)) return sum;
+      return sum + Number(order?.refundAmount || order?.refundInfo?.amount || 0);
+    }, 0),
+  );
+  const [revenueMode, setRevenueMode] = useState("gross");
+  const grossRevenueDisplay = totalRevenue;
+  const netRevenueDisplay = Math.max(totalRevenue - platformFee, 0);
+  const selectedRevenueDisplay =
+    revenueMode === "net" ? netRevenueDisplay : grossRevenueDisplay;
 
-  const handleSubmit = async () => {
-    const amount = Number(String(form.amount || "").replace(/\D/g, ""));
-    if (!amount || amount < 100000) {
-      setWithdrawError("Vui lòng nhập số tiền rút hợp lệ, tối thiểu 100.000đ");
-      return;
-    }
-    if (!form.accountNumber || !form.bankHolder) {
-      setWithdrawError("Vui lòng nhập đầy đủ thông tin ngân hàng");
-      return;
-    }
+  const transactionRows = useMemo(() => {
+    const getOrderName = (order) =>
+      order?.serviceId?.serviceName ||
+      order?.tourSnapshot?.name ||
+      order?.orderCode ||
+      "Đơn hàng";
+    const getCustomerName = (order) =>
+      order?.customerInfo?.name || order?.userId?.fullName || "Khách hàng";
+    const getCustomerPhone = (order) =>
+      order?.customerInfo?.phone || order?.userId?.phone || "";
 
-    try {
-      setSubmittingWithdrawal(true);
-      setWithdrawError("");
+    const getProviderNet = (order) =>
+      Math.max(Number(order?.totalPrice || 0) * (1 - COMMISSION_RATE), 0);
 
-      const res = await fetch("/api/withdrawals/provider", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          amount,
-          bankName: form.bankName,
-          accountName: form.bankHolder,
-          accountNumber: form.accountNumber,
-          note: form.note,
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.message || "Không thể tạo yêu cầu rút tiền");
-      }
+    const rows = [...orders].flatMap((order) => {
+      const baseTime = new Date(order?.createdAt || 0).getTime();
+      const completedTime = new Date(order?.updatedAt || order?.createdAt || 0).getTime();
+      const refundTime = new Date(order?.refundedAt || order?.updatedAt || order?.createdAt || 0).getTime();
+      const orderName = getOrderName(order);
+      const refunded = isRefundedOrder(order);
 
-      setShowWdForm(false);
-      setForm({
-        amount: "",
-        bankName: "Vietcombank",
-        accountNumber: "",
-        bankHolder: "",
-        note: "",
-      });
-      await reloadData();
-    } catch (err) {
-      setWithdrawError(err?.message || "Không thể tạo yêu cầu rút tiền");
-    } finally {
-      setSubmittingWithdrawal(false);
-    }
-  };
+      const paymentRow =
+        order?.paymentStatus === "paid" && !refunded
+          ? {
+              id: `payment-${order?._id || order?.id}`,
+              type: "payment",
+              title: "Thanh toán",
+              amount: Number(order?.totalPrice || 0),
+              status: "Đã thu",
+              note: `Đơn ${order?.orderCode || orderName}`,
+              sortTime: baseTime,
+            }
+          : null;
+
+      const commissionRow =
+        order?.paymentStatus === "paid" && !refunded
+          ? {
+              id: `commission-${order?._id || order?.id}`,
+              type: "commission",
+              title: "Phí sàn",
+              amount: Math.floor(Number(order?.totalPrice || 0) * COMMISSION_RATE),
+              status: "Đã tính",
+              note: `Phí sàn từ đơn ${order?.orderCode || orderName}`,
+              sortTime: baseTime + 1,
+            }
+          : null;
+
+      const payoutRow =
+        order?.status === "completed" && !refunded
+          ? {
+              id: `payout-${order?._id || order?.id}`,
+              type: "payout",
+              title: "Đã giải ngân",
+              amount: getProviderNet(order),
+              status: "Hoàn tất",
+              note: `Giải ngân cho đơn ${order?.orderCode || orderName}`,
+              sortTime: completedTime + 2,
+            }
+          : null;
+
+      const refundRow =
+        refunded || Number(order?.refundAmount || 0) > 0
+          ? {
+              id: `refund-${order?._id || order?.id}`,
+              type: "refund",
+              title: "Hoàn tiền",
+              amount: Number(order?.refundAmount || 0),
+              status: "Đã hoàn tiền",
+              note: `Hoàn tiền cho đơn ${order?.orderCode || orderName}`,
+              sortTime: refundTime + 3,
+            }
+          : null;
+
+      return [paymentRow, commissionRow, payoutRow, refundRow].filter(Boolean);
+    });
+
+    return rows.sort((a, b) => Number(b.sortTime || 0) - Number(a.sortTime || 0));
+  }, [orders]);
+
+  const revenueHistoryRows = useMemo(() => {
+    return [...orders]
+      .filter((order) => order?.status === "completed")
+      .map((order) => {
+        const orderCode = order?.orderCode || order?._id || "N/A";
+        const customerName =
+          order?.customerInfo?.name || order?.userId?.fullName || "Khách hàng";
+        const customerPhone = order?.customerInfo?.phone || order?.userId?.phone || "";
+        const tourName =
+          order?.serviceId?.serviceName ||
+          order?.tourSnapshot?.name ||
+          "Không có tên tour";
+        const totalAmount = Number(order?.totalPrice || 0);
+        const commissionAmount = Math.floor(totalAmount * COMMISSION_RATE);
+        const receivedAmount = Math.max(totalAmount - commissionAmount, 0);
+        const seatsBooked = Number(order?.numPeople || 0);
+        const transferredAt =
+          order?.settledAt || order?.updatedAt || order?.createdAt || null;
+
+        return {
+          id: order?._id || orderCode,
+          orderCode,
+          customerName,
+          customerPhone,
+          tourName,
+          totalAmount,
+          commissionAmount,
+          receivedAmount,
+          seatsBooked,
+          transferredAt,
+          status: "Giải ngân từ admin",
+        };
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.transferredAt || 0).getTime() -
+          new Date(a.transferredAt || 0).getTime(),
+      );
+  }, [orders]);
 
   if (loading) {
     return (
@@ -212,37 +274,18 @@ function Revenue() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
-        <div>
-          <Breadcrumb />
-          <h1
-            style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: "20px",
-              fontWeight: "700",
-              color: "rgb(26, 26, 46)",
-            }}
-          >
-            Quản lý doanh thu
-          </h1>
-        </div>
-
-        <button
-          type="button"
-          onClick={openWithdrawForm}
-          disabled={availableBalance < 100000}
-          className="rounded-xl px-4 py-2.5 text-white disabled:cursor-not-allowed disabled:opacity-50"
+      <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+        <Breadcrumb />
+        <h1
           style={{
-            background: "linear-gradient(90deg, #f97316, #f59e0b)",
-            fontSize: 13,
-            fontWeight: 600,
+            fontFamily: "'Playfair Display', serif",
+            fontSize: "20px",
+            fontWeight: "700",
+            color: "rgb(26, 26, 46)",
           }}
         >
-          <span className="inline-flex items-center gap-2">
-            <FaMoneyBill1Wave size={16} />
-            Yêu cầu rút tiền
-          </span>
-        </button>
+          Quản lý doanh thu
+        </h1>
       </div>
 
       <div className="space-y-6 p-6">
@@ -253,306 +296,152 @@ function Revenue() {
         ) : null}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {[
-            {
-              label: "Tổng doanh thu",
-              value: totalRevenue,
-              icon: FaChartLine,
-              color: "#f97316",
-            },
-            {
-              label: "Phí sàn",
-              value: platformFee,
-              icon: FaPercent,
-              color: "#8b5cf6",
-            },
-            {
-              label: "Khả dụng (rút được)",
-              value: availableBalance,
-              icon: FaWallet,
-              color: "#10b981",
-            },
-            {
-              label: "Đang giữ hộ",
-              value: heldRevenue,
-              icon: FaClock,
-              color: "#f59e0b",
-            },
-            {
-              label: "Đã rút",
-              value: paidWithdrawals,
-              icon: FaCircleCheck,
-              color: "#3b82f6",
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
-            >
-              <div className="relative min-h-[69px]">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-xl"
-                  style={{ background: `${item.color}18` }}
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="mb-0 flex items-start justify-between gap-3">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ background: "#f9731618" }}
+              >
+                <FaChartLine size={18} style={{ color: "#f97316" }} />
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <select
+                  value={revenueMode}
+                  onChange={(e) => setRevenueMode(e.target.value)}
+                  className="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700 outline-none"
                 >
-                  <item.icon size={18} style={{ color: item.color }} />
-                </div>
-
+                  <option value="gross">Gross</option>
+                  <option value="net">Net</option>
+                </select>
                 <p
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
                   style={{
-                    fontSize: 16,
-                    fontWeight: 600,
+                    fontSize: 19,
+                    fontWeight: 700,
                     color: "#1a1a2e",
-                    margin: 10,
-                    width: "100%",
+                    textAlign: "center",
                   }}
                 >
-                  {fmtVND(item.value)}
+                  {fmtVND(selectedRevenueDisplay)}
                 </p>
               </div>
-              <p
-                className="mt-0 text-center text-muted-foreground"
-                style={{ fontSize: 12 }}
-              >
-                {item.label}
-              </p>
             </div>
-          ))}
+            <p className="mt-1 text-slate-500" style={{ fontSize: 12 }}>
+              {revenueMode === "net"
+                ? "Doanh thu ròng sau phí sàn và hoàn tiền"
+                : "Tổng doanh thu trước phí sàn và hoàn tiền"}
+            </p>
+          </div>
+          <MetricCard
+            label="Phí sàn"
+            value={platformFee}
+            icon={FaPercent}
+            color="#8b5cf6"
+          />
+          <MetricCard
+            label="Hoàn tiền"
+            value={refundRevenue}
+            icon={FaRotateRight}
+            color="#ef4444"
+          />
+          <MetricCard
+            label="Đang giữ hộ"
+            value={heldRevenue}
+            icon={FaClock}
+            color="#3b82f6"
+          />
+          <MetricCard
+            label="Khả dụng"
+            value={availableBalance}
+            icon={FaCircleCheck}
+            color="#10b981"
+          />
         </div>
 
-        <div className="bg-white border border-gray-100 rounded-2xl">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>
-                Lịch sử rút tiền
+              <h3 className="text-sm font-semibold text-slate-900">
+                Lịch sử giao dịch doanh thu
               </h3>
-              <p className="mt-1 text-xs text-slate-400">
-                {myWd.length} yêu cầu,{" "}
-                {myWd.filter((item) => item.status === "pending").length} chờ
-                duyệt,{" "}
-                {myWd.filter((item) => item.status === "rejected").length} bị từ
-                chối
+              <p className="text-xs text-slate-500">
+                Thanh toán, phí sàn, giải ngân và hoàn tiền của provider.
               </p>
             </div>
           </div>
-          <div className="max-h-[420px] divide-y divide-gray-100 overflow-y-auto">
-            {myWd.length === 0 && (
-              <p
-                className="py-10 text-center text-muted-foreground"
-                style={{ fontSize: 13 }}
-              >
-                Chưa có yêu cầu
-              </p>
-            )}
-            {myWd.map((w) => (
-              <div key={w.id} className="px-5 py-4">
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                        Yêu cầu rút tiền
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">
-                        {fmtVND(w.amount)}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        #{w.requestCode}
-                      </p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${wdMap[w.status]?.cls || wdMap.pending.cls}`}
-                    >
-                      <span
-                        className={`h-2 w-2 rounded-full ${wdMap[w.status]?.dot || wdMap.pending.dot}`}
-                      />
-                      {wdMap[w.status]?.label || wdMap.pending.label}
-                    </span>
-                  </div>
 
-                  <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                    <div>
-                      <p className="text-xs text-slate-400">Ngân hàng</p>
-                      <p className="mt-1 font-medium text-slate-700">
-                        {w.bankName}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Tài khoản</p>
-                      <p className="mt-1 font-medium text-slate-700">
-                        {w.bankAccount}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Thời gian</p>
-                      <p className="mt-1 font-medium text-slate-700">
-                        {w.createdAt}
-                      </p>
-                    </div>
-                  </div>
-
-                  {w.rejectReason ? (
-                    <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
-                      Lý do từ chối: {w.rejectReason}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-separate border-spacing-y-2 px-3 pb-3">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                  <th className="px-2 py-2">Mã đơn</th>
+                  <th className="px-2 py-2">Tên khách</th>
+                  <th className="px-2 py-2">Tên tour</th>
+                  <th className="px-2 py-2">Số chỗ</th>
+                  <th className="px-2 py-2">Tổng tiền</th>
+                  <th className="px-2 py-2">Phí sàn</th>
+                  <th className="px-2 py-2">Tiền thu về</th>
+                  <th className="px-2 py-2">Trạng thái</th>
+                  <th className="px-2 py-2">Ngày giờ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {revenueHistoryRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-3 py-6">
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-xs text-slate-500">
+                        <FaFilter className="mx-auto mb-2 text-slate-300" size={18} />
+                        Chưa có lịch sử giao dịch doanh thu nào.
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  revenueHistoryRows.map((row) => (
+                    <tr key={row.id} className="rounded-2xl bg-slate-50/80">
+                      <td className="rounded-l-2xl px-2 py-3 text-[12px] font-medium text-slate-700">
+                        {row.orderCode}
+                      </td>
+                      <td className="px-2 py-3 text-[12px] text-slate-700">
+                        <div className="font-medium leading-tight">{row.customerName}</div>
+                        {row.customerPhone ? (
+                          <div className="text-[11px] text-slate-500">
+                            {row.customerPhone}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-3 text-[12px] text-slate-600">
+                        <div className="max-w-[180px] truncate font-medium text-slate-700">
+                          {row.tourName}
+                        </div>
+                      </td>
+                      <td className="px-2 py-3 text-[12px] font-semibold text-slate-900">
+                        {row.seatsBooked}
+                      </td>
+                      <td className="px-2 py-3 text-[12px] font-semibold text-slate-900">
+                        {fmtVND(row.totalAmount)}
+                      </td>
+                      <td className="px-2 py-3 text-[12px] font-semibold text-slate-900">
+                        {fmtVND(row.commissionAmount)}
+                      </td>
+                      <td className="px-2 py-3 text-[12px] font-semibold text-emerald-600">
+                        {fmtVND(row.receivedAmount)}
+                      </td>
+                      <td className="px-2 py-3 text-[12px] text-slate-600">
+                        {row.status}
+                      </td>
+                      <td className="rounded-r-2xl px-2 py-3 text-[12px] text-slate-500">
+                        {fmtDateTime(row.transferredAt)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-
-      {showWdForm ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
-          onClick={() => setShowWdForm(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl sm:p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 style={{ fontSize: 16, fontWeight: 600 }}>
-                Yêu cầu rút tiền
-              </h3>
-              <button
-                onClick={() => setShowWdForm(false)}
-                className="text-muted-foreground hover:text-black"
-              >
-                <FaXmark size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-2.5">
-              <div>
-                <label
-                  className="mb-1 block text-muted-foreground"
-                  style={{ fontSize: 11 }}
-                >
-                  Ngân hàng
-                </label>
-                <input
-                  value={form.bankName}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, bankName: e.target.value }))
-                  }
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 13 }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="mb-1 block text-muted-foreground"
-                  style={{ fontSize: 11 }}
-                >
-                  Số tài khoản
-                </label>
-                <input
-                  value={form.accountNumber}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      accountNumber: e.target.value.replace(/\D/g, ""),
-                    }))
-                  }
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 13 }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="mb-1 block text-muted-foreground"
-                  style={{ fontSize: 11 }}
-                >
-                  Chủ tài khoản
-                </label>
-                <input
-                  value={form.bankHolder}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      bankHolder: e.target.value.toUpperCase(),
-                    }))
-                  }
-                  placeholder="NGUYEN VAN A"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 13 }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="mb-1 block text-muted-foreground"
-                  style={{ fontSize: 11 }}
-                >
-                  Số tiền
-                </label>
-                <input
-                  value={form.amount}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      amount: e.target.value.replace(/\D/g, ""),
-                    }))
-                  }
-                  placeholder="500000"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 13 }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="mb-1 block text-muted-foreground"
-                  style={{ fontSize: 11 }}
-                >
-                  Ghi chú
-                </label>
-                <input
-                  value={form.note}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, note: e.target.value }))
-                  }
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[#f97316]"
-                  style={{ fontSize: 13 }}
-                />
-              </div>
-            </div>
-
-            {withdrawError ? (
-              <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
-                {withdrawError}
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex gap-2.5">
-              <button
-                onClick={() => setShowWdForm(false)}
-                className="flex-1 rounded-xl bg-[#f0f4f8] py-2"
-                style={{ fontSize: 12.5, fontWeight: 500 }}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submittingWithdrawal}
-                className="flex-1 rounded-xl py-2 text-white disabled:cursor-not-allowed disabled:opacity-70"
-                style={{
-                  background: "linear-gradient(90deg, #f97316, #f59e0b)",
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                }}
-              >
-                {submittingWithdrawal ? "Đang gửi..." : "Gửi yêu cầu"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
 
 export default Revenue;
+

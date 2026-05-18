@@ -17,12 +17,15 @@ import { IoLocationOutline } from "react-icons/io5";
 import { RiCalendarScheduleLine } from "react-icons/ri";
 import { CiSearch } from "react-icons/ci";
 import { normalizeText } from "../../utils/stringHelpers.js";
+import { buildTrackingHeaders, getGuestId } from "../../utils/guest.js";
 
 function HomePage() {
   const navigate = useNavigate();
+  const accessToken = localStorage.getItem("accessToken");
+  const guestId = useMemo(() => getGuestId(), []);
   const [Service, setService] = useState([]);
   const [featuredReviews, setFeaturedReviews] = useState([]);
-  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchCategory, setSearchCategory] = useState("all");
   const [searchBudget, setSearchBudget] = useState("all");
@@ -59,16 +62,21 @@ function HomePage() {
       try {
         const now = new Date();
         const month = now.getMonth() + 1;
-        const res = await fetch(`/api/ai/recommendations?limit=5&month=${month}`);
+        const res = await fetch(
+          `/api/ai/recommendations?limit=5&month=${month}`,
+          {
+            headers: buildTrackingHeaders(accessToken),
+          },
+        );
         const data = await res.json();
-        setAiRecommendations(Array.isArray(data?.data) ? data.data : []);
+        setRecommendations(Array.isArray(data?.data) ? data.data : []);
       } catch (error) {
         console.log(error);
       }
     };
 
     fetchRecommendations();
-  }, []);
+  }, [accessToken, guestId]);
 
   const reviewCards = useMemo(() => {
     if (featuredReviews.length > 0) return featuredReviews;
@@ -91,6 +99,36 @@ function HomePage() {
 
   const handleNext = () => {
     setIndex((prev) => (prev === reviewCards.length - 1 ? 0 : prev + 1));
+  };
+
+  const recommendationBadgeLabel = "Gợi ý cá nhân hóa";
+  const recordSearchBehavior = async () => {
+    try {
+      await fetch("/api/users/behavior", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...buildTrackingHeaders(accessToken),
+        },
+        body: JSON.stringify({
+          actionType: "search",
+          keyword: searchKeyword.trim(),
+          location: searchKeyword.trim(),
+          category: searchCategory === "all" ? "" : searchCategory,
+          budgetRange:
+            searchBudget === "all"
+              ? ""
+              : searchBudget === "under2"
+                ? "low"
+            : searchBudget === "2to5"
+              ? "mid"
+              : "high",
+          source: "home_search",
+        }),
+      });
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const filteredServices = useMemo(() => {
@@ -131,14 +169,15 @@ function HomePage() {
   }, [Service, searchBudget, searchCategory, searchKeyword]);
 
   const featuredExploreServices = useMemo(() => {
-    if (Array.isArray(aiRecommendations) && aiRecommendations.length > 0) {
-      return aiRecommendations.slice(0, 5);
+    if (Array.isArray(recommendations) && recommendations.length > 0) {
+      return recommendations.slice(0, 5);
     }
 
     return filteredServices.slice(0, 5);
-  }, [aiRecommendations, filteredServices]);
+  }, [recommendations, filteredServices]);
 
   const handleSearch = () => {
+    recordSearchBehavior();
     const params = new URLSearchParams();
     if (searchKeyword.trim()) params.set("q", searchKeyword.trim());
     if (searchCategory !== "all") params.set("category", searchCategory);
@@ -303,6 +342,13 @@ function HomePage() {
             <h2 className="font-serif text-[clamp(28px,4vw,40px)] font-bold mt-2">
               Dịch Vụ <span className="text-[#f97316]">Nổi Bật</span>
             </h2>
+
+            {featuredExploreServices.length > 0 ? (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-1.5 text-sm font-semibold text-orange-600 shadow-sm">
+                <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
+                {recommendationBadgeLabel}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-5 max-w-7xl mx-auto">
@@ -363,11 +409,11 @@ function HomePage() {
                         className="h-72 w-full object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                      <div className="absolute left-4 top-4 rounded-full bg-black/40 px-2.5 py--3 text-[11px] font-semibold text-white backdrop-blur-sm">
+                      <div className="absolute left-4 top-4 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                         {terrainLabel}
                       </div>
                       {reviewCount > 0 && serviceRating > 0 && (
-                        <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py--3 backdrop-blur-sm">
+                        <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 backdrop-blur-sm">
                           <FaStar
                             size={14}
                             className="fill-[#f59e0b] text-[#f59e0b]"

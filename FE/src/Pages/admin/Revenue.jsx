@@ -1,88 +1,61 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import {
-  FaArrowDownLong,
-  FaArrowUpRightFromSquare,
-  FaArrowRotateLeft,
-  FaBuilding,
+  FaClock,
   FaCircleCheck,
   FaDollarSign,
   FaFilter,
-  FaMagnifyingGlass,
-  FaRotateRight,
-  FaWallet,
-  FaXmark,
+  FaCalendarDays,
+  FaPercent,
 } from "react-icons/fa6";
 
-const fmtVND = (n) => `${Number(n || 0).toLocaleString("vi-VN")}đ`;
+import { formatVND } from "../../utils/money";
 
 const fmtDateTime = (value) => {
   if (!value || value === "-") return "-";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-
   const pad = (num) => String(num).padStart(2, "0");
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  const seconds = pad(date.getSeconds());
-  const day = date.getDate();
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
-
-  return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
-};
-
-const withdrawalStatusMap = {
-  pending: {
-    label: "Chờ duyệt",
-    cls: "bg-amber-50 text-amber-700 border border-amber-200",
-  },
-  approved: {
-    label: "Đã chi trả",
-    cls: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  },
-  rejected: {
-    label: "Từ chối",
-    cls: "bg-red-50 text-red-600 border border-red-200",
-  },
-  paid: {
-    label: "Đã chi trả",
-    cls: "bg-blue-50 text-blue-700 border border-blue-200",
-  },
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+    date.getSeconds(),
+  )} ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
 };
 
 const txMetaMap = {
   payment: {
     label: "Thanh toán",
     className: "bg-blue-50 text-blue-600",
-    iconClassName: "text-blue-600",
     direction: "in",
   },
   commission: {
-    label: "Hoa hồng hệ thống",
+    label: "Phí sàn",
     className: "bg-purple-50 text-purple-600",
-    iconClassName: "text-purple-600",
     direction: "in",
   },
   payout: {
     label: "Giải ngân",
     className: "bg-orange-50 text-orange-600",
-    iconClassName: "text-orange-600",
     direction: "out",
   },
   refund: {
     label: "Hoàn tiền",
     className: "bg-amber-50 text-amber-600",
-    iconClassName: "text-amber-600",
     direction: "out",
   },
-  withdrawal: {
-    label: "Rút tiền provider",
-    className: "bg-red-50 text-red-600",
-    iconClassName: "text-red-600",
-    direction: "out",
-  },
+};
+
+const currentMonthKey = () => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${now.getFullYear()}-${month}`;
+};
+
+const getMonthKey = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
 };
 
 function MetricCard({ label, value, icon: Icon, color }) {
@@ -100,10 +73,10 @@ function MetricCard({ label, value, icon: Icon, color }) {
             fontSize: 19,
             fontWeight: 700,
             color: "#1a1a2e",
-            text: "center",
+            textAlign: "center",
           }}
         >
-          {fmtVND(value)}
+          {formatVND(value)}
         </p>
       </div>
       <p className="mt-1 text-slate-500" style={{ fontSize: 12 }}>
@@ -113,342 +86,142 @@ function MetricCard({ label, value, icon: Icon, color }) {
   );
 }
 
-function TabButton({ active, label, count, onClick, className = "" }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 transition ${className} ${
-        active ? "bg-white text-[#f97316] shadow-sm" : "text-slate-500"
-      }`}
-      style={{ fontSize: 13, fontWeight: 500 }}
-    >
-      {label}
-      {count > 0 ? (
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] ${
-            active
-              ? "bg-orange-100 text-[#f97316]"
-              : "bg-gray-200 text-gray-600"
-          }`}
-        >
-          {count}
-        </span>
-      ) : null}
-    </button>
-  );
-}
-
 function EmptyState({ icon: Icon = FaFilter, title, description }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
       <Icon size={22} className="text-slate-300" />
       <p className="text-sm font-semibold text-slate-900">{title}</p>
-      {description ? (
-        <p className="text-sm text-slate-500">{description}</p>
-      ) : null}
+      {description ? <p className="text-sm text-slate-500">{description}</p> : null}
     </div>
   );
 }
 
-function TransactionRow({ item }) {
-  const meta = txMetaMap[item.type] || txMetaMap.payment;
+function MonthPicker({ value, onChange }) {
   return (
-    <div className="flex items-center gap-3 px-5 py-3">
-      <div
-        className={`flex h-9 w-9 items-center justify-center rounded-lg ${meta.className}`}
-      >
-        {meta.direction === "in" ? (
-          <FaArrowDownLong size={15} />
-        ) : (
-          <FaArrowUpRightFromSquare size={15} />
-        )}
+    <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="pointer-events-none flex h-full w-full items-center justify-center bg-orange-50 text-orange-500">
+        <FaCalendarDays size={16} />
       </div>
-      <div className="min-w-0 flex-1 text-left">
-        <p className="text-left text-sm font-medium">
-          {item.title || meta.label}
-        </p>
-        <p className="truncate text-left text-[11px] text-muted-foreground">
-          {item.note}
-        </p>
-      </div>
-      <div className="text-right">
-        <p
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: meta.direction === "in" ? "#10b981" : "#ef4444",
-          }}
-        >
-          {meta.direction === "in" ? "+" : "-"}
-          {fmtVND(item.amount)}
-        </p>
-        <p className="text-muted-foreground" style={{ fontSize: 11 }}>
-          {fmtDateTime(item.createdAt)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function WithdrawalRow({
-  item,
-  statusMeta,
-  processingId,
-  onReject,
-  onApprove,
-}) {
-  const withdrawalId = item.id || item._id;
-  const providerName =
-    item.partnerName ||
-    item?.provider_id?.fullName ||
-    item?.provider_id?.name ||
-    "Chưa có";
-
-  return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-[260px] flex-1 items-start gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-100 to-amber-100">
-            <FaBuilding size={18} className="text-[#f97316]" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold">{providerName}</p>
-            <p className="text-muted-foreground text-xs">
-              #{withdrawalId} · {fmtDateTime(item.createdAt)}
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-[12px]">
-              <div className="col-span-2">
-                <span className="text-muted-foreground">Đối tác: </span>
-                {providerName}
-              </div>
-              <div>
-                <span className="text-muted-foreground">Ngân hàng: </span>
-                {item.bankName}
-              </div>
-              <div>
-                <span className="text-muted-foreground">Số TK: </span>
-                {item.bankAccount || item.accountNumber}
-              </div>
-              <div>
-                <span className="text-muted-foreground">Chủ TK: </span>
-                {item.bankHolder || item.accountName}
-              </div>
-              {item.note ? (
-                <div>
-                  <span className="text-muted-foreground">Ghi chú: </span>
-                  {item.note}
-                </div>
-              ) : null}
-            </div>
-            {item.rejectReason ? (
-              <p className="mt-2 text-xs text-red-600">
-                Lý do từ chối: {item.rejectReason}
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="text-right">
-          <p style={{ fontSize: 22, fontWeight: 700, color: "#f97316" }}>
-            {fmtVND(item.amount)}
-          </p>
-          <span
-            className={`inline-block mt-3 rounded-full px-2 py-0.5 ${statusMeta.cls}`}
-            style={{ fontSize: 11, fontWeight: 500 }}
-          >
-            {statusMeta.label}
-          </span>
-          {item.status === "pending" ? (
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => onReject(withdrawalId)}
-                className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                type="button"
-                disabled={processingId === withdrawalId}
-              >
-                Từ chối
-              </button>
-              <button
-                onClick={() => onApprove(withdrawalId)}
-                className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600"
-                type="button"
-                disabled={processingId === withdrawalId}
-              >
-                <FaCircleCheck size={13} /> Duyệt & CK
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RefundRow({ item }) {
-  const customerName = item?.userId?.fullName || item?.userName || "Khách hàng";
-  const serviceName =
-    item?.serviceId?.serviceName ||
-    item?.tourSnapshot?.name ||
-    item?.note ||
-    "Không có mô tả";
-  const refundAmount = Number(item?.refundAmount || item?.totalPrice || 0);
-  const refundRate = Number(item?.refundRate || 0);
-  return (
-    <div className="flex items-center gap-3 px-5 py-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50">
-        <FaArrowRotateLeft size={16} className="text-amber-600" />
-      </div>
-      <div className="min-w-0 flex-1 text-left">
-        <p className="text-sm font-medium">{customerName}</p>
-        <p className="truncate text-[12px] text-muted-foreground">
-          {serviceName}
-        </p>
-      </div>
-      <div className="text-right">
-        <p style={{ fontSize: 14, fontWeight: 600, color: "#10b981" }}>
-          +{fmtVND(refundAmount)}
-        </p>
-        <p className="text-muted-foreground" style={{ fontSize: 11 }}>
-          {item.createdAt}
-        </p>
-        {refundRate > 0 ? (
-          <p className="text-muted-foreground" style={{ fontSize: 11 }}>
-            Hoàn {Math.round(refundRate * 100)}%
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function RejectModal({ open, onClose, value, onChange, onSubmit }) {
-  if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl bg-white p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Từ chối yêu cầu</h3>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground"
-            type="button"
-          >
-            <FaXmark size={18} />
-          </button>
-        </div>
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={4}
-          placeholder="Lý do từ chối..."
-          className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-[#f97316]"
-          style={{ fontSize: 13 }}
-        />
-        <div className="mt-4 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-xl bg-[#f0f4f8] py-2.5"
-            style={{ fontSize: 13 }}
-            type="button"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={onSubmit}
-            className="flex-1 rounded-xl bg-red-500 py-2.5 text-white"
-            style={{ fontSize: 13, fontWeight: 600 }}
-            type="button"
-          >
-            Xác nhận từ chối
-          </button>
-        </div>
-      </div>
+      <input
+        type="month"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Lọc theo tháng"
+        title={`Lọc theo tháng: ${value || "Tất cả"}`}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      />
     </div>
   );
 }
 
 function Revenue() {
   const [stats, setStats] = useState(null);
-  const [withdrawals, setWithdrawals] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [processingId, setProcessingId] = useState("");
-  const [adminNoteMap, setAdminNoteMap] = useState({});
-  const [tab, setTab] = useState("transactions");
   const [search, setSearch] = useState("");
-  const [rejectId, setRejectId] = useState(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey());
 
   const accessToken = localStorage.getItem("accessToken");
-  const handleTabChange = (nextTab) => setTab(nextTab);
-
-  const fetchStats = async () => {
-    const res = await fetch("/api/stats/admin", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const result = await res.json();
-    if (!res.ok)
-      throw new Error(result.message || "Không thể tải thống kê doanh thu");
-    setStats(result.data || null);
-  };
-
-  const fetchWithdrawals = async () => {
-    const res = await fetch("/api/withdrawals/admin", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const result = await res.json();
-    if (!res.ok)
-      throw new Error(result.message || "Không thể tải danh sách rút tiền");
-    setWithdrawals(Array.isArray(result.data) ? result.data : []);
-  };
-
-  const fetchOrders = async () => {
-    const res = await fetch("/api/orders/admin", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const result = await res.json();
-    if (!res.ok) {
-      throw new Error(result.message || "Không thể tải danh sách đơn hàng");
-    }
-    setOrders(Array.isArray(result.data) ? result.data : []);
-  };
-
-  const reloadData = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      await Promise.all([fetchStats(), fetchWithdrawals(), fetchOrders()]);
-    } catch (err) {
-      setError(err?.message || "Không thể tải dữ liệu doanh thu");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    reloadData();
-  }, []);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-  const totalCollected = Number(stats?.totalCollectedRevenue || 0);
-  const heldRevenue = Number(stats?.heldRevenue || 0);
-  const commissionRevenue = Number(stats?.commissionRevenue || 0);
-  const providerPayout = Number(stats?.providerPayout || 0);
+        const [statsRes, ordersRes] = await Promise.all([
+          fetch("/api/stats/admin", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+          fetch("/api/orders/admin", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+        ]);
 
-  const pendingWithdrawals = useMemo(
-    () => withdrawals.filter((item) => item.status === "pending"),
-    [withdrawals],
-  );
+        const statsResult = await statsRes.json();
+        const ordersResult = await ordersRes.json();
 
-  const txList = useMemo(() => {
+        if (!statsRes.ok) {
+          throw new Error(statsResult.message || "Không thể tải thống kê doanh thu");
+        }
+
+        if (!ordersRes.ok) {
+          throw new Error(ordersResult.message || "Không thể tải danh sách đơn hàng");
+        }
+
+        setStats(statsResult.data || null);
+        setOrders(Array.isArray(ordersResult.data) ? ordersResult.data : []);
+      } catch (err) {
+        setError(err?.message || "Không thể tải dữ liệu doanh thu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [accessToken]);
+
+  const filteredOrders = useMemo(() => {
+    if (!selectedMonth) return orders;
+    return orders.filter((order) => getMonthKey(order?.createdAt) === selectedMonth);
+  }, [orders, selectedMonth]);
+
+  const filteredStats = useMemo(() => {
+    const commissionRate = Number(stats?.commissionRate || 0.2);
+    const totals = {
+      totalCollectedRevenue: 0,
+      commissionRevenue: 0,
+      refundedRevenue: 0,
+      providerPayout: 0,
+      heldRevenue: 0,
+    };
+
+    filteredOrders.forEach((order) => {
+      const totalAmount = Number(order?.totalPrice || 0);
+      const commissionAmount = Math.floor(totalAmount * commissionRate);
+      const providerNet = Math.max(totalAmount - commissionAmount, 0);
+      const isRefunded = [
+        order?.refundStatus,
+        order?.paymentStatus,
+        order?.settlementStatus,
+        order?.escrowStatus,
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .some((value) => value === "succeeded" || value === "refunded");
+      const isPaid = order?.paymentStatus === "paid" && !isRefunded;
+
+      if (isPaid) {
+        totals.totalCollectedRevenue += totalAmount;
+        totals.commissionRevenue += commissionAmount;
+      }
+
+      if (isPaid && order?.status === "completed") {
+        totals.providerPayout += providerNet;
+      }
+
+      if (isRefunded || Number(order?.refundAmount || 0) > 0) {
+        totals.refundedRevenue += Number(order?.refundAmount || 0);
+      }
+
+      if (isPaid && ["awaiting_payment", "awaiting_confirm", "confirmed"].includes(String(order?.status || ""))) {
+        totals.heldRevenue += totalAmount;
+      }
+    });
+
+    return totals;
+  }, [filteredOrders, stats?.commissionRate]);
+
+  const displayTotalCollected = filteredStats.totalCollectedRevenue;
+  const displayCommissionRevenue = filteredStats.commissionRevenue;
+  const displayRefundedRevenue = filteredStats.refundedRevenue;
+  const displayProviderPayout = filteredStats.providerPayout;
+  const displayHeldRevenue = filteredStats.heldRevenue;
+  const displayRevenueValue = displayTotalCollected;
+
+  const historyRows = useMemo(() => {
+    const commissionRate = Number(stats?.commissionRate || 0.2);
+
     const getCustomerName = (order) =>
       order?.customerInfo?.name || order?.userId?.fullName || "Khách hàng";
     const getProviderName = (order) =>
@@ -456,179 +229,95 @@ function Revenue() {
     const getServiceName = (order) =>
       order?.serviceId?.serviceName ||
       order?.tourSnapshot?.name ||
-      "không có tên tour";
-    const getCommissionAmount = (order) =>
-      Math.floor(Number(order?.totalPrice || 0) * 0.1);
-    const getProviderNet = (order) =>
-      Math.max(Number(order?.totalPrice || 0) - getCommissionAmount(order), 0);
+      "Không có tên tour";
 
-    const paidOrders = [...orders].filter(
-      (order) =>
-        order?.paymentStatus === "paid" && order?.status !== "cancelled",
-    );
-
-    const rows = paidOrders.flatMap((order) => {
+    const rows = [...filteredOrders].flatMap((order) => {
       const orderId = order?._id || order?.id;
       const customerName = getCustomerName(order);
       const providerName = getProviderName(order);
       const serviceName = getServiceName(order);
-      const orderDate = fmtDateTime(order?.createdAt);
-      const completedDate = fmtDateTime(order?.updatedAt || order?.createdAt);
+      const providerRole = order?.provider_id?.role || "provider";
+      const userRole = order?.userId?.role || "user";
+      const orderDate = order?.createdAt || null;
+      const completedDate = order?.settledAt || order?.updatedAt || order?.createdAt || null;
+      const refundDate = order?.refundCompletedAt || order?.refundedAt || order?.updatedAt || order?.createdAt || null;
+      const totalAmount = Number(order?.totalPrice || 0);
+      const commissionAmount = Math.floor(totalAmount * commissionRate);
+      const providerNet = Math.max(totalAmount - commissionAmount, 0);
 
-      const paymentRow = {
-        id: `payment-${orderId}`,
-        type: "payment",
-        title: "Thanh toán",
-        note: `Khách hàng ${customerName} đã thanh toán cho tour ${serviceName} của đối tác ${providerName}`,
-        amount: Number(order?.totalPrice || 0),
-        createdAt: orderDate,
-        sortTime: new Date(order?.createdAt || 0).getTime(),
-      };
+      const isRefunded = [
+        order?.refundStatus,
+        order?.paymentStatus,
+        order?.settlementStatus,
+        order?.escrowStatus,
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .some((value) => value === "succeeded" || value === "refunded");
+      const isPaid = order?.paymentStatus === "paid" && !isRefunded;
 
-      const commissionRow = {
-        id: `commission-${orderId}`,
-        type: "commission",
-        title: "Hoa hồng hệ thống",
-        note: `Hệ thống giữ hoa hồng của đơn ${serviceName}`,
-        amount: getCommissionAmount(order),
-        createdAt: orderDate,
-        sortTime: new Date(order?.createdAt || 0).getTime() + 1,
-      };
+      const paymentRow =
+        isPaid
+          ? {
+              id: `payment-${orderId}`,
+              type: "payment",
+              name: customerName,
+              role: userRole,
+              title: "Thanh toán",
+              note: `Khách hàng đã thanh toán cho tour ${serviceName}`,
+              amount: totalAmount,
+              createdAt: orderDate,
+              statusText: "Đã thanh toán",
+            }
+          : null;
 
       const payoutRow =
         order?.status === "completed"
           ? {
               id: `payout-${orderId}`,
               type: "payout",
-              title: "Giải ngân ",
+              name: providerName,
+              role: providerRole,
+              title: "Giải ngân",
               note: `Giải ngân cho đối tác ${providerName}`,
-              amount: getProviderNet(order),
+              amount: providerNet,
               createdAt: completedDate,
-              sortTime:
-                new Date(order?.updatedAt || order?.createdAt || 0).getTime() +
-                2,
+              statusText: "Đã giải ngân",
             }
           : null;
 
-      return [paymentRow, commissionRow, payoutRow].filter(Boolean);
+      const refundRow =
+        isRefunded || Number(order?.refundAmount || 0) > 0
+          ? {
+              id: `refund-${orderId}`,
+              type: "refund",
+              name: customerName,
+              role: userRole,
+              title: "Hoàn tiền",
+              note: `Hoàn tiền cho khách hàng ${customerName} của tour ${serviceName}`,
+              amount: Number(order?.refundAmount || 0),
+              createdAt: refundDate,
+              statusText: "Đã hoàn tiền",
+            }
+          : null;
+
+      return [paymentRow, payoutRow, refundRow].filter(Boolean);
     });
 
-    const refundRows = [...orders]
-      .filter(
-        (order) =>
-          order?.paymentStatus === "refunded" ||
-          Number(order?.refundAmount || 0) > 0,
-      )
-      .map((order) => ({
-        id: `refund-${order?._id || order?.id}`,
-        type: "refund",
-        title: "Hoàn tiền ",
-        note: `Hoàn tiền cho khách hàng ${order?.customerInfo?.name || order?.userId?.fullName || "khách hàng"} của tour ${
-          order?.serviceId?.serviceName ||
-          order?.tourSnapshot?.name ||
-          "không có tên tour"
-        }`,
-        amount: Number(order?.refundAmount || order?.totalPrice || 0),
-        createdAt: fmtDateTime(order?.updatedAt || order?.createdAt),
-        sortTime:
-          new Date(order?.updatedAt || order?.createdAt || 0).getTime() + 3,
-      }));
-
-    rows.push(...refundRows);
-
-    return rows.filter((item) => {
-      if (!search) return true;
-      const keyword = search.toLowerCase();
-      return (
-        item.note.toLowerCase().includes(keyword) ||
-        item.id.toLowerCase().includes(keyword)
-      );
-    });
-  }, [orders, search]);
-
-  const sortedTx = useMemo(
-    () =>
-      [...txList].sort(
-        (a, b) => Number(b.sortTime || 0) - Number(a.sortTime || 0),
-      ),
-    [txList],
-  );
-
-  const withdrawalList = useMemo(
-    () =>
-      [...withdrawals].sort((a, b) =>
-        String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
-      ),
-    [withdrawals],
-  );
-  const sortedWd = withdrawalList;
-  const wdMap = withdrawalStatusMap;
-
-  const refundList = useMemo(
-    () =>
-      [...orders]
-        .filter(
-          (order) =>
-            order?.paymentStatus === "refunded" ||
-            Number(order?.refundAmount || 0) > 0,
-        )
-        .sort((a, b) =>
-          String(b.updatedAt || b.createdAt || "").localeCompare(
-            String(a.updatedAt || a.createdAt || ""),
-          ),
-        ),
-    [orders],
-  );
-
-  const patchWithdrawal = async (id, status, note = "") => {
-    const res = await fetch(`/api/withdrawals/admin/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        status,
-        adminNote: note || adminNoteMap[id] || "",
-      }),
-    });
-    const result = await res.json();
-    if (!res.ok)
-      throw new Error(result.message || "Không thể cập nhật yêu cầu rút tiền");
-  };
-
-  const handleApprove = async (id) => {
-    try {
-      setProcessingId(id);
-      setError("");
-      await patchWithdrawal(id, "paid");
-      await reloadData();
-    } catch (err) {
-      setError(err?.message || "Không thể duyệt yêu cầu");
-    } finally {
-      setProcessingId("");
-    }
-  };
-
-  const handleReject = async () => {
-    if (!rejectId || !rejectReason.trim()) {
-      setError("Vui long nhap ly do tu choi");
-      return;
-    }
-
-    try {
-      setProcessingId(rejectId);
-      setError("");
-      await patchWithdrawal(rejectId, "rejected", rejectReason.trim());
-      setRejectId(null);
-      setRejectReason("");
-      await reloadData();
-    } catch (err) {
-      setError(err?.message || "Không thể từ chối yêu cầu");
-    } finally {
-      setProcessingId("");
-    }
-  };
+    return rows
+      .filter((item) => {
+        if (!search) return true;
+        const keyword = search.trim().toLowerCase();
+        return (
+          item.note.toLowerCase().includes(keyword) ||
+          item.title.toLowerCase().includes(keyword)
+        );
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+  }, [filteredOrders, search, stats?.commissionRate]);
 
   if (loading) {
     return (
@@ -653,10 +342,17 @@ function Revenue() {
 
   return (
     <div className="space-y-5">
-      <div className="">
-        <h1 className="text-left text-xl font-semibold text-slate-900">
-          Doanh thu hệ thống
-        </h1>
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-left text-xl font-semibold text-slate-900">
+            Doanh thu hệ thống
+          </h1>
+          <p className="text-sm text-slate-500">
+            Chọn tháng để xem doanh thu và lịch sử giao dịch tương ứng
+          </p>
+        </div>
+
+        <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
       </div>
 
       <div className="space-y-3 p-3">
@@ -666,102 +362,126 @@ function Revenue() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Tổng GMV"
-            value={totalCollected}
-            icon={FaDollarSign}
-            color="#f97316"
-          />
-          <MetricCard
-            label="Hoa hồng đã thu"
-            value={commissionRevenue}
-            icon={FaWallet}
-            color="#10b981"
-          />
-          <MetricCard
-            label="Đang giữ hộ"
-            value={heldRevenue}
-            icon={FaWallet}
-            color="#3b82f6"
-          />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-2xl border border-gray-50 bg-white p-3 shadow-sm">
+  <div className="mb-0 flex items-start justify-between gap-3">
+    <div
+      className="flex h-10 w-10 items-center justify-center rounded-xl"
+      style={{ background: "#f9731618" }}
+    >
+      <FaDollarSign size={18} style={{ color: "#f97316" }} />
+    </div>
+    <p
+      style={{
+        fontSize: 19,
+        fontWeight: 700,
+        color: "#1a1a2e",
+        textAlign: "center",
+      }}
+    >
+      {formatVND(displayRevenueValue)}
+    </p>
+            </div>
+            <p className="mt-1 text-slate-500" style={{ fontSize: 12 }}>
+              Tổng doanh thu gross của tháng đang chọn
+            </p>
+          </div>
+          <MetricCard label="Hoa hồng đã thu" value={displayCommissionRevenue} icon={FaPercent} color="#10b981" />
+          <MetricCard label="Đang giữ hộ" value={displayHeldRevenue} icon={FaClock} color="#3b82f6" />
+          <MetricCard label="Hoàn tiền" value={displayRefundedRevenue} icon={FaDollarSign} color="#f59e0b" />
+          <MetricCard label="Đã giải ngân" value={displayProviderPayout} icon={FaCircleCheck} color="#8b5cf6" />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[#f8fafc] p-2 lg:grid-cols-4">
-          <TabButton
-            active={tab === "transactions"}
-            label="Giao dịch"
-            count={sortedTx.length}
-            className="min-w-[140px] justify-center px-5 py-3"
-            onClick={() => handleTabChange("transactions")}
-          />
-          <TabButton
-            active={tab === "refunds"}
-            label="Hoàn tiền"
-            count={refundList.length}
-            className="min-w-[140px] justify-center px-5 py-3"
-            onClick={() => handleTabChange("refunds")}
-          />
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Lịch sử giao dịch
+              </h3>
+              <p className="text-xs text-slate-500">
+                Gồm thanh toán, giải ngân và hoàn tiền của toàn hệ thống.
+              </p>
+            </div>
+
+            <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <FaFilter className="text-slate-400" size={14} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo mô tả giao dịch..."
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full border-separate border-spacing-y-2">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                  <th className="px-2 py-2">Tên</th>
+                  <th className="px-2 py-2">Mô tả ngắn gọn</th>
+                  <th className="px-2 py-2">Loại</th>
+                  <th className="px-2 py-2">Số tiền</th>
+                  <th className="px-2 py-2">Trạng thái</th>
+                  <th className="px-2 py-2">Ngày giờ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6">
+                      <EmptyState
+                        icon={FaFilter}
+                        title="Chưa có lịch sử giao dịch"
+                        description="Hệ thống sẽ hiển thị các khoản thanh toán, giải ngân và hoàn tiền ở đây."
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  historyRows.map((item) => {
+                    const meta = txMetaMap[item.type] || txMetaMap.payment;
+                    const isIn = meta.direction === "in";
+
+                    return (
+                      <tr key={item.id} className="rounded-2xl bg-slate-50/80">
+                        <td className="rounded-l-2xl px-2 py-3 text-[12px] font-medium text-slate-700">
+                          <div className="font-medium leading-tight">{item.name || "-"}</div>
+                          <div className="text-[11px] text-slate-500">
+                            ({String(item.role || "-").toUpperCase()})
+                          </div>
+                        </td>
+                        <td className="px-2 py-3 text-left text-[12px] text-slate-600">
+                          <div className="max-w-[420px] truncate text-left">{item.note}</div>
+                        </td>
+                        <td className="px-2 py-3 text-[12px] text-slate-600">
+                          {item.title || meta.label}
+                        </td>
+                        <td
+                          className="px-2 py-3 text-[12px] font-semibold"
+                          style={{ color: isIn ? "#10b981" : "#ef4444" }}
+                        >
+                          {isIn ? "+" : "-"}
+                          {formatVND(item.amount)}
+                        </td>
+                        <td className="px-2 py-3 text-[12px] text-slate-600">
+                          {item.statusText || meta.label}
+                        </td>
+                        <td className="rounded-r-2xl px-2 py-3 text-[12px] text-slate-500">
+                          {fmtDateTime(item.createdAt)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-
-        {tab === "transactions" && (
-          <div className="bg-white border border-gray-100 rounded-2xl">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>
-                Tất cả giao dịch
-              </h3>
-            </div>
-            <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-              {sortedTx.length === 0 ? (
-                <div className="p-5">
-                  <EmptyState
-                    icon={FaFilter}
-                    title="Chưa có giao dịch"
-                    description="Hệ thống sẽ hiển thị các khoản thanh toán, hoa hồng và giải ngân ở đây."
-                  />
-                </div>
-              ) : (
-                sortedTx.map((t) => <TransactionRow key={t.id} item={t} />)
-              )}
-            </div>
-          </div>
-        )}
-        {/* Refunds */}
-        {tab === "refunds" && (
-          <div className="bg-white border border-gray-100 rounded-2xl">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h3 style={{ fontSize: 15, fontWeight: 600 }}>
-                Lịch sử hoàn tiền
-              </h3>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {refundList.length === 0 ? (
-                <div className="p-5">
-                  <EmptyState
-                    icon={FaRotateRight}
-                    title="Chưa có hoàn tiền nào"
-                    description="Mục này sẽ hiển thị lịch sử hoàn tiền cho khách hàng."
-                  />
-                </div>
-              ) : (
-                refundList.map((t) => {
-                  return <RefundRow key={t.id || t._id} item={t} />;
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-        <RejectModal
-          open={Boolean(rejectId)}
-          onClose={() => setRejectId(null)}
-          value={rejectReason}
-          onChange={setRejectReason}
-          onSubmit={handleReject}
-        />
       </div>
     </div>
   );
 }
 
 export default Revenue;
+
+

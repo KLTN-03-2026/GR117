@@ -1,4 +1,4 @@
-const {
+﻿const {
   VNPay,
   ignorelogger,
   ProductCode,
@@ -6,6 +6,12 @@ const {
   dateFormat,
 } = require("vnpay");
 const Order = require("../models/Order.js");
+const { createEscrowHoldEntry } = require("../services/escrowLedgerService.js");
+const formatVND = (amount) => {
+  const number = Number(amount);
+
+  return `${number.toLocaleString("vi-VN")}đ`;
+};
 
 const escapeHtml = (value) =>
   String(value ?? "")
@@ -40,7 +46,7 @@ const formatVnpayTime = (value) => {
 
 const formatVnpayDate = (value) => {
   const raw = String(value || "").trim();
-  if (!raw) return "KhĂ´ng cĂ³";
+  if (!raw) return "Không có";
 
   if (/^\d{14}$/.test(raw)) {
     const year = raw.slice(0, 4);
@@ -50,14 +56,14 @@ const formatVnpayDate = (value) => {
   }
 
   const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return "KhĂ´ng cĂ³";
+  if (Number.isNaN(parsed.getTime())) return "Không có";
 
   return parsed.toLocaleDateString("vi-VN");
 };
 
 const formatVnpayClock = (value) => {
   const raw = String(value || "").trim();
-  if (!raw) return "KhĂ´ng cĂ³";
+  if (!raw) return "Không có";
 
   if (/^\d{14}$/.test(raw)) {
     const hour = raw.slice(8, 10);
@@ -67,18 +73,9 @@ const formatVnpayClock = (value) => {
   }
 
   const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return "KhĂ´ng cĂ³";
+  if (Number.isNaN(parsed.getTime())) return "Không có";
 
   return parsed.toLocaleTimeString("vi-VN", { hour12: false });
-};
-
-const formatVND = (amount) => {
-  const number = Number(amount) / 100;
-
-  return number.toLocaleString("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  });
 };
 
 const getFrontendBaseUrl = () =>
@@ -99,7 +96,11 @@ const buildQueryUrl = (baseUrl, params) => {
 module.exports.createQr = async (req, res) => {
   try {
     const port = process.env.PORT || 5000;
-    const amount = String(req.body?.amount || "50000");
+    const amountVnd = Math.max(
+      Math.floor(Number(req.body?.amount || 50000)),
+      0,
+    );
+    const vnpAmount = Math.max(Math.floor(amountVnd * 100), 0);
     const orderInfo = String(req.body?.orderInfo || "Thanh toan demo VNPAY");
     const txnRef = String(req.body?.txnRef || Date.now());
 
@@ -116,7 +117,7 @@ module.exports.createQr = async (req, res) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const vnpayRespone = await vnpay.buildPaymentUrl({
-      vnp_Amount: amount,
+      vnp_Amount: amountVnd,
       vnp_IpAddr: "127.0.0.1",
       vnp_TxnRef: txnRef,
       vnp_OrderInfo: orderInfo,
@@ -130,7 +131,8 @@ module.exports.createQr = async (req, res) => {
     return res.status(200).json({
       vnpayRespone,
       requestData: {
-        amount,
+        amount: amountVnd,
+        vnpAmount,
         orderInfo,
         txnRef,
         orderType: ProductCode.Other,
@@ -201,13 +203,17 @@ module.exports.checkPayment = async (req, res) => {
     verifyResult?.vnp_PayDate || req.query?.vnp_PayDate || "",
   );
   let didUpdateOrder = false;
-  let paymentAmount = vnp_Amount;
+  let paymentAmount = String(Math.floor(Number(vnp_Amount || 0) / 100));
+  let displayAmountVnd = Number(paymentAmount || 0);
   let orderCode = "";
 
   if (vnp_TxnRef) {
     try {
       const order = await Order.findById(vnp_TxnRef);
       if (order) {
+        const wasAlreadyPaid =
+          String(order.paymentStatus || "").toLowerCase() === "paid";
+        let shouldRecordEscrow = false;
         orderCode =
           order.orderCode ||
           `OD${String(order._id).replace(/\D/g, "").slice(-4).padStart(4, "0")}`;
@@ -215,9 +221,13 @@ module.exports.checkPayment = async (req, res) => {
           order.orderCode = orderCode;
         }
         paymentAmount = String(order?.totalPrice ?? paymentAmount ?? "");
+        displayAmountVnd = Number(order?.totalPrice ?? displayAmountVnd ?? 0);
         if (isSuccess) {
           order.paymentStatus = "paid";
           order.paidAt = new Date();
+          order.escrowStatus = "held";
+          order.escrowedAt = new Date();
+          order.settlementStatus = "pending";
           order.paymentInfo = {
             paymentMethod: "vnpay",
             transactionNo: vnp_TransactionNo,
@@ -230,10 +240,16 @@ module.exports.checkPayment = async (req, res) => {
             order.status = "awaiting_confirm";
           }
           didUpdateOrder = true;
+          shouldRecordEscrow = !wasAlreadyPaid;
         } else if (order.status === "awaiting_payment") {
           order.paymentStatus = "unpaid";
         }
         await order.save();
+        if (shouldRecordEscrow) {
+          await createEscrowHoldEntry(order, {
+            role: "system",
+          });
+        }
       }
     } catch (error) {
       console.error("Loi cap nhat don hang sau thanh toan:", error);
@@ -257,7 +273,10 @@ module.exports.checkPayment = async (req, res) => {
 
   const displayOrderCode =
     orderCode ||
-    `OD${String(vnp_TxnRef || "").replace(/\D/g, "").slice(-4).padStart(4, "0")}`;
+    `OD${String(vnp_TxnRef || "")
+      .replace(/\D/g, "")
+      .slice(-4)
+      .padStart(4, "0")}`;
 
   return res.status(200).send(`<!DOCTYPE html>
 <html lang="vi">
@@ -338,13 +357,13 @@ module.exports.checkPayment = async (req, res) => {
               <strong style="color:#111827;font-size:14px;text-align:right;">${escapeHtml(`${formatVnpayDate(vnp_PayDate)} ${formatVnpayClock(vnp_PayDate)}`.trim())}</strong>
             </div>
 
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0 4px;margin-top:4px;">
-              <span style="color:#111827;font-size:15px;font-weight:700;">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;width:100%;padding:18px 0 4px;margin-top:4px;">
+              <span style="min-width:0;color:#111827;font-size:15px;font-weight:700;line-height:1.4;">
                 Tổng thanh toán
               </span>
 
-              <strong style="color:#15803d;font-size:22px;font-weight:800;text-align:right;white-space:nowrap;">
-                ${formatVND(vnp_Amount)}
+              <strong style="color:#15803d;font-size:22px;font-weight:800;text-align:right;white-space:nowrap;display:block;">
+                ${formatVND(displayAmountVnd)}
               </strong>
             </div>
           </div>

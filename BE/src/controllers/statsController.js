@@ -3,12 +3,15 @@ const Service = require("../models/Service.js");
 const Review = require("../models/Review.js");
 const User = require("../models/User.js");
 const mongoose = require("mongoose");
+const {
+  COMMISSION_RATE,
+  summarizeLedger,
+  toMoney,
+} = require("../services/escrowLedgerService.js");
 
-const COMMISSION_RATE = 0.1;
 const ACTIVE_BOOKING_STATUSES = ["awaiting_payment", "awaiting_confirm", "confirmed"];
-const PAYMENT_REVENUE_STATUSES = ["paid", "refunded"];
-
-const toMoney = (value) => Math.max(0, Math.floor(Number(value || 0)));
+const PAYMENT_REVENUE_STATUSES = ["paid"];
+const PAYMENT_HISTORY_STATUSES = ["paid", "refunded"];
 
 const calcCommission = (gross) => Math.floor(toMoney(gross) * COMMISSION_RATE);
 
@@ -46,13 +49,19 @@ const mapMonthlyRevenue = (rows = []) =>
 module.exports.getPartnerStats = async (req, res) => {
   try {
     const providerId = new mongoose.Types.ObjectId(req.user.id);
+    const ledgerSummary = await summarizeLedger({ providerId });
+    const ledger = ledgerSummary[0] || {};
+    const hasLedger = Boolean(
+      ledger.totalSettlementGross ||
+        ledger.totalRefundRevenue ||
+        ledger.totalHeldRevenue,
+    );
 
     const revenueData = await Order.aggregate([
       {
         $match: {
           provider_id: providerId,
           paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
-          status: { $ne: "cancelled" },
         },
       },
       {
@@ -95,8 +104,31 @@ module.exports.getPartnerStats = async (req, res) => {
     const grossRevenue = revenueData[0]?.totalGrossRevenue || 0;
     const completedGrossRevenue = revenueData[0]?.completedGrossRevenue || 0;
     const heldGrossRevenue = revenueData[0]?.heldGrossRevenue || 0;
+    const escrowHeldRevenue = heldGrossRevenue;
     const grossBreakdown = buildRevenueBreakdown(completedGrossRevenue);
-    const heldBreakdown = buildRevenueBreakdown(heldGrossRevenue);
+    const heldBreakdown = buildRevenueBreakdown(escrowHeldRevenue);
+    const settlementGrossRevenue = hasLedger
+      ? ledger.totalSettlementGross || 0
+      : completedGrossRevenue;
+    const settlementCommissionRevenue = hasLedger
+      ? ledger.totalCommissionRevenue || 0
+      : grossBreakdown.commission;
+    const settlementProviderRevenue = hasLedger
+      ? ledger.totalProviderPayout || 0
+      : grossBreakdown.providerNet;
+    const retainedCancellationRevenue = hasLedger
+      ? ledger.totalRefundProviderRetention || 0
+      : 0;
+    const totalProviderRevenue = Math.max(
+      settlementProviderRevenue + retainedCancellationRevenue,
+      0,
+    );
+    const totalRevenue = Math.max(
+      settlementGrossRevenue + retainedCancellationRevenue,
+      0,
+    );
+    const platformFee = settlementCommissionRevenue;
+    const availableBalance = totalProviderRevenue;
 
     const orderStatusStats = await Order.aggregate([
       {
@@ -113,8 +145,7 @@ module.exports.getPartnerStats = async (req, res) => {
       {
         $match: {
           provider_id: providerId,
-          paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
-          status: { $ne: "cancelled" },
+          paymentStatus: { $in: PAYMENT_HISTORY_STATUSES },
           createdAt: {
             $gte: new Date(`${currentYear}-01-01`),
             $lte: new Date(`${currentYear}-12-31`),
@@ -148,11 +179,17 @@ module.exports.getPartnerStats = async (req, res) => {
     return res.status(200).json({
       data: {
         commissionRate: COMMISSION_RATE,
-        totalRevenue: grossBreakdown.gross,
-        completedGrossRevenue,
-        heldGrossRevenue,
-        commissionRevenue: grossBreakdown.commission,
-        providerRevenue: grossBreakdown.providerNet,
+        totalCollectedRevenue: grossRevenue,
+        totalRevenue,
+        completedGrossRevenue: settlementGrossRevenue,
+        heldGrossRevenue: escrowHeldRevenue,
+        heldRevenue: escrowHeldRevenue,
+        commissionRevenue: settlementCommissionRevenue,
+        platformFee,
+        providerRevenue: totalProviderRevenue,
+        availableBalance,
+        disbursedRevenue: totalProviderRevenue,
+        retainedCancellationRevenue,
         heldCommissionRevenue: heldBreakdown.commission,
         heldProviderRevenue: heldBreakdown.providerNet,
         totalOrders: revenueData[0]?.totalOrders || totalOrders,
@@ -172,11 +209,18 @@ module.exports.getPartnerStats = async (req, res) => {
 // [ADMIN] THỐNG KÊ CHO QUẢN TRỊ VIÊN
 module.exports.getAdminStats = async (req, res) => {
   try {
+    const ledgerSummary = await summarizeLedger({});
+    const ledger = ledgerSummary[0] || {};
+    const hasLedger = Boolean(
+      ledger.totalSettlementGross ||
+        ledger.totalRefundRevenue ||
+        ledger.totalHeldRevenue,
+    );
+
     const revenueData = await Order.aggregate([
       {
         $match: {
-          paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
-          status: { $ne: "cancelled" },
+          paymentStatus: { $in: PAYMENT_HISTORY_STATUSES },
         },
       },
       {
@@ -210,22 +254,36 @@ module.exports.getAdminStats = async (req, res) => {
     const totalCollectedRevenue = revenueData[0]?.totalCollectedRevenue || 0;
     const completedRevenue = revenueData[0]?.completedRevenue || 0;
     const heldRevenue = revenueData[0]?.heldRevenue || 0;
-    const refundedAgg = await Order.aggregate([
-      {
-        $match: {
-          paymentStatus: "refunded",
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          refundedRevenue: { $sum: "$refundAmount" },
-        },
-      },
-    ]);
-    const refundedRevenue = refundedAgg[0]?.refundedRevenue || 0;
-    const completedBreakdown = buildRevenueBreakdown(completedRevenue);
-    const heldBreakdown = buildRevenueBreakdown(heldRevenue);
+    const refundedRevenue = hasLedger
+      ? ledger.totalRefundRevenue || 0
+      : (
+          await Order.aggregate([
+            {
+              $match: {
+                paymentStatus: "refunded",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                refundedRevenue: { $sum: "$refundAmount" },
+              },
+            },
+          ])
+        )[0]?.refundedRevenue || 0;
+    const retentionRevenue = hasLedger ? ledger.totalRefundProviderRetention || 0 : 0;
+    const settlementGrossRevenue = hasLedger
+      ? ledger.totalSettlementGross || 0
+      : completedRevenue;
+    const escrowHeldRevenue = heldRevenue;
+    const completedBreakdown = buildRevenueBreakdown(settlementGrossRevenue);
+    const heldBreakdown = buildRevenueBreakdown(escrowHeldRevenue);
+    const commissionRevenue = hasLedger
+      ? ledger.totalCommissionRevenue || 0
+      : completedBreakdown.commission;
+    const providerPayout = hasLedger
+      ? ledger.totalProviderPayout || 0
+      : completedBreakdown.providerNet;
 
     const userStats = await User.aggregate([
       { $group: { _id: "$role", count: { $sum: 1 } } },
@@ -270,7 +328,6 @@ module.exports.getAdminStats = async (req, res) => {
       {
         $match: {
           paymentStatus: { $in: PAYMENT_REVENUE_STATUSES },
-          status: { $ne: "cancelled" },
         },
       },
       {
@@ -295,13 +352,19 @@ module.exports.getAdminStats = async (req, res) => {
     return res.status(200).json({
       data: {
         commissionRate: COMMISSION_RATE,
-        totalRevenue: completedRevenue,
+        gmv: totalCollectedRevenue,
+        totalRevenue: settlementGrossRevenue,
         totalCollectedRevenue,
-        completedRevenue,
-        heldRevenue,
+        completedRevenue: settlementGrossRevenue,
+        heldRevenue: escrowHeldRevenue,
         refundedRevenue,
-        commissionRevenue: completedBreakdown.commission,
-        providerPayout: completedBreakdown.providerNet,
+        retentionRevenue,
+        commissionRevenue,
+        platformFee: commissionRevenue,
+        providerPayout,
+        availableBalance: providerPayout,
+        disbursedRevenue: providerPayout,
+        escrowHeldRevenue,
         heldCommissionRevenue: heldBreakdown.commission,
         heldProviderPayout: heldBreakdown.providerNet,
         totalOrders: revenueData[0]?.totalOrders || 0,

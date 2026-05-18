@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
@@ -17,6 +17,7 @@ import {
   MdFoodBank,
   MdOutlineDateRange,
 } from "../../assets/Icons/Icons";
+import { buildTrackingHeaders, getGuestId } from "../../utils/guest.js";
 
 const normalizeHighlights = (raw) => {
   if (!Array.isArray(raw)) return [];
@@ -119,7 +120,9 @@ function DetailServices() {
   const [showGallery, setShowGallery] = useState(false);
   const [galleryImg, setGalleryImg] = useState(0);
   const navigate = useNavigate();
-  const countedViewServiceId = useMemo(() => ({ current: "" }), []);
+  const countedViewServiceId = useRef("");
+  const accessToken = localStorage.getItem("accessToken");
+  const guestId = useMemo(() => getGuestId(), []);
 
   const { id } = useParams();
   const location = useLocation();
@@ -178,14 +181,16 @@ function DetailServices() {
 
     const incrementView = async () => {
       try {
-        await axios.patch(`/api/services/${service._id}/view`);
+        await axios.patch(`/api/services/${service._id}/view`, {}, {
+          headers: buildTrackingHeaders(accessToken),
+        });
       } catch (err) {
         console.log(err);
       }
     };
 
     incrementView();
-  }, [service?._id]);
+  }, [accessToken, guestId, service?._id]);
 
   useEffect(() => {
     if (!service?._id) return;

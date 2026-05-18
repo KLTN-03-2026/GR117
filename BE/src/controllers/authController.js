@@ -25,6 +25,8 @@ module.exports.register = async (req, res) => {
       businessLicense,
       address,
       legalRepresentative,
+      bankAccountNumber,
+      bankName,
       agreements = {},
     } = req.body;
 
@@ -84,7 +86,9 @@ module.exports.register = async (req, res) => {
         !taxCode ||
         !businessLicense ||
         !address ||
-        !legalRepresentative
+        !legalRepresentative ||
+        !bankAccountNumber ||
+        !bankName
       ) {
         return res.status(400).json({
           message: "Thiếu thông tin hồ sơ nhà cung cấp",
@@ -132,6 +136,8 @@ module.exports.register = async (req, res) => {
           businessLicense: String(businessLicense).trim(),
           address: String(address).trim(),
           legalRepresentative: String(legalRepresentative).trim(),
+          bankAccountNumber: String(bankAccountNumber).trim(),
+          bankName: String(bankName).trim(),
           status: "pending",
           agreements: {
             termsAccepted: agreements?.termsAccepted === true,

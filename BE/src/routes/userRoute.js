@@ -3,6 +3,7 @@ const router = express.Router();
 const userController = require("../controllers/userController.js");
 const {
   verifyToken,
+  optionalVerifyToken,
   authorizeRoles,
 } = require("../middlewares/authMiddleware.js");
 
@@ -12,6 +13,7 @@ router.put("/profile", verifyToken, userController.updateProfile);
 router.patch("/change-password", verifyToken, userController.changePassword);
 router.get("/favorites", verifyToken, userController.getFavoriteServices);
 router.patch("/favorites/:serviceId/toggle", verifyToken, userController.toggleFavoriteService);
+router.post("/behavior", optionalVerifyToken, userController.recordBehavior);
 
 // Routes cho Admin
 router.get(

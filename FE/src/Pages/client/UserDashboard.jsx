@@ -10,17 +10,13 @@ import {
   FaTrash,
   FaUser,
   FaStar,
-  FaWallet,
-  FaArrowDownLong,
-  FaArrowUpRightFromSquare,
   FaShieldHalved,
-  FaFilter,
 } from "react-icons/fa6";
 import { jwt } from "../../utils/jwt";
+import { formatVND } from "../../utils/money";
 
 const tabs = [
   { id: "orders", label: "Đơn hàng", icon: FaTicket },
-  { id: "wallet", label: "Ví của tôi", icon: FaWallet },
   { id: "history", label: "Lịch sử", icon: FaClock },
   { id: "favorites", label: "Yêu thích", icon: FaHeart },
   { id: "profile", label: "Thông tin cá nhân", icon: FaUser },
@@ -45,24 +41,6 @@ const paymentStatusMap = {
   failed: { label: "Thất bại", cls: "text-red-600" },
   refunded: { label: "Đã hoàn tiền", cls: "text-blue-600" },
 };
-
-const walletTxMeta = {
-  payment: {
-    label: "Thanh toán tour",
-    cls: "bg-orange-50 text-orange-600",
-    icon: FaArrowUpRightFromSquare,
-    sign: "out",
-  },
-  refund: {
-    label: "Hoàn tiền",
-    cls: "bg-emerald-50 text-emerald-600",
-    icon: FaArrowDownLong,
-    sign: "in",
-  },
-};
-
-const formatMoney = (value) =>
-  Number(value || 0).toLocaleString("vi-VN") + " đ";
 
 const getOrderId = (order) => order?._id || order?.id || "";
 
@@ -124,7 +102,6 @@ function UserDashboard() {
     rating: 5,
     comment: "",
   });
-  const [walletFilter, setWalletFilter] = useState("all");
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -245,65 +222,6 @@ function UserDashboard() {
   const historyOrders = orders.filter((order) =>
     ["completed", "cancelled", "rejected"].includes(order.status),
   );
-
-  const walletSummary = useMemo(() => {
-    const transactions = [];
-    let totalPaid = 0;
-    let totalRefund = 0;
-
-    orders.forEach((order) => {
-      const orderId = getOrderId(order);
-      const amount = Number(order?.totalPrice || 0);
-      const serviceName = getServiceName(order);
-      const createdAt =
-        order?.updatedAt || order?.createdAt || new Date().toISOString();
-
-      if (order?.paymentStatus === "paid") {
-        totalPaid += amount;
-        transactions.push({
-          id: `payment-${orderId}`,
-          type: "payment",
-          amount,
-          note: `Thanh toán tour ${serviceName}`,
-          createdAt,
-        });
-      }
-
-      if (order?.paymentStatus === "refunded") {
-        totalRefund += amount;
-        transactions.push({
-          id: `refund-${orderId}`,
-          type: "refund",
-          amount,
-          note: `Hoàn tiền tour ${serviceName}`,
-          createdAt,
-        });
-      }
-    });
-
-    const sortedTransactions = transactions.sort((a, b) =>
-      String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
-    );
-
-    return {
-      totalPaid,
-      totalRefund,
-      balance: totalRefund,
-      transactions: sortedTransactions,
-      totalBookings: orders.filter(
-        (order) => String(order?.userId) === String(currentUserId),
-      ).length,
-    };
-  }, [orders, currentUserId]);
-
-  const filteredWalletTransactions = useMemo(() => {
-    if (walletFilter === "all") return walletSummary.transactions;
-    return walletSummary.transactions.filter((tx) =>
-      walletFilter === "in"
-        ? walletTxMeta[tx.type]?.sign === "in"
-        : walletTxMeta[tx.type]?.sign === "out",
-    );
-  }, [walletFilter, walletSummary.transactions]);
 
   const serviceIds = useMemo(() => {
     const ids = new Set();
@@ -619,8 +537,6 @@ function UserDashboard() {
     console.log("pay order", orderId);
   };
 
-  const walletTxCount = walletSummary.transactions.length;
-
   const BookingTable = ({
     list,
     allowActions = true,
@@ -686,7 +602,7 @@ function UserDashboard() {
                     : "Chưa có"}
                 </td>
                 <td className="px-4 py-4 align-top font-semibold text-[#f97316]">
-                  {formatMoney(order.totalPrice)}
+                  {formatVND(order.totalPrice)}
                 </td>
                 <td className="px-4 py-4 align-top">
                   <span
@@ -827,70 +743,6 @@ function UserDashboard() {
         </div>
 
         <div className="rounded-[28px] bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
-          {tab === "wallet" ? (
-            <div>
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <h2 className="text-[20px] font-semibold text-slate-900">
-                    Ví của tôi
-                  </h2>
-                  <p className="text-muted-foreground text-[13px]">
-                    Theo dõi thanh toán và hoàn tiền
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className="relative mb-6 overflow-hidden rounded-2xl p-6 text-white"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #f97316 0%, #f59e0b 100%)",
-                }}
-              >
-                <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10" />
-                <div className="absolute -bottom-6 -right-10 h-32 w-32 rounded-full bg-white/5" />
-                <div className="relative">
-                  <div
-                    className="mb-3 flex items-center gap-2 text-white/80"
-                    style={{ fontSize: 13 }}
-                  >
-                    <FaWallet size={16} /> Số dư hoàn tiền khả dụng
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 32,
-                      fontWeight: 700,
-                      letterSpacing: "-0.5px",
-                    }}
-                  >
-                    {formatMoney(walletSummary.balance)}
-                  </p>
-                  <p className="mt-1 text-white/70" style={{ fontSize: 12 }}>
-                    Tự động trả về tài khoản nguồn khi hủy hoặc hoàn tiền tour
-                  </p>
-                  <div className="mt-5 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTab("history")}
-                      className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-[#f97316] transition hover:bg-white/95"
-                      style={{ fontSize: 13, fontWeight: 600 }}
-                    >
-                      <FaClock size={14} /> Lịch sử
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setWalletFilter("all")}
-                      className="rounded-lg border border-white/20 bg-white/15 px-4 py-2 text-white backdrop-blur transition hover:bg-white/25"
-                      style={{ fontSize: 13, fontWeight: 500 }}
-                    >
-                      Lịch sử
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
           {tab === "history" ? (
             <div>
               <div className="mb-4 flex items-center justify-between gap-4">
@@ -1189,7 +1041,7 @@ function UserDashboard() {
                         : "Chưa có",
                     ],
                     ["Số người", `${order.numPeople || 0} người`],
-                    ["Tổng tiền", formatMoney(order.totalPrice)],
+                    ["Tổng tiền", formatVND(order.totalPrice)],
                     ["Trạng thái", bookingStatus.label],
                     ["Thanh toán", paymentStatus.label],
                     ["Mã đơn hàng", getOrderCode(order)],

@@ -538,6 +538,18 @@ const ProviderManagement = () => {
                       {selectedProvider?.legalRepresentative || "--"}
                     </p>
                     <p>
+                      <span className="font-medium text-slate-500">
+                        Số tài khoản ngân hàng:
+                      </span>{" "}
+                      {selectedProvider?.bankAccountNumber || "--"}
+                    </p>
+                    <p>
+                      <span className="font-medium text-slate-500">
+                        Ngân hàng:
+                      </span>{" "}
+                      {selectedProvider?.bankName || "--"}
+                    </p>
+                    <p>
                       <span className="font-medium text-slate-500">Email:</span>{" "}
                       {selectedProvider?.providerID?.email || "--"}
                     </p>

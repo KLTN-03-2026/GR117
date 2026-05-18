@@ -5,13 +5,9 @@ import { FaArrowLeft, FaTicket } from "react-icons/fa6";
 import { MdOutlineLocalOffer } from "react-icons/md";
 import { FaLocationDot, FaClock } from "../../assets/Icons/Icons";
 import { formatDate } from "../../utils/formatDate";
+import { formatVND } from "../../utils/money";
 
 const FALLBACK_IMAGE = "https://via.placeholder.com/1200x800?text=No+Image";
-
-const formatCurrency = (value) =>
-  Number(value || 0).toLocaleString("vi-VN", {
-    maximumFractionDigits: 0,
-  }) + " đ";
 
 const getServiceImage = (service) => {
   if (Array.isArray(service?.images) && service.images[0])
@@ -438,7 +434,7 @@ function BookingConfirm() {
                 <div className="flex items-center justify-between text-[15px] text-slate-500">
                   <span>Tổng tiền:</span>
                   <span className="font-medium text-slate-700">
-                    {formatCurrency(originalTotal)}
+                    {formatVND(originalTotal)}
                   </span>
                 </div>
 
@@ -446,7 +442,7 @@ function BookingConfirm() {
                   <div className="flex items-center justify-between text-[15px] text-slate-500">
                     <span>Giảm giá:</span>
                     <span className="font-medium text-emerald-600">
-                      -{formatCurrency(discountAmount)}
+                      -{formatVND(discountAmount)}
                     </span>
                   </div>
                 ) : null}
@@ -457,7 +453,7 @@ function BookingConfirm() {
                       Thành tiền:
                     </span>
                     <span className="text-[26px] font-extrabold text-[#0f74c8]">
-                      {formatCurrency(total)}
+                      {formatVND(total)}
                     </span>
                   </div>
                 </div>
@@ -623,7 +619,7 @@ function BookingConfirm() {
                         Tổng cộng:
                       </span>
                       <span className="text-[18px] font-extrabold text-[#0f74c8]">
-                        {formatCurrency(total)}
+                        {formatVND(total)}
                       </span>
                     </div>
                   </div>

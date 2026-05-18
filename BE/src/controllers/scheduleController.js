@@ -98,7 +98,7 @@ module.exports.updateSchedule = async (req, res) => {
     const updatedSchedule = await Schedule.findByIdAndUpdate(
       id,
       { maxSlots, status, departureDate, endDate: endDate || null },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     // Đồng bộ ngày khởi hành mới cho các đơn hàng còn đang xử lý để user thấy lịch mới

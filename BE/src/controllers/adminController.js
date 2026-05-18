@@ -135,6 +135,8 @@ module.exports.getAllProviders = async (req, res) => {
         businessLicense: profile?.businessLicense || "",
         address: profile?.address || "",
         legalRepresentative: profile?.legalRepresentative || "",
+        bankAccountNumber: profile?.bankAccountNumber || "",
+        bankName: profile?.bankName || "",
         status: profile?.status || user.status,
         agreements: profile?.agreements || {},
         createdAt: profile?.createdAt || user.createdAt,
@@ -532,7 +534,7 @@ module.exports.changeServiceStatus = async (req, res) => {
     const updatedService = await Service.findByIdAndUpdate(
       id,
       { status: status },
-      { new: true }, // Trả về dữ liệu mới sau khi đã cập nhật
+      { returnDocument: "after" }, // Trả về dữ liệu mới sau khi đã cập nhật
     );
 
     // 3. Kiểm tra nếu ID không tồn tại

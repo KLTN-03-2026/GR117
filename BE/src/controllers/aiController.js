@@ -2,7 +2,11 @@ const aiRecommendationService = require("../services/aiRecommendationService.js"
 
 module.exports.getRecommendations = async (req, res) => {
   try {
-    const result = await aiRecommendationService.getRecommendations(req.query);
+    const result = await aiRecommendationService.getRecommendations(
+      req.query,
+      req.user?.id || null,
+      req.guestId || "",
+    );
 
     return res.status(200).json({
       message: "Lay danh sach goi y thanh cong",

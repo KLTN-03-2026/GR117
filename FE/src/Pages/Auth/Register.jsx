@@ -18,6 +18,8 @@ const defaultForm = {
   businessLicense: "",
   address: "",
   legalRepresentative: "",
+  bankAccountNumber: "",
+  bankName: "",
   agreements: {
     termsAccepted: false,
     policyAccepted: false,
@@ -74,6 +76,9 @@ export default function Register() {
       return "Vui lòng upload giấy phép kinh doanh";
     if (!form.legalRepresentative.trim())
       return "Vui lòng nhập người đại diện pháp luật";
+    if (!form.bankAccountNumber.trim())
+      return "Vui lòng nhập số tài khoản ngân hàng";
+    if (!form.bankName.trim()) return "Vui lòng nhập tên ngân hàng";
     if (form.agreements.termsAccepted !== true) {
       return "Bạn cần đồng ý với điều khoản hợp tác";
     }
@@ -131,6 +136,8 @@ export default function Register() {
           payload.businessLicense = form.businessLicense;
           payload.address = form.address;
           payload.legalRepresentative = form.legalRepresentative;
+          payload.bankAccountNumber = form.bankAccountNumber;
+          payload.bankName = form.bankName;
           payload.agreements = form.agreements;
         }
 
@@ -334,6 +341,38 @@ export default function Register() {
                   onChange={(e) =>
                     setField("legalRepresentative", e.target.value)
                   }
+                  className={inputClass}
+                  style={{ fontSize: 14 }}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  style={{ fontSize: 13, fontWeight: 500 }}
+                >
+                  Số tài khoản ngân hàng
+                </label>
+                <input
+                  value={form.bankAccountNumber}
+                  onChange={(e) => setField("bankAccountNumber", e.target.value)}
+                  required
+                  className={inputClass}
+                  style={{ fontSize: 14 }}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  style={{ fontSize: 13, fontWeight: 500 }}
+                >
+                  Ngân hàng
+                </label>
+                <input
+                  value={form.bankName}
+                  onChange={(e) => setField("bankName", e.target.value)}
+                  required
                   className={inputClass}
                   style={{ fontSize: 14 }}
                 />

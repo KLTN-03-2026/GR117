@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   FaBuilding,
+  FaCalendarDays,
   FaFilter,
   FaMagnifyingGlass,
   FaRotateRight,
@@ -11,13 +12,27 @@ const ACTIVE_BOOKING_STATUSES = [
   "awaiting_confirm",
   "confirmed",
 ];
-const COMMISSION_RATE = 0.1;
+const COMMISSION_RATE = 0.2;
 
 const fmtVND = (value) => `${Number(value || 0).toLocaleString("vi-VN")}đ`;
 
 const toMoney = (value) => Math.max(0, Math.floor(Number(value || 0)));
 
 const calcCommission = (gross) => Math.floor(toMoney(gross) * COMMISSION_RATE);
+
+const currentMonthKey = () => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${now.getFullYear()}-${month}`;
+};
+
+const getMonthKey = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+};
 
 const providerLabel = (order) =>
   order?.provider_id?.fullName ||
@@ -31,6 +46,8 @@ function RevenueByProvider() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [revenueMode, setRevenueMode] = useState("gross");
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey());
 
   const accessToken = localStorage.getItem("accessToken");
 
@@ -62,6 +79,11 @@ function RevenueByProvider() {
     reloadData();
   }, []);
 
+  const filteredOrders = useMemo(() => {
+    if (!selectedMonth) return orders;
+    return orders.filter((order) => getMonthKey(order?.createdAt) === selectedMonth);
+  }, [orders, selectedMonth]);
+
   const providerRows = useMemo(() => {
     const map = new Map();
 
@@ -71,6 +93,7 @@ function RevenueByProvider() {
           providerId: key,
           providerName: name || "Chưa có tên provider",
           totalRevenue: 0,
+          completedRevenue: 0,
           commissionRevenue: 0,
           refundRevenue: 0,
           heldRevenue: 0,
@@ -82,7 +105,7 @@ function RevenueByProvider() {
       return map.get(key);
     };
 
-    orders.forEach((order) => {
+    filteredOrders.forEach((order) => {
       const providerId = String(
         order?.provider_id?._id ||
           order?.provider_id ||
@@ -95,8 +118,18 @@ function RevenueByProvider() {
       const refundAmount = toMoney(
         order?.refundAmount || order?.refundInfo?.amount,
       );
+      const isRefunded = [
+        order?.refundStatus,
+        order?.paymentStatus,
+        order?.settlementStatus,
+        order?.escrowStatus,
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .some((value) => value === "succeeded" || value === "refunded");
       const isPaid =
-        order?.paymentStatus === "paid" && order?.status !== "cancelled";
+        order?.paymentStatus === "paid" &&
+        order?.status !== "cancelled" &&
+        !isRefunded;
       const isCompleted = isPaid && order?.status === "completed";
       const isActive =
         isPaid && ACTIVE_BOOKING_STATUSES.includes(order?.status);
@@ -111,6 +144,7 @@ function RevenueByProvider() {
       }
 
       if (isCompleted) {
+        row.completedRevenue += amount;
         row.completedOrders += 1;
         row.commissionRevenue += commission;
       }
@@ -120,7 +154,7 @@ function RevenueByProvider() {
         row.heldRevenue += amount;
       }
 
-      if (order?.paymentStatus === "refunded" || refundAmount > 0) {
+      if (isRefunded) {
         row.refundRevenue += refundAmount || amount;
       }
     });
@@ -129,18 +163,25 @@ function RevenueByProvider() {
       .map((row) => {
         const providerGross = Math.max(row.totalRevenue, 0);
         const providerCommission = Math.max(row.commissionRevenue, 0);
+        const providerRefund = Math.max(row.refundRevenue, 0);
         const providerNet = Math.max(providerGross - providerCommission, 0);
+        const providerAvailable = Math.max(row.completedRevenue - providerCommission, 0);
 
         return {
           ...row,
           providerGross,
           providerCommission,
+          providerRefund,
           providerNet,
-          availableBalance: providerNet,
+          availableBalance: providerAvailable,
         };
       })
-      .sort((a, b) => b.providerGross - a.providerGross);
-  }, [orders]);
+      .sort((a, b) =>
+        revenueMode === "net"
+          ? b.providerNet - a.providerNet
+          : b.providerGross - a.providerGross,
+      );
+  }, [filteredOrders, revenueMode]);
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -153,6 +194,31 @@ function RevenueByProvider() {
       );
     });
   }, [providerRows, search]);
+
+  const monthSummary = useMemo(() => {
+    const summary = {
+      totalRevenue: 0,
+      commissionRevenue: 0,
+      refundRevenue: 0,
+      heldRevenue: 0,
+      availableBalance: 0,
+      totalOrders: 0,
+      providerCount: 0,
+    };
+
+    providerRows.forEach((row) => {
+      const rowRevenue = revenueMode === "net" ? row.providerNet : row.providerGross;
+      summary.totalRevenue += Number(rowRevenue || 0);
+      summary.commissionRevenue += Number(row.providerCommission || 0);
+      summary.refundRevenue += Number(row.providerRefund || 0);
+      summary.heldRevenue += Number(row.heldRevenue || 0);
+      summary.availableBalance += Number(row.availableBalance || 0);
+      summary.totalOrders += Number(row.totalOrders || 0);
+    });
+
+    summary.providerCount = providerRows.length;
+    return summary;
+  }, [providerRows, revenueMode]);
 
   if (loading) {
     return (
@@ -176,29 +242,58 @@ function RevenueByProvider() {
             <h3 className="text-sm font-semibold text-slate-900">
               Quản lý doanh thu Provider
             </h3>
+            <p className="text-xs text-slate-500">
+              Chọn Gross hoặc Net, đồng thời lọc theo tháng để xem doanh thu gộp hay doanh thu ròng.
+            </p>
           </div>
 
-          <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <FaMagnifyingGlass className="text-slate-400" size={14} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo tên provider..."
-              className="w-full bg-transparent text-sm outline-none"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="text-slate-400 hover:text-slate-700"
-                aria-label="Xóa tìm kiếm"
+          <div className="flex w-full flex-col gap-2 lg:ml-auto lg:w-auto lg:flex-row lg:items-center">
+            <div className="flex w-full items-center gap-2 lg:w-auto">
+              <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <FaMagnifyingGlass className="text-slate-400" size={14} />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Tìm theo tên provider..."
+                  className="w-full bg-transparent text-sm outline-none"
+                />
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="text-slate-400 hover:text-slate-700"
+                    aria-label="Xóa tìm kiếm"
+                  >
+                    <FaRotateRight size={14} />
+                  </button>
+                ) : null}
+              </div>
+
+              <select
+                value={revenueMode}
+                onChange={(e) => setRevenueMode(e.target.value)}
+                className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700 outline-none"
               >
-                <FaRotateRight size={14} />
-              </button>
-            ) : null}
+                <option value="gross">Gross</option>
+                <option value="net">Net</option>
+              </select>
+            </div>
+
+            <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:ml-2">
+              <div className="pointer-events-none flex h-full w-full items-center justify-center bg-orange-50 text-orange-500">
+                <FaCalendarDays size={16} />
+              </div>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                aria-label="Lọc theo tháng"
+                title={`Lọc theo tháng: ${selectedMonth || "Tất cả"}`}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </div>
           </div>
         </div>
-
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-y-2">
             <thead>
@@ -247,13 +342,13 @@ function RevenueByProvider() {
                       </div>
                     </td>
                     <td className="px-3 py-4 text-sm font-medium text-slate-700">
-                      {fmtVND(row.providerGross)}
+                      {fmtVND(revenueMode === "net" ? row.providerNet : row.providerGross)}
                     </td>
                     <td className="px-3 py-4 text-sm font-medium text-slate-700">
                       {fmtVND(row.providerCommission)}
                     </td>
                     <td className="px-3 py-4 text-sm font-medium text-slate-700">
-                      {fmtVND(row.refundRevenue)}
+                      {fmtVND(row.providerRefund)}
                     </td>
                     <td className="px-3 py-4 text-sm font-medium text-slate-700">
                       {fmtVND(row.heldRevenue)}

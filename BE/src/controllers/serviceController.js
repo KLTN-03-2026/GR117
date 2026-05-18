@@ -1,5 +1,6 @@
 const Service = require("../models/Service.js");
 const { parseItineraryExcelBuffer } = require("../utils/itineraryExcelParser.js");
+const behaviorService = require("../services/behaviorService.js");
 
 // Hàm đổi dữ liệu text hoặc JSON từ form-data thành mảng string để lưu vào Mongo đúng kiểu.
 const parseArrayField = (value) => {
@@ -165,12 +166,31 @@ module.exports.incrementServiceView = async (req, res) => {
     const updatedService = await Service.findByIdAndUpdate(
       id,
       { $inc: { viewCount: 1 } },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!updatedService) {
       return res.status(404).json({ message: "Không tìm thấy dịch vụ" });
     }
+
+    const behaviorServiceDoc = await Service.findById(id).populate(
+      "category",
+      "categoryName slug",
+    );
+
+    await behaviorService
+      .recordBehavior({
+        userId: req.user?.id || null,
+        guestId: req.guestId || "",
+        actionType: "view",
+        service: behaviorServiceDoc,
+        payload: {
+          source: "service_view",
+        },
+      })
+      .catch((error) => {
+        console.error("Loi record view behavior:", error);
+      });
 
     return res.status(200).json({
       message: "Tăng lượt xem thành công",
@@ -266,7 +286,7 @@ module.exports.updateService = async (req, res) => {
     const updatedService = await Service.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true },
+      { returnDocument: "after" },
     );
 
     return res

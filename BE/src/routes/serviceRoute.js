@@ -4,13 +4,18 @@ const serviceController = require("../controllers/serviceController.js");
 const { excelUpload } = require("../middlewares/excelUploadMiddleware.js");
 const {
   verifyToken,
+  optionalVerifyToken,
   authorizeRoles,
 } = require("../middlewares/authMiddleware.js");
 
 // Routes công khai
 router.get("/", serviceController.getAllServices);
 router.get("/detail/:id", serviceController.getServiceById);
-router.patch("/:id/view", serviceController.incrementServiceView);
+router.patch(
+  "/:id/view",
+  optionalVerifyToken,
+  serviceController.incrementServiceView,
+);
 
 // Routes dành cho Provider (Nhà cung cấp)
 router.post(

@@ -53,7 +53,7 @@ module.exports.updateCategory = async (req, res) => {
     const updateData = req.body;
 
     const updatedCategory = await Category.findByIdAndUpdate(id, updateData, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
 

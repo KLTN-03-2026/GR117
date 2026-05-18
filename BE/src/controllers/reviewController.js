@@ -1,39 +1,37 @@
 const Review = require("../models/Review.js");
 const Order = require("../models/Order.js");
 const Service = require("../models/Service.js");
+const behaviorService = require("../services/behaviorService.js");
 
-//  GỬI ĐÁNH GIÁ MỚI (USER)
+// Gui danh gia moi (user)
 module.exports.createReview = async (req, res) => {
   try {
     const { orderId, rating, comment } = req.body;
 
-    // 1. Kiểm tra đơn hàng (Order) có tồn tại và thuộc về User này không
     const order = await Order.findById(orderId);
-    if (!order)
-      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    if (!order) {
+      return res.status(404).json({ message: "Khong tim thay don hang" });
+    }
 
     if (order.userId.toString() !== req.user.id) {
       return res
         .status(403)
-        .json({ message: "Bạn không có quyền đánh giá đơn hàng này" });
+        .json({ message: "Ban khong co quyen danh gia don hang nay" });
     }
 
-    // 2. Chỉ cho phép đánh giá khi tour đã hoàn thành (completed)
     if (order.status !== "completed") {
       return res.status(400).json({
-        message: "Bạn chỉ có thể đánh giá sau khi đã hoàn thành chuyến đi",
+        message: "Ban chi co the danh gia sau khi da hoan thanh chuyen di",
       });
     }
 
-    // 3. Kiểm tra xem đã đánh giá đơn hàng này chưa (1 Order = 1 Review)
     const existingReview = await Review.findOne({ orderId });
     if (existingReview) {
       return res
         .status(400)
-        .json({ message: "Bạn đã đánh giá cho chuyến đi này rồi" });
+        .json({ message: "Ban da danh gia cho chuyen di nay roi" });
     }
 
-    // 4. Tạo Review
     const newReview = await Review.create({
       orderId,
       serviceId: order.serviceId,
@@ -42,7 +40,6 @@ module.exports.createReview = async (req, res) => {
       comment,
     });
 
-    // 5. CẬP NHẬT RATING TRUNG BÌNH CHO SERVICE
     const allReviews = await Review.find({ serviceId: order.serviceId });
     const reviewCount = allReviews.length;
     const avgRating =
@@ -50,20 +47,43 @@ module.exports.createReview = async (req, res) => {
 
     await Service.findByIdAndUpdate(order.serviceId, {
       rating: avgRating.toFixed(1),
-      reviewCount: reviewCount,
+      reviewCount,
     });
 
+    const serviceForBehavior = await Service.findById(order.serviceId).populate(
+      "category",
+      "categoryName slug",
+    );
+
+    await behaviorService
+      .recordBehavior({
+        userId: req.user.id,
+        actionType: "rating",
+        service: serviceForBehavior,
+        payload: {
+          rating,
+          source: "create_review",
+          metadata: {
+            orderId: String(orderId),
+            comment,
+          },
+        },
+      })
+      .catch((behaviorError) => {
+        console.error("Loi record rating behavior:", behaviorError);
+      });
+
     return res.status(201).json({
-      message: "Cảm ơn bạn đã đánh giá chuyến đi!",
+      message: "Cam on ban da danh gia chuyen di!",
       data: newReview,
     });
   } catch (error) {
-    console.error("Lỗi createReview:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("Loi createReview:", error);
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-// LẤY DANH SÁCH REVIEW CỦA MỘT TOUR (PUBLIC)
+// Lay danh sach review cua mot tour (public)
 module.exports.getReviewsByService = async (req, res) => {
   try {
     const { serviceId } = req.params;
@@ -73,7 +93,7 @@ module.exports.getReviewsByService = async (req, res) => {
 
     return res.status(200).json({ data: reviews });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
@@ -87,31 +107,28 @@ module.exports.getHighlightedReviews = async (req, res) => {
 
     return res.status(200).json({ data: reviews });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
-//  XÓA ĐÁNH GIÁ (USER/ADMIN)
+// Xoa danh gia (user/admin)
 module.exports.deleteReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
-    if (!review)
-      return res.status(404).json({ message: "Không tìm thấy đánh giá" });
+    if (!review) {
+      return res.status(404).json({ message: "Khong tim thay danh gia" });
+    }
 
-    // Chỉ chủ nhân hoặc Admin mới được xóa
     if (review.userId.toString() !== req.user.id && req.user.role !== "admin") {
       return res
         .status(403)
-        .json({ message: "Không có quyền xóa đánh giá này" });
+        .json({ message: "Khong co quyen xoa danh gia nay" });
     }
 
     await Review.findByIdAndDelete(req.params.id);
 
-    // update lại rating của Service sau khi xóa
-    // ... logic tinh lai rating nhu createReview ...
-
-    return res.status(200).json({ message: "Đã xóa đánh giá" });
+    return res.status(200).json({ message: "Da xoa danh gia" });
   } catch (error) {
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };

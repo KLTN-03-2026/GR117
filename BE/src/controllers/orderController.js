@@ -1,6 +1,13 @@
 const Order = require("../models/Order.js");
 const Schedule = require("../models/Schedule.js");
 const Coupon = require("../models/Coupon.js");
+const behaviorService = require("../services/behaviorService.js");
+const {
+  calculateRefundPlan,
+  createSettlementEntry,
+  createRefundEntry,
+  normalizeCancellationPolicy,
+} = require("../services/escrowLedgerService.js");
 
 const generateOrderCode = async () => {
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -156,6 +163,9 @@ module.exports.createOrder = async (req, res) => {
       discountAmount,
       finalPrice,
       note,
+      cancellationPolicySnapshot: normalizeCancellationPolicy(
+        service.cancellationPolicy || {},
+      ),
       status:
         normalizedPaymentFlow === "vnpay"
           ? "awaiting_payment"
@@ -168,6 +178,34 @@ module.exports.createOrder = async (req, res) => {
       schedule.status = "full";
     }
     await schedule.save();
+
+    const behaviorServiceDoc = await service.populate(
+      "category",
+      "categoryName slug",
+    );
+
+    behaviorService
+      .recordBehavior({
+        userId: req.user.id,
+        actionType: "book",
+        service: behaviorServiceDoc,
+        payload: {
+          source: "create_order",
+          budgetRange: behaviorServiceDoc.budgetRange || "",
+          category:
+            behaviorServiceDoc.category?.categoryName ||
+            behaviorServiceDoc.category?.slug ||
+            "",
+          location: behaviorServiceDoc.location || "",
+          metadata: {
+            orderId: String(newOrder._id),
+            paymentFlow: normalizedPaymentFlow,
+          },
+        },
+      })
+      .catch((error) => {
+        console.error("Loi record booking behavior:", error);
+      });
 
     return res.status(201).json({
       message:
@@ -228,28 +266,69 @@ module.exports.cancelMyOrder = async (req, res) => {
       await releaseScheduleSlots(order);
     }
 
+    const refundPlan = calculateRefundPlan(order, "user");
     const paidAmount = Number(order.finalPrice || order.totalPrice || 0);
     const wasPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
-    const refundAmount = wasPaid ? paidAmount : 0;
+    const refundAmount = wasPaid ? refundPlan.refundAmount : 0;
 
     order.status = "cancelled";
     order.cancelledAt = new Date();
-    order.refundRate = wasPaid ? 1 : 0;
+    order.cancelledBy = "user";
+    order.cancelReason = "Khach huy don";
+    order.refundRate = wasPaid ? refundPlan.refundRate : 0;
     order.refundAmount = refundAmount;
     order.refundPolicy = wasPaid
-      ? "Khach huy don - hoan 100%"
+      ? refundPlan.policyLabel
       : "Huy don khi chua thanh toan";
+    order.escrowStatus = wasPaid
+      ? refundAmount > 0
+        ? "held"
+        : "released"
+      : "none";
+    order.settlementStatus = wasPaid
+      ? refundAmount > 0
+        ? "pending"
+        : "settled"
+      : "void";
+    order.refundStatus = wasPaid
+      ? refundAmount > 0
+        ? "succeeded"
+        : "none"
+      : "none";
     if (wasPaid && refundAmount > 0) {
+      order.refundRequestedAt = new Date();
       order.paymentStatus = "refunded";
+      order.refundedAt = new Date();
+      order.refundCompletedAt = new Date();
+      order.refundGatewayResponseCode = "00";
+      order.refundGatewayMessage = "Hoan tien thanh cong";
+      order.refundGatewayTransactionNo = "";
+      order.refundRequestId = "";
+      order.escrowStatus = "refunded";
+      order.settlementStatus = "refunded";
+      await order.save();
+
+      await createRefundEntry(
+        order,
+        refundPlan,
+        {
+          role: "user",
+          id: req.user.id,
+          cancelledBy: "user",
+        },
+      );
+    } else {
+      await order.save();
     }
 
-    await order.save();
-
     return res.status(200).json({
-      message:
-        wasPaid
+      message: wasPaid
+        ? refundAmount >= paidAmount
           ? "Da huy don va hoan tien 100%"
-          : "Da huy don thanh cong",
+          : refundAmount > 0
+            ? `Da huy don va hoan tien ${Math.round(refundPlan.refundRate * 100)}%`
+            : "Da huy don, khong hoan tien"
+        : "Da huy don thanh cong",
       data: order,
     });
   } catch (error) {
@@ -317,24 +396,105 @@ module.exports.updateOrderStatus = async (req, res) => {
         await releaseScheduleSlots(order);
       }
 
+      const refundPlan = calculateRefundPlan(order, "provider");
       const paidAmount = Number(order.finalPrice || order.totalPrice || 0);
       const wasPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
 
       order.status = "cancelled";
       order.cancelledAt = new Date();
-      order.refundRate = wasPaid ? 1 : 0;
-      order.refundAmount = wasPaid ? paidAmount : 0;
+      order.cancelledBy =
+        req.user.role === "admin" ? "admin" : "provider";
+      order.cancelReason =
+        req.user.role === "admin"
+          ? "Admin huy don"
+          : "Provider tu choi dat cho";
+      order.refundRate = wasPaid ? refundPlan.refundRate : 0;
+      order.refundAmount = wasPaid ? refundPlan.refundAmount : 0;
       order.refundPolicy = wasPaid
-        ? "Provider huy tour - hoan 100%"
+        ? req.user.role === "admin"
+          ? "Admin huy don - hoan 100%"
+          : "Provider tu choi dat cho - hoan 100%"
         : "Huy tour khi chua thanh toan";
-      order.paymentStatus = wasPaid ? "refunded" : paymentStatus || order.paymentStatus;
+      order.escrowStatus = wasPaid
+        ? refundPlan.refundAmount > 0
+          ? "held"
+          : "released"
+        : "none";
+      order.settlementStatus = wasPaid
+        ? refundPlan.refundAmount > 0
+          ? "pending"
+          : "settled"
+        : "void";
+    order.refundStatus = wasPaid
+      ? refundPlan.refundAmount > 0
+        ? "succeeded"
+        : "none"
+      : "none";
+      if (wasPaid && refundPlan.refundAmount > 0) {
+        order.refundRequestedAt = new Date();
+        order.paymentStatus = "refunded";
+        order.refundedAt = new Date();
+        order.refundCompletedAt = new Date();
+        order.refundGatewayResponseCode = "00";
+        order.refundGatewayMessage = "Hoan tien thanh cong";
+        order.refundGatewayTransactionNo = "";
+        order.refundRequestId = "";
+        order.escrowStatus = "refunded";
+        order.settlementStatus = "refunded";
+        await order.save();
 
-      await order.save();
+        await createRefundEntry(
+          order,
+          refundPlan,
+          {
+            role: req.user.role === "admin" ? "admin" : "provider",
+            id: req.user.id,
+            cancelledBy: req.user.role === "admin" ? "admin" : "provider",
+          },
+        );
+      } else {
+        await order.save();
+      }
 
       return res.status(200).json({
         message: wasPaid
-          ? "Cap nhat trang thai don hang thanh cong va da hoan tien"
+          ? refundPlan.refundAmount >= paidAmount
+            ? req.user.role === "admin"
+              ? "Admin da huy don va hoan tien 100%"
+              : "Provider da tu choi dat cho va hoan tien 100%"
+            : refundPlan.refundAmount > 0
+              ? `Cap nhat trang thai don hang thanh cong va hoan tien ${Math.round(refundPlan.refundRate * 100)}%`
+              : "Cap nhat trang thai don hang thanh cong, khong hoan tien"
           : "Cap nhat trang thai don hang thanh cong",
+        data: order,
+      });
+    }
+
+    if (status === "completed") {
+      const hasPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+      if (!hasPaid) {
+        return res.status(400).json({
+          message: "Chi co the hoan tat tour khi don hang da thanh toan",
+        });
+      }
+      const alreadySettled =
+        String(order.settlementStatus || "").toLowerCase() === "settled";
+      order.status = "completed";
+      order.settlementStatus = "settled";
+      order.escrowStatus = "released";
+      order.settledAt = new Date();
+      order.paymentStatus = "paid";
+      await order.save();
+
+      if (!alreadySettled) {
+        await createSettlementEntry(order, {
+          role: req.user.role === "admin" ? "admin" : "provider",
+          id: req.user.id,
+        });
+      }
+
+      return res.status(200).json({
+        message: "Cap nhat trang thai don hang thanh cong",
         data: order,
       });
     }
@@ -342,7 +502,7 @@ module.exports.updateOrderStatus = async (req, res) => {
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
       { status, paymentStatus },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     return res.status(200).json({

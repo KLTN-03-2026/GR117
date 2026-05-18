@@ -49,7 +49,7 @@ export const uploadService = async (req, res) => {
         imageId: result.public_id,
       },
       {
-        new: true,
+        returnDocument: "after",
       },
     ).select("imageUrl");
 

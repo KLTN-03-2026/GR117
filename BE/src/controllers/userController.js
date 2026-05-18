@@ -1,6 +1,7 @@
 const User = require("../models/User.js");
 const Service = require("../models/Service.js");
 const bcrypt = require("bcrypt");
+const behaviorService = require("../services/behaviorService.js");
 
 // Lấy thông tin cá nhân hiện tại
 module.exports.getProfile = async (req, res) => {
@@ -25,7 +26,7 @@ module.exports.updateProfile = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
       { fullName, phone },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).select("-password");
 
     return res.status(200).json({
@@ -100,7 +101,9 @@ module.exports.toggleFavoriteService = async (req, res) => {
   try {
     const { serviceId } = req.params;
 
-    const service = await Service.findById(serviceId).select("_id serviceName status");
+    const service = await Service.findById(serviceId)
+      .select("_id serviceName status location budgetRange category")
+      .populate("category", "categoryName slug");
     if (!service) {
       return res.status(404).json({ message: "Không tìm thấy dịch vụ" });
     }
@@ -125,6 +128,17 @@ module.exports.toggleFavoriteService = async (req, res) => {
 
     await user.save();
 
+    if (!isFavorited) {
+      await behaviorService.recordBehavior({
+        userId: req.user.id,
+        actionType: "favorite",
+        service,
+        payload: {
+          source: "favorite_toggle",
+        },
+      });
+    }
+
     return res.status(200).json({
       message: isFavorited ? "Đã bỏ khỏi yêu thích" : "Đã thêm vào yêu thích",
       data: {
@@ -136,6 +150,57 @@ module.exports.toggleFavoriteService = async (req, res) => {
   } catch (error) {
     console.error("Loi toggleFavoriteService:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+module.exports.recordBehavior = async (req, res) => {
+  try {
+    const {
+      actionType,
+      serviceId,
+      category,
+      budgetRange,
+      location,
+      keyword,
+      season,
+      holiday,
+      source,
+      metadata,
+    } = req.body || {};
+
+    if (!actionType) {
+      return res.status(400).json({ message: "Thieu actionType" });
+    }
+
+    let service = null;
+    if (serviceId) {
+      service = await Service.findById(serviceId).populate("category", "categoryName slug");
+    }
+
+    await behaviorService.recordBehavior({
+        userId: req.user?.id || null,
+        guestId: req.guestId || "",
+        actionType,
+        service,
+        payload: {
+        category,
+        budgetRange,
+        location,
+        keyword,
+        season,
+        holiday,
+        source,
+        metadata,
+        serviceId,
+      },
+    });
+
+    return res.status(200).json({
+      message: "Da luu hanh vi nguoi dung",
+    });
+  } catch (error) {
+    console.error("Loi recordBehavior:", error);
+    return res.status(500).json({ message: "Loi he thong" });
   }
 };
 
