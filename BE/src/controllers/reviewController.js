@@ -2,11 +2,16 @@ const Review = require("../models/Review.js");
 const Order = require("../models/Order.js");
 const Service = require("../models/Service.js");
 const behaviorService = require("../services/behaviorService.js");
+const { validateCreateReview } = require("../validations/reviewValidation.js");
 
 // Gui danh gia moi (user)
 module.exports.createReview = async (req, res) => {
   try {
-    const { orderId, rating, comment } = req.body;
+    const validation = validateCreateReview(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+    const { orderId, rating, comment } = validation.data;
 
     const order = await Order.findById(orderId);
     if (!order) {

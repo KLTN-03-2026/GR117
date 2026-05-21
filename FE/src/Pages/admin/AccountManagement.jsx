@@ -1,13 +1,19 @@
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { IoSearch } from "react-icons/io5";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
+
+const ACCOUNTS_PER_PAGE = 10;
+const PERSON_NAME_REGEX = /^[\p{L}\s]+$/u;
 
 const AccountManagement = () => {
   const [accountSearch, setAccountSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [showAddUser, setShowAddUser] = useState(false);
   const [accounts, setAccounts] = useState([]);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [actionLoadingId, setActionLoadingId] = useState("");
 
   const [newFullName, setNewFullName] = useState("");
@@ -15,9 +21,33 @@ const AccountManagement = () => {
   const [newPhone, setNewPhone] = useState("");
   const [newRole, setNewRole] = useState("user");
   const [newPassword, setNewPassword] = useState("");
+  const addAccountRefs = {
+    fullName: useRef(null),
+    email: useRef(null),
+    phone: useRef(null),
+    password: useRef(null),
+  };
 
   const inputClass =
     "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100";
+  const getInputClass = (field) =>
+    fieldErrors[field]
+      ? `${inputClass} border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-2 focus:ring-rose-100`
+      : inputClass;
+  const FieldError = ({ name }) =>
+    fieldErrors[name] ? (
+      <p className="mt-2 text-left text-sm leading-5 text-rose-500">
+        {fieldErrors[name]}
+      </p>
+    ) : null;
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -60,6 +90,23 @@ const AccountManagement = () => {
     const bCreatedAt = new Date(b?.createdAt || 0).getTime();
     return bCreatedAt - aCreatedAt;
   });
+
+  const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / ACCOUNTS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ACCOUNTS_PER_PAGE;
+  const paginatedAccounts = sortedAccounts.slice(startIndex, startIndex + ACCOUNTS_PER_PAGE);
+  const showingFrom = sortedAccounts.length === 0 ? 0 : startIndex + 1;
+  const showingTo = Math.min(startIndex + paginatedAccounts.length, sortedAccounts.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [accountSearch]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const updateAccountStatus = (id, status) => {
     setAccounts((prev) => prev.map((item) => (item._id === id ? { ...item, status } : item)));
@@ -111,7 +158,7 @@ const AccountManagement = () => {
         {},
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      updateAccountStatus(id, "blocked");
+      updateAccountStatus(id, "locked");
     } catch (err) {
       setError(err?.response?.data?.message || "Khóa tài khoản thất bại");
     } finally {
@@ -167,9 +214,17 @@ const AccountManagement = () => {
       const fullName = newFullName.trim();
       const email = newEmail.trim();
       const phone = newPhone.trim();
+      const nextErrors = {};
 
-      if (fullName.length < 2 || fullName.length > 30) {
-        setError("Họ và tên phải từ 2 đến 30 ký tự");
+      if (!fullName) {
+        nextErrors.fullName = "Vui lòng nhập họ và tên";
+      } else if (!PERSON_NAME_REGEX.test(fullName)) {
+        setError("Họ và tên chỉ được chứa chữ cái");
+        return;
+      }
+
+      if (fullName.length < 5 || fullName.length > 30) {
+        setError("Họ và tên phải từ 5 đến 30 ký tự");
         return;
       }
 
@@ -239,15 +294,30 @@ const AccountManagement = () => {
 
       {showAddUser && (
         <div className="grid grid-cols-1 gap-4 rounded-2xl bg-slate-50 p-5 md:grid-cols-2">
-          <input placeholder="Họ và tên" className={inputClass} value={newFullName} onChange={(e) => setNewFullName(e.target.value)} />
-          <input placeholder="Email" className={inputClass} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-          <input placeholder="Số điện thoại" className={inputClass} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
-          <input placeholder="Mật khẩu" className={inputClass} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-          <select className={inputClass} value={newRole} onChange={(e) => setNewRole(e.target.value)}>
-            <option value="user">user</option>
-            <option value="provider">provider</option>
-            <option value="admin">admin</option>
-          </select>
+          <label className="space-y-2">
+            <RequiredLabel className="text-sm text-slate-500">Họ và tên</RequiredLabel>
+            <input placeholder="Họ và tên" className={inputClass} value={newFullName} onChange={(e) => setNewFullName(e.target.value)} />
+          </label>
+          <label className="space-y-2">
+            <RequiredLabel className="text-sm text-slate-500">Email</RequiredLabel>
+            <input placeholder="Email" className={inputClass} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+          </label>
+          <label className="space-y-2">
+            <RequiredLabel className="text-sm text-slate-500">Số điện thoại</RequiredLabel>
+            <input placeholder="Số điện thoại" className={inputClass} value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+          </label>
+          <label className="space-y-2">
+            <RequiredLabel className="text-sm text-slate-500">Mật khẩu</RequiredLabel>
+            <input placeholder="Mật khẩu" className={inputClass} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          </label>
+          <label className="space-y-2">
+            <RequiredLabel className="text-sm text-slate-500">Vai trò</RequiredLabel>
+            <select className={inputClass} value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+              <option value="user">user</option>
+              <option value="provider">provider</option>
+              <option value="admin">admin</option>
+            </select>
+          </label>
 
           <div className="md:col-span-2 flex gap-3">
             <button type="button" onClick={() => setShowAddUser(false)} className="rounded-xl bg-slate-200 px-5 py-3 text-sm font-medium text-slate-700">
@@ -282,9 +352,9 @@ const AccountManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {sortedAccounts.map((item, index) => (
+            {paginatedAccounts.map((item, index) => (
               <tr key={item._id}>
-                <td className="px-4 py-3 text-left">{index + 1}</td>
+                <td className="px-4 py-3 text-left">{startIndex + index + 1}</td>
                 <td className="px-4 py-3 text-left">{item.fullName}</td>
                 <td className="px-4 py-3 text-left">{item.email}</td>
                 <td className="px-4 py-3 text-left">{item.phone || "--"}</td>
@@ -302,7 +372,7 @@ const AccountManagement = () => {
                     </>
                   )}
 
-                  {item.status === "blocked" ? (
+                  {item.status === "locked" ? (
                     <button type="button" onClick={() => unblockAccount(item._id)} className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-600 hover:bg-sky-100">
                       Mở khóa
                     </button>
@@ -329,6 +399,7 @@ const AccountManagement = () => {
           </tbody>
         </table>
       </div>
+
     </div>
   );
 };

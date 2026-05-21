@@ -369,7 +369,7 @@ export default function ProviderSchedule() {
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
         <div className="flex items-center gap-3">
           <div>
             <Breadcrumb />
@@ -386,17 +386,6 @@ export default function ProviderSchedule() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={openAddModal}
-            type="button"
-            className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-[13px] font-medium text-[#f97316] transition hover:bg-orange-100"
-          >
-            <span className="inline-flex items-center gap-2">
-              <FiPlus size={16} /> Thêm lịch khởi hành
-            </span>
-          </button>
-        </div>
       </div>
 
       {message.text ? (
@@ -405,17 +394,27 @@ export default function ProviderSchedule() {
             message.type === "error"
               ? "border-red-200 bg-red-50 text-red-600"
               : "border-green-200 bg-green-50 text-green-700"
-          }`}
+          } mx-4 sm:mx-6`}
         >
           {message.text}
         </div>
       ) : null}
 
-      <div className="mx-[27px] rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="mx-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:mx-6 sm:p-6">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="text-[18px] font-semibold text-gray-900">
             Danh sách lịch khởi hành
           </h2>
+
+          <button
+            onClick={openAddModal}
+            type="button"
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-2xl border border-orange-200 bg-orange-50 px-5 text-sm font-semibold text-[#f97316] transition hover:bg-orange-100"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FiPlus size={16} /> Thêm lịch khởi hành
+            </span>
+          </button>
         </div>
 
         <ProviderScheduleTable
@@ -427,6 +426,7 @@ export default function ProviderSchedule() {
           onToggleStatus={handleToggleStatus}
           onDelete={setDeleteTarget}
         />
+
       </div>
 
       <ScheduleFormModal

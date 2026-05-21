@@ -5,6 +5,12 @@ const Provider = require("../models/Provider.js");
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
+const {
+  validateChangeUserRole,
+  validateAddAccount,
+  validateServiceStatus,
+  validateAdminServiceQuery,
+} = require("../validations/adminValidation.js");
 //chờ duyệt
 module.exports.getPendingProviders = async (req, res) => {
   try {
@@ -174,13 +180,13 @@ module.exports.getAllAccounts = async (req, res) => {
 module.exports.changeUserRole = async (req, res) => {
   try {
     const { id } = req.params;
-    const role = req.body.role;
+    const validation = validateChangeUserRole(req.body);
 
-    if (!["user", "provider", "admin"].includes(role)) {
-      return res.status(400).json({
-        message: "Vai trò không hợp lệ",
-      });
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
+
+    const { role } = validation.data;
     const account = await User.findById(id);
     if (!account) {
       return res.status(404).json({
@@ -287,16 +293,13 @@ module.exports.unlockAccount = async (req, res) => {
 
 //thêm tài khoản mới
 module.exports.addAccount = async (req, res) => {
-  //request gửi lên các thông cần thiết
-  const fullName = String(req.body.fullName || "").trim();
-  const email = String(req.body.email || "")
-    .trim()
-    .toLowerCase();
-  const phone = String(req.body.phone || "").trim();
-  const password = String(req.body.password || "");
-  const role = String(req.body.role || "").trim();
-
   try {
+    const validation = validateAddAccount(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+
+    const { fullName, email, phone, password, role } = validation.data;
     const existAccount = await User.findOne({
       $or: [{ email }, { phone }, { fullName }],
     });
@@ -304,36 +307,6 @@ module.exports.addAccount = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Email, FullName,phone đã tồn tại" });
-    }
-
-    //check trường có thiếu hay ko
-    if (!fullName || !email || !phone || !password || !role) {
-      return res.status(400).json({ message: "Thiếu thông tin bắt buộc" });
-    }
-
-    //check độ dài từng trường
-    if (fullName.length < 2 || fullName.length > 30) {
-      return res
-        .status(400)
-        .json({ message: "Họ và tên phải từ 2 đến 30 ký tự" });
-    }
-
-    if (email.length < 5 || email.length > 30) {
-      return res.status(400).json({ message: "Email phải từ 5 đến 30 ký tự" });
-    }
-
-    if (!/^\d{10}$/.test(phone)) {
-      return res.status(400).json({ message: "Số điện thoại phải đúng 10 số" });
-    }
-
-    if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
-    }
-
-    if (!["user", "provider", "admin"].includes(role)) {
-      return res.status(400).json({ message: "Vai trò không hợp lệ" });
     }
 
     const hasdPassword = await bcrypt.hash(password, 8);
@@ -359,14 +332,8 @@ module.exports.addAccount = async (req, res) => {
 // xem tat cac dich vu
 module.exports.getAllService = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const rawLimit = parseInt(req.query.limit);
-    const hasPagination = Number.isFinite(rawLimit) && rawLimit > 0;
-    const limit = hasPagination ? rawLimit : 0;
-    const skip = (page - 1) * limit;
-
-    // Lấy thêm keyword để hỗ trợ thanh tìm kiếm trên giao diện
-    const { status = "all", keyword = "" } = req.query;
+    const { page, hasPagination, limit, skip, status, keyword } =
+      validateAdminServiceQuery(req.query).data;
 
     // 1. Xây dựng bộ lọc
     const matchQuery = { deleted: { $ne: true } }; // Bỏ qua dịch vụ đã xóa
@@ -519,16 +486,11 @@ module.exports.deleteService = async (req, res) => {
 module.exports.changeServiceStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // Frontend sẽ gửi trạng thái mới lên qua body
-
-    // 1. Kiểm tra trạng thái hợp lệ dựa theo Enum trong Model Services
-    const validStatuses = ["active", "inactive", "pending", "rejected"];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        message:
-          "Trạng thái không hợp lệ. Chỉ chấp nhận: active, inactive, pending, rejected",
-      });
+    const validation = validateServiceStatus(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
+    const { status } = validation.data;
 
     // 2. Cập nhật vào Database
     const updatedService = await Service.findByIdAndUpdate(

@@ -5,21 +5,58 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const Session = require("../models/Session.js");
 const mailer = require("../utils/mailer.js");
+const { cloudinary } = require("../config/cloudinary.js");
+const {
+  validateRegister,
+  validateLogin,
+  validateForgotPassword,
+  validateResetPassword,
+} = require("../validations/authValidation.js");
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 const RESET_TOKEN_TTL = 15 * 60 * 1000;
+const DATA_URL_IMAGE_PATTERN = /^data:image\/(png|jpe?g|webp);base64,/i;
+
+const uploadBusinessLicense = async (businessLicense) => {
+  const value = String(businessLicense || "").trim();
+
+  if (!DATA_URL_IMAGE_PATTERN.test(value)) {
+    return value;
+  }
+
+  if (
+    !process.env.CLOUDINARY_CLOUD_NAME ||
+    !process.env.CLOUDINARY_API_KEY ||
+    !process.env.CLOUDINARY_API_SECRET
+  ) {
+    throw new Error(
+      "Missing Cloudinary config. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in BE/.env",
+    );
+  }
+
+  const result = await cloudinary.uploader.upload(value, {
+    folder: "vivu-travel/provider-licenses",
+    resource_type: "image",
+    transformation: [{ width: 1200, height: 1200, crop: "limit" }],
+  });
+
+  return result.secure_url;
+};
 
 // Dang ky tai khoan user/provider va tao ho so provider neu can.
 module.exports.register = async (req, res) => {
   try {
+    const validation = validateRegister(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+
     const {
-      fullName,
       businessName,
       email,
       phone,
       password,
-      confirmPass,
       role,
       taxCode,
       businessLicense,
@@ -28,91 +65,19 @@ module.exports.register = async (req, res) => {
       bankAccountNumber,
       bankName,
       agreements = {},
-    } = req.body;
-
-    if (!email || !phone || !password || !confirmPass || !role) {
-      return res.status(400).json({ message: "Thiếu thông tin đăng ký" });
-    }
-
-    if (!["user", "provider"].includes(role)) {
-      return res.status(400).json({ message: "Role không hợp lệ" });
-    }
-
-    if (password !== confirmPass) {
-      return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
-    }
-
-    const normalizedDisplayName =
-      role === "provider"
-        ? String(businessName || "").trim()
-        : String(fullName || "").trim();
-
-    if (!normalizedDisplayName) {
-      return res.status(400).json({
-        message:
-          role === "provider"
-            ? "Thiếu tên doanh nghiệp/ho kinh doanh/thương nhân"
-            : "Thiếu họ và tên",
-      });
-    }
-
-    if (
-      normalizedDisplayName.length < 10 ||
-      normalizedDisplayName.length > 50
-    ) {
-      return res.status(400).json({
-        message:
-          role === "provider"
-            ? "Tên doanh nghiệp phải từ 10 đến 50 ký tự"
-            : "Họ và tên phải từ 10 đến 50 ký tự",
-      });
-    }
-
-    if (!/^\d{10}$/.test(String(phone || "").trim())) {
-      return res.status(400).json({
-        message: "Số điện thoại sai định dạng",
-      });
-    }
-
-    if (String(password).length < 6) {
-      return res.status(400).json({
-        message: "Mật khẩu phải có ít nhất 6 ký tự",
-      });
-    }
-
-    if (role === "provider") {
-      if (
-        !businessName ||
-        !taxCode ||
-        !businessLicense ||
-        !address ||
-        !legalRepresentative ||
-        !bankAccountNumber ||
-        !bankName
-      ) {
-        return res.status(400).json({
-          message: "Thiếu thông tin hồ sơ nhà cung cấp",
-        });
-      }
-
-      if (agreements?.termsAccepted !== true) {
-        return res.status(400).json({
-          message: "Bạn cần đồng ý điều khoản hợp tác",
-        });
-      }
-    }
+      normalizedDisplayName,
+    } = validation.data;
 
     const duplicate = await User.findOne({
-      $or: [
-        { email: String(email).trim().toLowerCase() },
-        { phone: String(phone).trim() },
-      ],
+      $or: [{ email }, { phone }],
     });
 
     if (duplicate) {
-      return res.status(409).json({
-        message: "Email hoặc số điện thoại đã tồn tại",
-      });
+      const duplicateMessage =
+        duplicate.email === email
+          ? "Email đã tồn tại trong hệ thống"
+          : "Số điện thoại đã được đăng ký";
+      return res.status(409).json({ message: duplicateMessage });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -120,8 +85,8 @@ module.exports.register = async (req, res) => {
 
     const newUser = await User.create({
       fullName: normalizedDisplayName,
-      email: String(email).trim().toLowerCase(),
-      phone: String(phone).trim(),
+      email,
+      phone,
       password: hashedPassword,
       role,
       status,
@@ -129,11 +94,13 @@ module.exports.register = async (req, res) => {
 
     if (role === "provider") {
       try {
+        const businessLicenseUrl = await uploadBusinessLicense(businessLicense);
+
         await Provider.create({
           providerID: newUser._id,
           businessName: String(businessName).trim(),
           taxCode: String(taxCode).trim(),
-          businessLicense: String(businessLicense).trim(),
+          businessLicense: businessLicenseUrl,
           address: String(address).trim(),
           legalRepresentative: String(legalRepresentative).trim(),
           bankAccountNumber: String(bankAccountNumber).trim(),
@@ -149,8 +116,16 @@ module.exports.register = async (req, res) => {
       } catch (providerError) {
         await User.findByIdAndDelete(newUser._id);
         console.error("Loi tao ho so provider:", providerError);
+        if (providerError.message?.includes("Missing Cloudinary config")) {
+          return res.status(500).json({
+            message:
+              "Thiếu cấu hình Cloudinary. Vui lòng kiểm tra CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET trong BE/.env.",
+          });
+        }
+
         return res.status(500).json({
-          message: "Không thể tạo hồ sơ nhà cung cấp. Vui lòng thử lại sau.",
+          message:
+            "Không thể tạo hồ sơ nhà cung cấp. Vui lòng thử lại sau.",
         });
       }
     }
@@ -178,11 +153,12 @@ module.exports.register = async (req, res) => {
 // Dang nhap, kiem tra mat khau va cap access token + refresh token.
 module.exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Thiếu email hoặc password" });
+    const validation = validateLogin(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
+
+    const { email, password } = validation.data;
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -237,6 +213,13 @@ module.exports.login = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
+    const providerProfile =
+      user.role === "provider"
+        ? await Provider.findOne({ providerID: user._id }).select(
+            "businessName legalRepresentative status",
+          )
+        : null;
+
     return res.status(200).json({
       message: "Dang nhap thanh cong",
       data: {
@@ -248,6 +231,14 @@ module.exports.login = async (req, res) => {
           phone: user.phone,
           role: user.role,
           status: user.status,
+          providerProfile: providerProfile
+            ? {
+                id: providerProfile._id,
+                businessName: providerProfile.businessName,
+                legalRepresentative: providerProfile.legalRepresentative,
+                status: providerProfile.status,
+              }
+            : null,
         },
       },
     });
@@ -313,16 +304,13 @@ module.exports.logout = async (req, res) => {
 // Tao token dat lai mat khau va gui email huong dan cho user.
 module.exports.forgotPassword = async (req, res) => {
   try {
-    const successMessage = "Đã gửi";
-    const email = String(req.body?.email || "")
-      .trim()
-      .toLowerCase();
-
-    if (!email) {
-      return res.status(404).json({
-        message: "Khong ton tai email. Vui long kiem tra lai !",
-      });
+    const validation = validateForgotPassword(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
+
+    const successMessage = "Đã gửi";
+    const { email } = validation.data;
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -373,27 +361,12 @@ module.exports.forgotPassword = async (req, res) => {
 // Kiem tra token + email, sau do cap nhat mat khau moi.
 module.exports.resetPassword = async (req, res) => {
   try {
-    const email = String(req.body?.email || "")
-      .trim()
-      .toLowerCase();
-    const token = String(req.body?.token || "").trim();
-    const newPassword = String(req.body?.newPassword || "");
-    const confirmPassword = String(req.body?.confirmPassword || "");
-
-    if (!email || !token || !newPassword || !confirmPassword) {
-      return res.status(400).json({ message: "Thieu thong tin" });
+    const validation = validateResetPassword(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
 
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ message: "Mat khau xac nhan khong khop" });
-    }
-
-    if (newPassword.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Mat khau phai co it nhat 6 ky tu" });
-    }
-
+    const { email, token, newPassword } = validation.data;
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
     // Token phai khop, chua het han va dung voi email cua user.

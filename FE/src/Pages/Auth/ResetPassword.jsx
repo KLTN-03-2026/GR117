@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MdOutlineKey, MdArrowBack } from "react-icons/md";
 import { FaRegEye, FaRegEyeSlash } from "../../assets/Icons/Icons";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
 
   const token = searchParams.get("token") || "";
   const email = searchParams.get("email") || "";
@@ -17,38 +20,65 @@ export default function ResetPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [done, setDone] = useState(false);
 
   const inputClass =
     "w-full rounded-2xl border border-[#ead9cb] bg-[#fffaf7] px-4 py-3.5 text-sm text-[#1a1a2e] outline-none transition focus:border-[#f97316] focus:ring-4 focus:ring-[#f97316]/10";
-
+  const errorInputClass =
+    "border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-rose-100";
   const eyeButtonClass =
     "absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-[#f97316]";
-
   const actionButtonClass =
     "flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:shadow-orange-300 disabled:cursor-not-allowed disabled:opacity-70";
 
-  const showError = (text) => setMessage({ type: "error", text });
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const FieldError = ({ name }) =>
+    fieldErrors[name] ? (
+      <p className="mt-2 px-1 text-left text-sm leading-5 text-rose-500">
+        {fieldErrors[name]}
+      </p>
+    ) : null;
 
   const handleReset = async () => {
     if (!token || !email) {
-      showError("Link đặt lại không hợp lệ.");
+      setMessage({ type: "error", text: "Link đặt lại không hợp lệ." });
       return;
     }
 
-    if (!newPassword || !confirmPassword) {
-      showError("Vui lòng nhập đầy đủ mật khẩu mới.");
-      return;
+    const nextErrors = {};
+    if (!newPassword) {
+      nextErrors.newPassword = "Vui lòng nhập mật khẩu mới";
+    } else if (newPassword.length < 6 || newPassword.length > 10) {
+      nextErrors.newPassword = "Mật khẩu phải từ 6 đến 10 ký tự";
     }
 
-    if (newPassword !== confirmPassword) {
-      showError("Mật khẩu xác nhận chưa khớp.");
+    if (!confirmPassword) {
+      nextErrors.confirmPassword = "Vui lòng nhập lại mật khẩu";
+    } else if (newPassword !== confirmPassword) {
+      nextErrors.confirmPassword = "Nhập lại mật khẩu phải trùng với mật khẩu";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setMessage({ type: "", text: "" });
+      if (nextErrors.newPassword) passwordRef.current?.focus();
+      else confirmPasswordRef.current?.focus();
       return;
     }
 
     try {
       setLoading(true);
       setMessage({ type: "", text: "" });
+      setFieldErrors({});
 
       const res = await axios.post("/api/auth/reset-password", {
         email,
@@ -64,7 +94,11 @@ export default function ResetPassword() {
       });
       setTimeout(() => navigate("/signin"), 1200);
     } catch (error) {
-      showError(error?.response?.data?.message || "Đặt lại mật khẩu thất bại.");
+      const text =
+        error?.response?.data?.message || "Đặt lại mật khẩu thất bại.";
+      setFieldErrors({ newPassword: text });
+      passwordRef.current?.focus();
+      setMessage({ type: "error", text });
     } finally {
       setLoading(false);
     }
@@ -108,38 +142,62 @@ export default function ResetPassword() {
               </div>
             ) : (
               <div className="space-y-5">
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mật khẩu mới"
-                    className={`${inputClass} pr-11`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className={eyeButtonClass}
-                  >
-                    {showPassword ? <FaRegEyeSlash /> : <FaRegEye />}
-                  </button>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
+                    <RequiredLabel>Mật khẩu mới</RequiredLabel>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={passwordRef}
+                      type={showPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        clearFieldError("newPassword");
+                      }}
+                      placeholder="Mật khẩu mới"
+                      className={`${inputClass} pr-11 ${
+                        fieldErrors.newPassword ? errorInputClass : ""
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className={eyeButtonClass}
+                    >
+                      {showPassword ? <FaRegEyeSlash /> : <FaRegEye />}
+                    </button>
+                  </div>
+                  <FieldError name="newPassword" />
                 </div>
 
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Xác nhận mật khẩu"
-                    className={`${inputClass} pr-11`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className={eyeButtonClass}
-                  >
-                    {showConfirmPassword ? <FaRegEyeSlash /> : <FaRegEye />}
-                  </button>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
+                    <RequiredLabel>Xác nhận mật khẩu</RequiredLabel>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={confirmPasswordRef}
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        clearFieldError("confirmPassword");
+                      }}
+                      placeholder="Xác nhận mật khẩu"
+                      className={`${inputClass} pr-11 ${
+                        fieldErrors.confirmPassword ? errorInputClass : ""
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className={eyeButtonClass}
+                    >
+                      {showConfirmPassword ? <FaRegEyeSlash /> : <FaRegEye />}
+                    </button>
+                  </div>
+                  <FieldError name="confirmPassword" />
                 </div>
 
                 <button

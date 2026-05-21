@@ -1,4 +1,8 @@
 const Category = require("../models/Category.js");
+const {
+  normalizeCategoryPayload,
+  normalizeCategoryUpdatePayload,
+} = require("../validations/categoryValidation.js");
 
 // LẤY TẤT CẢ DANH MỤC (PUBLIC)
 // Dùng để hiển thị lên Menu hoặc các icon lọc ở trang chủ
@@ -17,7 +21,8 @@ module.exports.getAllCategories = async (req, res) => {
 //  TẠO DANH MỤC MỚI (ADMIN)
 module.exports.createCategory = async (req, res) => {
   try {
-    const { categoryName, slug, icon, description, image, order } = req.body;
+    const { categoryName, slug, icon, description, image, order } =
+      normalizeCategoryPayload(req.body).data;
 
     // Kiểm tra trùng lặp
     const exist = await Category.findOne({ $or: [{ categoryName }, { slug }] });
@@ -50,7 +55,7 @@ module.exports.createCategory = async (req, res) => {
 module.exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = normalizeCategoryUpdatePayload(req.body).data;
 
     const updatedCategory = await Category.findByIdAndUpdate(id, updateData, {
       returnDocument: "after",

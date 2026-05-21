@@ -8,6 +8,7 @@ const db = require("./src/config/connectDB.js");
 const cors = require("cors");
 const router = require("./src/routes/indexRoute.js");
 const { ensureDefaultCategories } = require("./src/utils/ensureDefaultCategories.js");
+const { ensureDefaultAdmin } = require("./src/utils/ensureDefaultAdmin.js");
 const {
   startRecommendationCacheCronJobs,
 } = require("./src/services/recommendationCacheCron.js");
@@ -26,9 +27,9 @@ router(app);
 
 // Ket noi MongoDB
 db.connectDB().then(() => {
-  ensureDefaultCategories()
+  Promise.all([ensureDefaultCategories(), ensureDefaultAdmin()])
     .catch((error) => {
-      console.error("Khong the khoi tao danh muc mac dinh:", error.message);
+      console.error("Khong the khoi tao du lieu mac dinh:", error.message);
     })
     .finally(() => {
       startRecommendationCacheCronJobs();

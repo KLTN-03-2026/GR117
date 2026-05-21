@@ -6,6 +6,7 @@ import {
   FaCircleCheck as CheckCircle2,
 } from "../../assets/Icons/Icons";
 import { formatDate } from "../../utils/formatDate";
+import RequiredLabel from "../shared/RequiredLabel.jsx";
 
 const numberInputClass =
   "w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-border outline-none focus:border-[#f97316] no-spinner";
@@ -195,7 +196,7 @@ function BookingBox({
                   className="block mb-1.5 text-left text-muted-foreground"
                   style={{ fontSize: 13 }}
                 >
-                  Lịch khởi hành *
+                  <RequiredLabel>Lịch khởi hành</RequiredLabel>
                 </label>
                 <select
                   value={selectedSchedule?._id || selectedSchedule?.id || ""}
@@ -237,7 +238,7 @@ function BookingBox({
                   className="block mb-1.5 text-left text-muted-foreground"
                   style={{ fontSize: 13 }}
                 >
-                  Số người
+                  <RequiredLabel>Số người</RequiredLabel>
                 </label>
                 <input
                   type="text"

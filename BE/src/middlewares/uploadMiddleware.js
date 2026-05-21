@@ -1,5 +1,6 @@
 const multer = require("multer");
-const { v2, cloudinary } = require("cloudinary");
+const { cloudinary } = require("../config/cloudinary.js");
+const Service = require("../models/Service.js");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -29,9 +30,7 @@ const uploadImageFromBuffer = (buffer, options) => {
     uploadStream.end(buffer);
   });
 };
-module.exports = { upload, uploadImageFromBuffer };
-
-export const uploadService = async (req, res) => {
+const uploadService = async (req, res) => {
   try {
     const file = req.file;
     const serviceId = req.service._id;
@@ -63,3 +62,5 @@ export const uploadService = async (req, res) => {
     return res.status(500).json({ message: "Upload failed" });
   }
 };
+
+module.exports = { upload, uploadImageFromBuffer, uploadService };

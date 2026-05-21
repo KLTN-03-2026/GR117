@@ -7,6 +7,7 @@
 } = require("vnpay");
 const Order = require("../models/Order.js");
 const { createEscrowHoldEntry } = require("../services/escrowLedgerService.js");
+const { normalizeCreateQrPayload } = require("../validations/vnpayValidation.js");
 const formatVND = (amount) => {
   const number = Number(amount);
 
@@ -96,13 +97,9 @@ const buildQueryUrl = (baseUrl, params) => {
 module.exports.createQr = async (req, res) => {
   try {
     const port = process.env.PORT || 5000;
-    const amountVnd = Math.max(
-      Math.floor(Number(req.body?.amount || 50000)),
-      0,
-    );
+    const { amountVnd, orderInfo, txnRef } =
+      normalizeCreateQrPayload(req.body).data;
     const vnpAmount = Math.max(Math.floor(amountVnd * 100), 0);
-    const orderInfo = String(req.body?.orderInfo || "Thanh toan demo VNPAY");
-    const txnRef = String(req.body?.txnRef || Date.now());
 
     const vnpay = new VNPay({
       tmnCode: "C39XK6SG",

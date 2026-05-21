@@ -66,7 +66,13 @@ function Header({ variant = "default" }) {
       )}
 
       {/* Main header */}
-      <header className="flex max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 justify-between">
+      <header
+        className={`flex justify-between ${
+          isDashboardHeader
+            ? "w-full px-4 sm:px-6"
+            : "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
+        }`}
+      >
         {/* Logo */}
         <div className="flex h-16 items-center">
           <Link to={logoPath} className="flex items-center gap-2">

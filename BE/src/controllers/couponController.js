@@ -1,42 +1,25 @@
 const Coupon = require("../models/Coupon.js");
 const Schedule = require("../models/Schedule.js");
 const Service = require("../models/Service.js");
-
-const normalizeCode = (value) => String(value || "").trim().toUpperCase();
+const {
+  normalizeCode,
+  validateCreateCoupon,
+  validateUpdateCoupon,
+  validateCouponCheck,
+} = require("../validations/couponValidation.js");
 
 // Provider tao ma giam gia moi cho chinh dich vu cua minh.
 module.exports.createCoupon = async (req, res) => {
   try {
     const providerId = req.user.id;
-    const {
-      code,
-      discountType,
-      discountValue,
-      minOrderValue,
-      maxUsage,
-      startDate,
-      endDate,
-      serviceIds = [],
-    } = req.body;
-
-    if (!code || !discountType || discountValue === undefined || !endDate) {
-      return res.status(400).json({ message: "Thieu thong tin ma giam gia" });
-    }
-
-    if (!["percent", "fixed"].includes(String(discountType))) {
-      return res.status(400).json({ message: "Loai giam gia khong hop le" });
+    const validation = validateCreateCoupon(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
 
     const coupon = await Coupon.create({
       provider_id: providerId,
-      code: normalizeCode(code),
-      discountType: String(discountType),
-      discountValue: Number(discountValue),
-      minOrderValue: Number(minOrderValue || 0),
-      maxUsage: Number(maxUsage || 1),
-      startDate: startDate ? new Date(startDate) : new Date(),
-      endDate: new Date(endDate),
-      serviceIds: Array.isArray(serviceIds) ? serviceIds : [],
+      ...validation.data,
     });
 
     return res.status(201).json({
@@ -78,29 +61,8 @@ module.exports.updateCoupon = async (req, res) => {
       return res.status(404).json({ message: "Khong tim thay ma giam gia" });
     }
 
-    const {
-      code,
-      discountType,
-      discountValue,
-      minOrderValue,
-      maxUsage,
-      startDate,
-      endDate,
-      status,
-      serviceIds,
-    } = req.body;
-
-    if (code !== undefined) coupon.code = normalizeCode(code);
-    if (discountType !== undefined) coupon.discountType = String(discountType);
-    if (discountValue !== undefined) coupon.discountValue = Number(discountValue);
-    if (minOrderValue !== undefined) coupon.minOrderValue = Number(minOrderValue);
-    if (maxUsage !== undefined) coupon.maxUsage = Number(maxUsage);
-    if (startDate !== undefined) coupon.startDate = new Date(startDate);
-    if (endDate !== undefined) coupon.endDate = new Date(endDate);
-    if (status !== undefined) coupon.status = String(status);
-    if (serviceIds !== undefined) {
-      coupon.serviceIds = Array.isArray(serviceIds) ? serviceIds : [];
-    }
+    const validation = validateUpdateCoupon(req.body);
+    Object.assign(coupon, validation.data);
 
     await coupon.save();
 
@@ -142,10 +104,11 @@ module.exports.deleteCoupon = async (req, res) => {
 // Kiem tra ma giam gia truoc khi dat tour hoac thanh toan.
 module.exports.validateCoupon = async (req, res) => {
   try {
-    const { code, serviceId, amount } = req.body;
-    if (!code || !serviceId || amount === undefined) {
-      return res.status(400).json({ message: "Thieu thong tin" });
+    const validation = validateCouponCheck(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
+    const { code, serviceId, amount } = validation.data;
 
     const service = await Service.findById(serviceId).select("provider_id");
     if (!service) {
@@ -153,7 +116,7 @@ module.exports.validateCoupon = async (req, res) => {
     }
 
     const coupon = await Coupon.findOne({
-      code: normalizeCode(code),
+      code,
       provider_id: service.provider_id,
       status: "active",
     });
@@ -183,7 +146,7 @@ module.exports.validateCoupon = async (req, res) => {
       return res.status(400).json({ message: "Ma khong ap dung cho dich vu nay" });
     }
 
-    const orderAmount = Number(amount || 0);
+    const orderAmount = amount;
     if (orderAmount < Number(coupon.minOrderValue || 0)) {
       return res.status(400).json({
         message: "Don hang chua dat gia tri toi thieu",

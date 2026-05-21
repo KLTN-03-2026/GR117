@@ -344,12 +344,10 @@ function Revenue() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-left text-xl font-semibold text-slate-900">
+          <h1 className="text-left ml-4 text-2xl font-semibold text-slate-900">
             Doanh thu hệ thống
           </h1>
-          <p className="text-sm text-slate-500">
-            Chọn tháng để xem doanh thu và lịch sử giao dịch tương ứng
-          </p>
+          
         </div>
 
         <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />

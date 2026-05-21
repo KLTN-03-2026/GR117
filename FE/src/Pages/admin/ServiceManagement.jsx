@@ -209,7 +209,6 @@ const ServiceManagement = () => {
     <div className="space-y-5">
       <div>
         <h2 className="text-left text-xl font-semibold text-slate-900">Quản lí dịch vụ</h2>
-        <p className="mt-1 text-sm text-slate-400">Tìm kiếm, lọc và xử lý trạng thái dịch vụ</p>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row">

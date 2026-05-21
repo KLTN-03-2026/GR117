@@ -363,7 +363,7 @@ const Destination = () => {
           <div className="flex max-w-2xl flex-col items-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/90 text-[13px] font-medium mb-5">
               <FaMapMarkerAlt className="text-[#f59e0b]" size={12} />
-              Miền Bắc · Vịnh Hạ Long
+              Việt Nam Travel
             </div>
 
             <h1
@@ -381,7 +381,7 @@ const Destination = () => {
             </h1>
 
             <p className="text-white/75 max-w-xl mb-8 text-[16px] leading-7">
-              12+ tour độc đáo · Giá tốt nhất · Đảm bảo hoàn tiền
+              Dịch vụ du lịch · Giá tốt · Đảm bảo hoàn tiền
             </p>
 
             <div className="mt-4 grid  max-w-[2000px] grid-cols-1 gap-2.5 rounded-[22px] bg-white px-3.5 py-4 shadow-2xl md:grid-cols-2 lg:grid-cols-[minmax(250px,1.8fr)_minmax(170px,1fr)_minmax(170px,1fr)_minmax(170px,1fr)_auto] lg:items-center lg:gap-3 lg:px-3.5 lg:py-3">
@@ -390,7 +390,7 @@ const Destination = () => {
                   <IoLocationOutline className="ml-1 text-lg text-[#F78F10]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-gray-400 text-[12px] leading-none">
+                  <p className="text-gray-400 text-left text-[12px] leading-none">
                     Tên địa điểm
                   </p>
                   <input
@@ -408,7 +408,7 @@ const Destination = () => {
                   <RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-gray-400 text-[12px] leading-none">
+                  <p className="text-gray-400 ml-1 text-left text-[12px] leading-none">
                     Loại tour
                   </p>
                   <select
@@ -430,7 +430,7 @@ const Destination = () => {
                   <RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-gray-400 text-[12px] leading-none">
+                  <p className="text-gray-400 ml-1 text-left text-[12px] leading-none">
                     Ngân sách
                   </p>
                   <select
@@ -451,7 +451,7 @@ const Destination = () => {
                   <RiCalendarScheduleLine className="ml-1 text-lg text-[#F78F10]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-gray-400 text-[12px] leading-none">Mùa</p>
+                  <p className="text-gray-400 text-left text-[12px] ml-1 leading-none">Mùa</p>
                   <select
                     value={seasonFilter}
                     onChange={(e) => setSeasonFilter(e.target.value)}
@@ -506,7 +506,7 @@ const Destination = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto mb-20">
         <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <AnimatePresence initial={false}>
             {searchedServices.map((service, index) => {
@@ -541,41 +541,6 @@ const Destination = () => {
               );
             })}
           </AnimatePresence>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto my-14 relative h-56 overflow-hidden rounded-3xl">
-        <img
-          src="https://images.unsplash.com/photo-1694152491000-0cf654070339"
-          alt="Sapa"
-          className="w-full h-full object-cover"
-        />
-
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-
-        <div className="absolute inset-0 flex items-center px-10">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f97316]/20 border border-[#f97316]/40 text-[#f59e0b] text-[12px] font-semibold mb-3">
-              <FaFire />
-              Ưu đãi mùa hè
-            </div>
-
-            <h3 className="text-white text-[26px] font-bold mb-2">
-              Giảm đến 30% cho tour Tây Bắc
-            </h3>
-
-            <p className="text-white/70 text-[14px] mb-4">
-              Sapa · Fansipan · Mù Cang Chải
-            </p>
-
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white text-[13px] font-semibold hover:shadow-lg hover:shadow-orange-300 transition-all"
-            >
-              Xem ngay
-              <FaChevronRight />
-            </button>
-          </div>
         </div>
       </div>
     </div>

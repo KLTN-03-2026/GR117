@@ -166,7 +166,7 @@ function Reconciliation() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8fafc]">
-        <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+        <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
           <Breadcrumb />
           <h1
             style={{
@@ -180,7 +180,7 @@ function Reconciliation() {
             Đối soát thanh toán
           </h1>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
             Đang tải dữ liệu đối soát...
           </div>
@@ -191,7 +191,7 @@ function Reconciliation() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
-      <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
         <Breadcrumb />
         <h1
           style={{
@@ -206,7 +206,7 @@ function Reconciliation() {
         </h1>
       </div>
 
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-4 sm:p-6">
         {error ? (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -296,6 +296,7 @@ function Reconciliation() {
               </tbody>
             </table>
           </div>
+
         </div>
       </div>
     </div>

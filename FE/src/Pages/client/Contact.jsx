@@ -5,6 +5,7 @@ import {
   FaEnvelope,
   FaClock,
 } from "react-icons/fa";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
 
 const infomationContact = [
   {
@@ -54,7 +55,7 @@ const Contact = () => {
   return (
     <div>
       {/* HEADER */}
-      <section className="bg-gradient-to-r from-[#1a1a2e] to-[#16213e] py-20 text-center">
+      <section className="h-[400px] bg-gradient-to-r from-[#1a1a2e] to-[#16213e] flex items-center justify-center text-center">
         <div className="max-w-3xl mx-auto px-4">
           <h1 className="text-white font-serif text-[clamp(30px,5vw,48px)] font-bold">
             Liên <span className="text-[#f97316]">Hệ</span>
@@ -105,7 +106,7 @@ const Contact = () => {
               {/* Row */}
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm text-gray-500">Họ tên</label>
+                  <label className="text-sm text-gray-500"><RequiredLabel>Họ tên</RequiredLabel></label>
                   <input
                     maxLength={20}
                     name="FullName"
@@ -117,7 +118,7 @@ const Contact = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm text-gray-500">Email</label>
+                  <label className="text-sm text-gray-500"><RequiredLabel>Email</RequiredLabel></label>
                   <input
                     type="email"
                     name="Email"
@@ -129,7 +130,7 @@ const Contact = () => {
               </div>
 
               <div className="mb-4 flex flex-col gap-1.5">
-                <label className="text-sm text-gray-500">Số điện thoại</label>
+                <label className="text-sm text-gray-500"><RequiredLabel>Số điện thoại</RequiredLabel></label>
                 <input
                   type="type"
                   name="PhoneNumber"
@@ -140,7 +141,7 @@ const Contact = () => {
               </div>
 
               <div className="mb-6 flex flex-col gap-1.5">
-                <label className="text-sm text-gray-500">Tin nhắn</label>
+                <label className="text-sm text-gray-500"><RequiredLabel>Tin nhắn</RequiredLabel></label>
                 <textarea
                   name="Noted"
                   value={from.Noted}

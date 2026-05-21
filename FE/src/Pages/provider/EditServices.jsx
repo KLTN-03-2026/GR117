@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { FiX } from "react-icons/fi";
 import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 import { fileToDataUrl } from "../../utils/fileToDataUrl.js";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
 
 const EMPTY_FORM = {
   name: "",
@@ -44,8 +46,9 @@ const CATEGORY_LABELS = {
   "am-thuc": "Ẩm thực",
 };
 
-const EditServices = () => {
-  const { id } = useParams();
+const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) => {
+  const { id: routeId } = useParams();
+  const id = serviceId || routeId;
   const navigate = useNavigate();
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [categories, setCategories] = useState([]);
@@ -54,9 +57,14 @@ const EditServices = () => {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [imageFile, setImageFile] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [imageFiles, setImageFiles] = useState([]);
   const [itineraryFile, setItineraryFile] = useState(null);
+  const imageFile = imageFiles[0] || null;
   const seasonDropdownRef = useRef(null);
+  const fieldRefs = useRef({});
+  const imageInputRef = useRef(null);
+  const itineraryInputRef = useRef(null);
 
   let currentUser = null;
   try {
@@ -166,24 +174,38 @@ const EditServices = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleImagesChange = (e) => {
     const value = e.target.value;
     setFormData((prev) => ({ ...prev, images: value }));
+    setErrors((prev) => ({ ...prev, images: "" }));
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0] || null;
-    setImageFile(file);
+    const files = Array.from(e.target.files || []);
+    setImageFiles((prev) => [...prev, ...files]);
+    setErrors((prev) => ({ ...prev, images: "" }));
+    e.target.value = "";
+  };
+
+  const removeImageFile = (index) => {
+    setImageFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const handleItineraryFileChange = async (e) => {
     const file = e.target.files?.[0] || null;
     setItineraryFile(file);
+    setErrors((prev) => ({ ...prev, itineraryFile: "" }));
     if (!file) return;
     setSuccess(false);
     setMessage("");
+  };
+
+  const removeItineraryFile = () => {
+    setItineraryFile(null);
+    if (itineraryInputRef.current) itineraryInputRef.current.value = "";
   };
 
   const toggleSeason = (seasonValue) => {
@@ -196,26 +218,49 @@ const EditServices = () => {
           : [...prev.seasons, seasonValue],
       };
     });
+    setErrors((prev) => ({ ...prev, seasons: "" }));
   };
 
-  const validateForm = () => {
-    if (!formData.name.trim()) return "Tên dịch vụ không được để trống";
-    if (!formData.description.trim()) return "Mô tả không được để trống";
-    if (!formData.location.trim()) return "Địa điểm không được để trống";
-    if (!formData.category) return "Vui lòng chọn danh mục";
-    if (!formData.price || Number(formData.price) <= 0) return "Giá phải lớn hơn 0";
+  const setFieldRef = (name) => (element) => {
+    fieldRefs.current[name] = element;
+  };
+
+  const focusFirstError = (nextErrors) => {
+    const firstField = Object.keys(nextErrors)[0];
+    if (!firstField) return;
+    const target = fieldRefs.current[firstField];
+    if (target?.focus) {
+      target.focus();
+      target.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  const validateFields = () => {
+    const nextErrors = {};
+    if (!formData.name.trim()) nextErrors.name = "Vui lòng nhập tên dịch vụ";
+    if (!formData.location.trim()) nextErrors.location = "Vui lòng nhập địa điểm";
+    if (!formData.price || Number(formData.price) <= 0) nextErrors.price = "Giá phải lớn hơn 0";
+    if (!formData.category) nextErrors.category = "Vui lòng chọn danh mục";
+    if (formData.seasons.length === 0) nextErrors.seasons = "Vui lòng chọn ít nhất 1 mùa";
+    if (!formData.duration.trim()) nextErrors.duration = "Vui lòng nhập thời lượng";
+    if (!formData.description.trim()) nextErrors.description = "Vui lòng nhập mô tả";
 
     const linkImages = splitLines(formData.images);
-    if (linkImages.length === 0 && !imageFile) {
-      return "Vui lòng chọn ảnh upload hoặc nhập link ảnh";
+    if (linkImages.length === 0 && imageFiles.length === 0) {
+      nextErrors.images = "Vui lòng chọn ảnh upload hoặc nhập link ảnh";
     }
 
     const invalidImage = linkImages.find((item) => !isValidImageUrl(item));
     if (invalidImage) {
-      return "Image URL không đúng định dạng";
+      nextErrors.images = "Link ảnh không đúng định dạng";
     }
 
-    return "";
+    if (!formData.highlights.trim()) nextErrors.highlights = "Vui lòng nhập điểm nổi bật";
+    if (!formData.includes.trim()) nextErrors.includes = "Vui lòng nhập nội dung bao gồm";
+
+    setErrors(nextErrors);
+    focusFirstError(nextErrors);
+    return nextErrors;
   };
 
   const handleSubmit = async (e) => {
@@ -223,9 +268,9 @@ const EditServices = () => {
     setMessage("");
     setSuccess(false);
 
-    const errorMessage = validateForm();
-    if (errorMessage) {
-      setMessage(errorMessage);
+    const validationErrors = validateFields();
+    if (Object.keys(validationErrors).length > 0) {
+      setMessage("Vui lòng kiểm tra các ô bị lỗi");
       return;
     }
 
@@ -248,8 +293,8 @@ const EditServices = () => {
     payload.append("includes", JSON.stringify(splitLines(formData.includes)));
 
     const linkImages = splitLines(formData.images);
-    const uploadedImage = imageFile ? await fileToDataUrl(imageFile) : "";
-    const imageList = [...(uploadedImage ? [uploadedImage] : []), ...linkImages];
+    const uploadedImages = await Promise.all(imageFiles.map((file) => fileToDataUrl(file)));
+    const imageList = [...uploadedImages.filter(Boolean), ...linkImages];
 
     payload.append("images", JSON.stringify(imageList));
     payload.append("imageUrl", imageList[0] || "");
@@ -272,7 +317,12 @@ const EditServices = () => {
       if (res.ok) {
         setSuccess(true);
         setMessage("Cập nhật dịch vụ thành công");
-        navigate("/provider/services");
+        if (isModal) {
+          await onUpdated?.();
+          onClose?.();
+        } else {
+          navigate("/provider/services");
+        }
       } else {
         setMessage(result.message || "Không thể cập nhật dịch vụ");
       }
@@ -290,15 +340,25 @@ const EditServices = () => {
   if (loading) return <p className="p-6">Đang tải dữ liệu...</p>;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] px-4 py-6 md:px-6 md:py-10">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Sửa dịch vụ</h1>
-          </div>
+    <div className={isModal ? "" : "min-h-screen bg-[#f8fafc] px-4 py-6 md:px-6 md:py-10"}>
+      <div className={isModal ? "w-full" : "mx-auto max-w-4xl"}>
+        <div className={isModal ? "mb-5" : "mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"}>
+          
         </div>
         <div className="flex justify-center">
-          <div className="w-full rounded-[28px] border border-orange-100 bg-white p-6 shadow-sm md:p-8">
+          <div className={`relative w-full border border-orange-100 bg-white p-6 shadow-sm md:p-8 ${
+            isModal ? "rounded-3xl" : "rounded-[28px]"
+          }`}>
+            {isModal ? (
+              <button
+                type="button"
+                onClick={() => onClose?.()}
+                className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xl font-semibold text-slate-500 shadow-sm transition hover:bg-slate-200 hover:text-slate-700"
+                aria-label="Đóng"
+              >
+                ×
+              </button>
+            ) : null}
             {message && (
               <div
                 className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${
@@ -313,29 +373,34 @@ const EditServices = () => {
 
             <form onSubmit={handleSubmit} className="space-y-8">
               <div>
+                <div className="mb-7 ">
+            <h1 className="text-3xl font-bold text-gray-900">Sửa dịch vụ</h1>
+          </div>
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
-                    <label className={labelClass}>Tên dịch vụ</label>
+                    <label className={labelClass}><RequiredLabel>Tên dịch vụ</RequiredLabel></label>
                     <input
                       type="text"
                       name="name"
+                      ref={setFieldRef("name")}
                       value={formData.name}
                       onChange={handleChange}
                       placeholder="Tên dịch vụ"
-                      className={inputClass}
+                      className={`${inputClass} ${errors.name ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                     />
+                    {errors.name && <p className="mt-1 text-xs font-medium text-red-500">{errors.name}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}>Giá</label>
+                    <label className={labelClass}><RequiredLabel>Địa điểm</RequiredLabel></label>
                     <input
-                      type="number"
-                      min="0"
-                      name="price"
-                      value={formData.price}
+                      type="text"
+                      name="location"
+                      ref={setFieldRef("location")}
+                      value={formData.location}
                       onChange={handleChange}
-                      placeholder="VNĐ"
-                      className={inputClass}
+                      className={`${inputClass} ${errors.location ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                     />
+                    {errors.location && <p className="mt-1 text-xs font-medium text-red-500">{errors.location}</p>}
                   </div>
                 </div>
               </div>
@@ -343,22 +408,27 @@ const EditServices = () => {
               <div>
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                   <div>
-                    <label className={labelClass}>Địa điểm</label>
+                    <label className={labelClass}><RequiredLabel>Giá</RequiredLabel></label>
                     <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
+                      type="number"
+                      min="0"
+                      name="price"
+                      ref={setFieldRef("price")}
+                      value={formData.price}
                       onChange={handleChange}
-                      className={inputClass}
+                      placeholder="VNĐ"
+                      className={`${inputClass} ${errors.price ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                     />
+                    {errors.price && <p className="mt-1 text-xs font-medium text-red-500">{errors.price}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}>Danh mục</label>
+                    <label className={labelClass}><RequiredLabel>Danh mục</RequiredLabel></label>
                     <select
                       name="category"
+                      ref={setFieldRef("category")}
                       value={formData.category}
                       onChange={handleChange}
-                      className={inputClass}
+                      className={`${inputClass} ${errors.category ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                     >
                       <option value="">Chọn danh mục</option>
                       {categories.map((item) => (
@@ -370,13 +440,15 @@ const EditServices = () => {
                         </option>
                       ))}
                     </select>
+                    {errors.category && <p className="mt-1 text-xs font-medium text-red-500">{errors.category}</p>}
                   </div>
                   <div ref={seasonDropdownRef} className="relative">
                     <label className={labelClass}>Mùa phù hợp</label>
                     <button
                       type="button"
+                      ref={setFieldRef("seasons")}
                       onClick={() => setSeasonOpen((prev) => !prev)}
-                      className={`${inputClass} flex items-center justify-between text-left`}
+                      className={`${inputClass} flex items-center justify-between text-left ${errors.seasons ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                     >
                       <span className={formData.seasons.length ? "text-gray-700" : "text-gray-400"}>
                         {formData.seasons.length > 0
@@ -410,17 +482,20 @@ const EditServices = () => {
                         })}
                       </div>
                     )}
+                    {errors.seasons && <p className="mt-1 text-xs font-medium text-red-500">{errors.seasons}</p>}
                   </div>
                   <div>
                     <label className={labelClass}>Thời lượng</label>
                     <input
                       type="text"
                       name="duration"
+                      ref={setFieldRef("duration")}
                       value={formData.duration}
                       onChange={handleChange}
                       placeholder="VD: 5 ngày 4 đêm"
-                      className={inputClass}
+                      className={`${inputClass} ${errors.duration ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                     />
+                    {errors.duration && <p className="mt-1 text-xs font-medium text-red-500">{errors.duration}</p>}
                   </div>
                 </div>
               </div>
@@ -428,53 +503,83 @@ const EditServices = () => {
               <div>
                 <div className="space-y-6">
                   <div>
-                    <label className={labelClass}>Mô tả</label>
+                    <label className={labelClass}><RequiredLabel>Mô tả</RequiredLabel></label>
                     <textarea
                       name="description"
+                      ref={setFieldRef("description")}
                       value={formData.description}
                       onChange={handleChange}
                       rows="4"
                       placeholder="Mô tả dịch vụ..."
-                      className={inputClass}
+                      className={`${inputClass} ${errors.description ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                     />
+                    {errors.description && <p className="mt-1 text-xs font-medium text-red-500">{errors.description}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}>Ảnh</label>
+                    <label className={labelClass}><RequiredLabel>Ảnh</RequiredLabel></label>
                     <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div>
                           <p className="text-sm font-semibold text-gray-700">Ảnh từ máy</p>
                           <input
                             id="service-image-upload-edit"
+                            ref={imageInputRef}
                             type="file"
                             accept="image/*"
+                            multiple
                             onChange={handleImageChange}
                             className="hidden"
                           />
                           <label
                             htmlFor="service-image-upload-edit"
+                            ref={setFieldRef("images")}
+                            tabIndex={-1}
                             className="mt-3 inline-flex cursor-pointer items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:shadow-md"
                           >
                             Upload file
                           </label>
-                          <p className="mt-3 text-sm text-gray-500">
+                          {imageFiles.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {imageFiles.map((file, index) => (
+                                <div
+                                  key={`${file.name}-${file.lastModified}-${index}`}
+                                  className="flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-gray-600"
+                                >
+                                  <span className="min-w-0 truncate">
+                                    {index === 0 ? " " : ""}{file.name}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeImageFile(index)}
+                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                                    aria-label="Xóa ảnh"
+                                  >
+                                    <FiX size={16} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* <p className="mt-3 text-sm text-gray-500">
                             {imageFile ? imageFile.name : "Giữ ảnh hiện tại nếu không chọn ảnh mới"}
-                          </p>
+                          </p> */}
                         </div>
 
                         <div>
                           <p className="text-sm font-semibold text-gray-700">Ảnh từ link</p>
                           <textarea
                             name="images"
+                            ref={setFieldRef("images")}
                             value={formData.images}
                             onChange={handleImagesChange}
                             rows="3"
-                            placeholder="Dán link ảnh (mỗi dòng 1 link)"
-                            className={`${inputClass} mt-3`}
+                            placeholder="URL_IMAGE"
+                            className={`${inputClass} mt-3 ${errors.images ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                           />
-                          <p className="mt-2 text-xs text-gray-500">
+                          {errors.images && <p className="mt-1 text-xs font-medium text-red-500">{errors.images}</p>}
+                          {/* <p className="mt-2 text-xs text-gray-500">
                             Ảnh đầu tiên sẽ là thumbnail của dịch vụ, các ảnh còn lại sẽ hiện khi bấm xem thêm ảnh.
-                          </p>
+                          </p> */}
                         </div>
                       </div>
                     </div>
@@ -484,31 +589,52 @@ const EditServices = () => {
                       <label className={labelClass}>Điểm nổi bật</label>
                       <textarea
                         name="highlights"
+                        ref={setFieldRef("highlights")}
                         value={formData.highlights}
                         onChange={handleChange}
                         rows="4"
-                        className={inputClass}
+                        className={`${inputClass} ${errors.highlights ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                       />
+                      {errors.highlights && <p className="mt-1 text-xs font-medium text-red-500">{errors.highlights}</p>}
                     </div>
                     <div>
                       <label className={labelClass}>Bao gồm</label>
                       <textarea
                         name="includes"
+                        ref={setFieldRef("includes")}
                         value={formData.includes}
                         onChange={handleChange}
                         rows="4"
-                        className={inputClass}
+                        className={`${inputClass} ${errors.includes ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
                       />
+                      {errors.includes && <p className="mt-1 text-xs font-medium text-red-500">{errors.includes}</p>}
                     </div>
                   </div>
                   <div>
                     <label className={labelClass}>Lịch trình Excel</label>
                     <input
                       type="file"
+                      ref={(element) => {
+                        itineraryInputRef.current = element;
+                        setFieldRef("itineraryFile")(element);
+                      }}
                       accept=".xlsx,.xls,.csv"
                       onChange={handleItineraryFileChange}
                       className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-600 focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
                     />
+                    {itineraryFile && (
+                      <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-white px-3 py-2 text-sm text-gray-600">
+                        <span className="min-w-0 truncate">{itineraryFile.name}</span>
+                        <button
+                          type="button"
+                          onClick={removeItineraryFile}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                          aria-label="Xóa file Excel"
+                        >
+                          <FiX size={16} />
+                        </button>
+                      </div>
+                    )}
                     <p className="mt-2 text-xs text-gray-500">
                       Chọn file Excel nếu muốn cập nhật lại lịch trình, nếu không thì giữ nguyên lịch trình cũ.
                     </p>
@@ -519,7 +645,7 @@ const EditServices = () => {
               <div className="flex justify-end gap-4 border-t border-gray-100 pt-2">
                 <button
                   type="button"
-                  onClick={() => navigate("/provider/services")}
+                  onClick={() => (isModal ? onClose?.() : navigate("/provider/services"))}
                   className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-gray-700 transition hover:bg-gray-50"
                 >
                   Hủy

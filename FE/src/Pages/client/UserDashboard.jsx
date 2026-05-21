@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa6";
 import { jwt } from "../../utils/jwt";
 import { formatVND } from "../../utils/money";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
 
 const tabs = [
   { id: "orders", label: "Đơn hàng", icon: FaTicket },
@@ -694,15 +695,15 @@ function UserDashboard() {
                 className="text-3xl font-extrabold tracking-tight text-slate-900"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                Xin chào,{" "}
+                Xin chào{" "}
                 <span className="text-[#f97316]">
                   {profile.fullName || currentUser?.fullName || "Khách hàng"}
                 </span>
               </h1>
-              <p className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500">
+              {/* <p className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500">
                 Đây là nơi bạn xem tổng quan tài khoản, các đơn đã đặt và thông
                 tin cá nhân.
-              </p>
+              </p> */}
             </div>
           </div>
         </div>
@@ -791,7 +792,7 @@ function UserDashboard() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
-                    <span className="text-sm text-slate-500">Họ tên</span>
+                    <RequiredLabel className="ml-1 text-sm text-slate-500">Họ tên</RequiredLabel>
                     <input
                       value={profile.fullName}
                       onChange={(e) =>
@@ -805,9 +806,7 @@ function UserDashboard() {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-sm text-slate-500">
-                      Số điện thoại
-                    </span>
+                    <RequiredLabel className="ml-1 text-sm text-slate-500">Số điện thoại</RequiredLabel>
                     <input
                       value={profile.phone}
                       onChange={(e) =>
@@ -822,7 +821,7 @@ function UserDashboard() {
                 </div>
 
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-500">Email</span>
+                  <span className="text-sm ml-1 pb-3 text-slate-500">Email</span>
                   <input
                     value={profile.email}
                     disabled
@@ -834,7 +833,7 @@ function UserDashboard() {
                   type="button"
                   onClick={updateProfile}
                   disabled={savingProfile}
-                  className="rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="mt-4 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-6 py-3 text-sm font-semibold text-white transition hover:shadow-lg hover:shadow-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {savingProfile ? "Đang cập nhật..." : "Cập nhật"}
                 </button>
@@ -1134,7 +1133,7 @@ function UserDashboard() {
 
             <label className="mb-5 block">
               <span className="mb-2 block text-sm text-slate-500">
-                Bình luận
+                <RequiredLabel>Bình luận</RequiredLabel>
               </span>
               <textarea
                 value={reviewForm.comment}

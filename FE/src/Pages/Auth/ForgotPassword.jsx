@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
@@ -6,38 +6,54 @@ import {
   MdOutlineKey,
   MdArrowBack,
 } from "react-icons/md";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [fieldErrors, setFieldErrors] = useState({});
+  const emailRef = useRef(null);
 
   const inputClass =
     "w-full rounded-2xl border border-[#ead9cb] bg-[#fffaf7] px-4 py-3.5 text-sm text-[#1a1a2e] outline-none transition focus:border-[#f97316] focus:ring-4 focus:ring-[#f97316]/10";
-
+  const errorInputClass =
+    "border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-rose-100";
   const actionButtonClass =
     "flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:shadow-orange-300 disabled:cursor-not-allowed disabled:opacity-70";
 
-  const showError = (text) => setMessage({ type: "error", text });
-  const showSuccess = (text) => setMessage({ type: "success", text });
+  const setEmailError = (text) => {
+    setFieldErrors({ email: text });
+    setMessage({ type: "", text: "" });
+    emailRef.current?.focus();
+  };
 
   const handleSendResetLink = async () => {
-    if (!email.trim()) {
-      showError("Vui lòng nhập email để tiếp tục.");
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setEmailError("Vui lòng nhập email để tiếp tục");
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      setEmailError("Email không đúng định dạng");
       return;
     }
 
     try {
       setLoading(true);
       setMessage({ type: "", text: "" });
+      setFieldErrors({});
 
-      const res = await axios.post("/api/auth/forgot-password", {
-        email,
+      await axios.post("/api/auth/forgot-password", {
+        email: normalizedEmail,
       });
 
-      showSuccess("Đã gửi");
+      setMessage({ type: "success", text: "Đã gửi" });
     } catch (error) {
-      showError(error?.response?.data?.message || "Không thể gửi yêu cầu.");
+      setEmailError(error?.response?.data?.message || "Không thể gửi yêu cầu.");
     } finally {
       setLoading(false);
     }
@@ -71,15 +87,24 @@ export default function ForgotPassword() {
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#1a1a2e]">
-                  Email
+                  <RequiredLabel>Email</RequiredLabel>
                 </label>
                 <input
+                  ref={emailRef}
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClass}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors({});
+                  }}
+                  className={`${inputClass} ${fieldErrors.email ? errorInputClass : ""}`}
                   placeholder="Email của bạn"
                 />
+                {fieldErrors.email ? (
+                  <p className="mt-2 px-1 text-left text-sm leading-5 text-rose-500">
+                    {fieldErrors.email}
+                  </p>
+                ) : null}
               </div>
 
               <button
@@ -93,13 +118,7 @@ export default function ForgotPassword() {
               </button>
 
               {message.text ? (
-                <p
-                  className={`rounded-xl px-4 py-3 text-center text-sm ${
-                    message.type === "success"
-                      ? "bg-green-50 text-green-600"
-                      : "bg-red-50 text-red-600"
-                  }`}
-                >
+                <p className="rounded-xl bg-green-50 px-4 py-3 text-center text-sm text-green-600">
                   {message.text}
                 </p>
               ) : null}

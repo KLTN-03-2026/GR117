@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CiLogin } from "../../assets/Icons/Icons";
-import { FaFacebook, FaInstagram } from "react-icons/fa";
-import { FcGoogle } from "react-icons/fc";
-import { fileToDataUrl } from "../../utils/fileToDataUrl";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
+
 import TermsContent from "./TermsContent";
 
 const defaultForm = {
@@ -28,17 +27,53 @@ const defaultForm = {
   },
 };
 
+const PERSON_NAME_REGEX = /^[\p{L}\s]+$/u;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BUSINESS_TEXT_REGEX = /^[\p{L}\d\s]+$/u;
+const VIETNAM_PHONE_REGEX = /^0\d{9}$/;
+const MAX_BUSINESS_LICENSE_SIZE = 5 * 1024 * 1024;
+
+const fileToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState(defaultForm);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
 
+  const fieldRefs = {
+    fullName: useRef(null),
+    businessName: useRef(null),
+    taxCode: useRef(null),
+    address: useRef(null),
+    businessLicense: useRef(null),
+    legalRepresentative: useRef(null),
+    bankAccountNumber: useRef(null),
+    bankName: useRef(null),
+    email: useRef(null),
+    phone: useRef(null),
+    password: useRef(null),
+    confirmPass: useRef(null),
+  };
+
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const setAgreement = (key, value) => {
@@ -49,12 +84,30 @@ export default function Register() {
         [key]: value,
       },
     }));
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const handleBusinessLicenseChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) {
       setField("businessLicense", "");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setField("businessLicense", "");
+      setError("Vui lòng chọn file ảnh giấy phép kinh doanh");
+      return;
+    }
+
+    if (file.size > MAX_BUSINESS_LICENSE_SIZE) {
+      setField("businessLicense", "");
+      setError("Ảnh giấy phép kinh doanh không được vượt quá 5MB");
       return;
     }
 
@@ -68,16 +121,28 @@ export default function Register() {
   };
 
   const validateProviderForm = () => {
-    if (!form.businessName.trim())
+    const businessName = form.businessName.trim();
+    const address = form.address.trim();
+    const bankAccountNumber = form.bankAccountNumber.trim();
+
+    if (!businessName)
       return "Vui lòng nhập tên doanh nghiệp/hộ kinh doanh/thương nhân";
+    if (!BUSINESS_TEXT_REGEX.test(businessName))
+      return "Tên doanh nghiệp không được chứa ký tự đặc biệt";
+    if (businessName.length < 5 || businessName.length > 30)
+      return "Tên doanh nghiệp phải từ 5 đến 30 ký tự";
     if (!form.taxCode.trim()) return "Vui lòng nhập mã số thuế";
-    if (!form.address.trim()) return "Vui lòng nhập địa chỉ doanh nghiệp";
+    if (!address) return "Vui lòng nhập địa chỉ doanh nghiệp";
+    if (address.length < 5 || address.length > 30)
+      return "Địa chỉ doanh nghiệp phải từ 5 đến 30 ký tự";
     if (!form.businessLicense.trim())
       return "Vui lòng upload giấy phép kinh doanh";
     if (!form.legalRepresentative.trim())
       return "Vui lòng nhập người đại diện pháp luật";
-    if (!form.bankAccountNumber.trim())
+    if (!bankAccountNumber)
       return "Vui lòng nhập số tài khoản ngân hàng";
+    if (!/^\d+$/.test(bankAccountNumber))
+      return "Số tài khoản ngân hàng bắt buộc phải là số";
     if (!form.bankName.trim()) return "Vui lòng nhập tên ngân hàng";
     if (form.agreements.termsAccepted !== true) {
       return "Bạn cần đồng ý với điều khoản hợp tác";
@@ -85,17 +150,139 @@ export default function Register() {
     return "";
   };
 
+  const focusFirstInvalidField = (errors) => {
+    const firstField = Object.keys(errors)[0];
+    if (!firstField) return;
+    fieldRefs[firstField]?.current?.focus();
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (form.password !== form.confirmPass) {
-      setError("Mật khẩu xác nhận không khớp");
+    const fullName = form.fullName.trim();
+    const email = form.email.trim();
+    const phone = form.phone.trim();
+    const nextErrors = {};
+
+    if (form.role === "user") {
+      if (!fullName) {
+        nextErrors.fullName = "Vui lòng nhập họ tên";
+      } else if (!PERSON_NAME_REGEX.test(fullName)) {
+        nextErrors.fullName = "Họ tên chỉ được chứa chữ cái";
+      } else if (fullName.length < 3 || fullName.length > 10) {
+        nextErrors.fullName = "Họ tên phải từ 3 đến 10 ký tự";
+      }
+    } else {
+      const businessName = form.businessName.trim();
+      const address = form.address.trim();
+      const bankAccountNumber = form.bankAccountNumber.trim();
+
+      if (!businessName) {
+        nextErrors.businessName = "Vui lòng nhập tên doanh nghiệp";
+      } else if (!BUSINESS_TEXT_REGEX.test(businessName)) {
+        nextErrors.businessName = "Tên doanh nghiệp không được chứa ký tự đặc biệt";
+      } else if (businessName.length < 5 || businessName.length > 30) {
+        nextErrors.businessName = "Tên doanh nghiệp phải từ 5 đến 30 ký tự";
+      }
+      if (!form.taxCode.trim()) nextErrors.taxCode = "Vui lòng nhập mã số thuế";
+      if (!address) {
+        nextErrors.address = "Vui lòng nhập địa chỉ doanh nghiệp";
+      } else if (address.length < 5 || address.length > 30) {
+        nextErrors.address = "Địa chỉ doanh nghiệp phải từ 5 đến 30 ký tự";
+      }
+      if (!form.businessLicense.trim()) nextErrors.businessLicense = "Vui lòng upload giấy phép kinh doanh";
+      if (!form.legalRepresentative.trim()) nextErrors.legalRepresentative = "Vui lòng nhập người đại diện pháp luật";
+      if (!bankAccountNumber) {
+        nextErrors.bankAccountNumber = "Vui lòng nhập số tài khoản ngân hàng";
+      } else if (!/^\d+$/.test(bankAccountNumber)) {
+        nextErrors.bankAccountNumber = "Số tài khoản ngân hàng bắt buộc phải là số";
+      }
+      if (!form.bankName.trim()) nextErrors.bankName = "Vui lòng nhập tên ngân hàng";
+      if (form.agreements.termsAccepted !== true) nextErrors.termsAccepted = "Bạn cần đồng ý với điều khoản hợp tác";
+    }
+
+    if (!email) {
+      nextErrors.email = "Vui lòng nhập email";
+    } else if (!EMAIL_REGEX.test(email)) {
+      nextErrors.email = "Email không đúng định dạng";
+    }
+
+    if (!phone) {
+      nextErrors.phone = "Vui lòng nhập số điện thoại";
+    } else if (!/^\d+$/.test(phone)) {
+      nextErrors.phone = "Số điện thoại chỉ được nhập số";
+    } else if (!VIETNAM_PHONE_REGEX.test(phone)) {
+      nextErrors.phone = "Số điện thoại phải đúng 10 số và bắt đầu bằng số 0";
+    }
+
+    if (!form.password) {
+      nextErrors.password = "Vui lòng nhập mật khẩu";
+    } else if (form.password.length < 6 || form.password.length > 10) {
+      nextErrors.password = "Mật khẩu phải từ 6 đến 10 ký tự";
+    }
+
+    if (!form.confirmPass) {
+      nextErrors.confirmPass = "Vui lòng nhập lại mật khẩu";
+    } else if (form.password !== form.confirmPass) {
+      nextErrors.confirmPass = "Nhập lại mật khẩu phải trùng với mật khẩu";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setError("");
+      setMessage("");
+      focusFirstInvalidField(nextErrors);
+      return;
+    }
+
+    setFieldErrors({});
+
+    if (form.role === "user") {
+      if (!fullName || !email || !phone || !form.password || !form.confirmPass) {
+        setError("Không được để trống thông tin đăng ký");
+        setMessage("");
+        return;
+      }
+
+      if (!PERSON_NAME_REGEX.test(fullName)) {
+        setError("Họ tên chỉ được chứa chữ cái");
+        setMessage("");
+        return;
+      }
+
+      if (fullName.length < 3 || fullName.length > 10) {
+        setError("Họ tên phải từ 3 đến 10 ký tự");
+        setMessage("");
+        return;
+      }
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      setError("Email không đúng định dạng");
       setMessage("");
       return;
     }
 
-    if (form.password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự");
+    if (!/^\d+$/.test(phone)) {
+      setError("Số điện thoại chỉ được nhập số");
+      setMessage("");
+      return;
+    }
+
+    if (!VIETNAM_PHONE_REGEX.test(phone)) {
+      setError("Số điện thoại phải đúng 10 số và bắt đầu bằng số 0");
+      setMessage("");
+      return;
+    }
+
+    if (form.password.length < 6 || form.password.length > 10) {
+      setError("Mật khẩu phải từ 6 đến 10 ký tự");
+      setMessage("");
+      return;
+    }
+
+    if (form.password !== form.confirmPass) {
+      setError("Nhập lại mật khẩu phải trùng với mật khẩu");
       setMessage("");
       return;
     }
@@ -122,22 +309,22 @@ export default function Register() {
       try {
         const payload = {
           fullName:
-            form.role === "provider" ? form.businessName : form.fullName,
-          businessName: form.businessName,
-          email: form.email,
-          phone: form.phone,
+            form.role === "provider" ? form.businessName.trim() : form.fullName.trim(),
+          businessName: form.businessName.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
           password: form.password,
           confirmPass: form.confirmPass,
           role: form.role,
         };
 
         if (form.role === "provider") {
-          payload.taxCode = form.taxCode;
+          payload.taxCode = form.taxCode.trim();
           payload.businessLicense = form.businessLicense;
-          payload.address = form.address;
-          payload.legalRepresentative = form.legalRepresentative;
-          payload.bankAccountNumber = form.bankAccountNumber;
-          payload.bankName = form.bankName;
+          payload.address = form.address.trim();
+          payload.legalRepresentative = form.legalRepresentative.trim();
+          payload.bankAccountNumber = form.bankAccountNumber.trim();
+          payload.bankName = form.bankName.trim();
           payload.agreements = form.agreements;
         }
 
@@ -157,6 +344,15 @@ export default function Register() {
           });
           setTimeout(() => navigate("/signin"), 1000);
         } else {
+          if (data.message?.toLowerCase().includes("email")) {
+            const nextErrors = { email: data.message };
+            setFieldErrors(nextErrors);
+            focusFirstInvalidField(nextErrors);
+          } else if (data.message?.toLowerCase().includes("số điện thoại")) {
+            const nextErrors = { phone: data.message };
+            setFieldErrors(nextErrors);
+            focusFirstInvalidField(nextErrors);
+          }
           setError(data.message || "Đăng ký thất bại");
         }
       } catch {
@@ -197,11 +393,25 @@ export default function Register() {
     "flex h-12 w-full items-center rounded-xl border border-gray-200 bg-[#f8fafc] px-4 text-[#0f172a] outline-none transition-colors focus:border-[#f97316] focus:bg-white";
   const uploadClass =
     "flex h-12 w-full cursor-pointer items-center justify-between rounded-xl border border-dashed border-orange-200 bg-[#f8fafc] px-4 text-sm text-slate-600 outline-none transition hover:border-orange-300 focus:border-[#f97316] focus:bg-white";
+  const getInputClass = (field) =>
+    fieldErrors[field]
+      ? `${inputClass} border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-2 focus:ring-rose-100`
+      : inputClass;
+  const getUploadClass = (field) =>
+    fieldErrors[field]
+      ? `${uploadClass} border-rose-500 text-rose-600`
+      : uploadClass;
+  const FieldError = ({ name }) =>
+    fieldErrors[name] ? (
+      <p className="mt-2 px-1 text-left text-sm leading-5 text-rose-500">
+        {fieldErrors[name]}
+      </p>
+    ) : null;
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center bg-[#f8fafc] px-4 py-16">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+        <div className="mb-8 mt-8 text-center">
           <h1
             className="mb-2 text-[#0f172a]"
             style={{
@@ -218,6 +428,7 @@ export default function Register() {
         </div>
 
         <form
+          noValidate
           onSubmit={handleSubmit}
           className="space-y-4 rounded-3xl border border-gray-100 bg-white p-8 shadow-xl"
         >
@@ -230,11 +441,10 @@ export default function Register() {
                 key={role.value}
                 type="button"
                 onClick={() => setField("role", role.value)}
-                className={`flex-1 rounded-2xl py-2.5 transition-all ${
-                  form.role === role.value
+                className={`flex-1 rounded-2xl py-2.5 transition-all ${form.role === role.value
                     ? "bg-[#f97316] text-white shadow-sm"
                     : "text-slate-500"
-                }`}
+                  }`}
                 style={{ fontSize: 13, fontWeight: 600 }}
               >
                 {role.label}
@@ -245,34 +455,38 @@ export default function Register() {
           {form.role === "user" ? (
             <div>
               <label
-                className="mb-1.5 block pl-2 text-left text-slate-500"
+                className="mb-2 block pl-2 text-left text-slate-500"
                 style={{ fontSize: 13, fontWeight: 500 }}
               >
-                Họ tên
+                <RequiredLabel>Họ tên</RequiredLabel>
               </label>
               <input
+                ref={fieldRefs.fullName}
                 value={form.fullName}
                 onChange={(e) => setField("fullName", e.target.value)}
                 required
-                className={inputClass}
+                className={getInputClass("fullName")}
                 style={{ fontSize: 14 }}
               />
+              <FieldError name="fullName" />
             </div>
           ) : (
             <div>
               <label
-                className="mb-1.5 block pl-2 text-left text-slate-500"
+                className="mb-2 block pl-2 text-left text-slate-500"
                 style={{ fontSize: 13, fontWeight: 500 }}
               >
-                Tên doanh nghiệp/hộ kinh doanh/thương nhân
+                <RequiredLabel>Tên doanh nghiệp/hộ kinh doanh/thương nhân</RequiredLabel>
               </label>
               <input
+                ref={fieldRefs.businessName}
                 value={form.businessName}
                 onChange={(e) => setField("businessName", e.target.value)}
                 required
-                className={inputClass}
+                className={getInputClass("businessName")}
                 style={{ fontSize: 14 }}
               />
+              <FieldError name="businessName" />
             </div>
           )}
 
@@ -280,171 +494,197 @@ export default function Register() {
             <div>
               <div>
                 <label
-                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  className="mb-2 block pl-2 text-left text-slate-500"
                   style={{ fontSize: 13, fontWeight: 500 }}
                 >
-                  Mã số thuế
+                  <RequiredLabel>Mã số thuế</RequiredLabel>
                 </label>
                 <input
+                  ref={fieldRefs.taxCode}
                   value={form.taxCode}
                   onChange={(e) => setField("taxCode", e.target.value)}
-                  className={inputClass}
+                  className={getInputClass("taxCode")}
                   style={{ fontSize: 14 }}
                 />
+                <FieldError name="taxCode" />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  className="mb-2 block pl-2 text-left text-slate-500"
                   style={{ fontSize: 13, fontWeight: 500 }}
                 >
-                  Địa chỉ doanh nghiệp
+                  <RequiredLabel>Địa chỉ doanh nghiệp</RequiredLabel>
                 </label>
                 <input
+                  ref={fieldRefs.address}
                   value={form.address}
                   onChange={(e) => setField("address", e.target.value)}
-                  className={inputClass}
+                  className={getInputClass("address")}
                   style={{ fontSize: 14 }}
                 />
+                <FieldError name="address" />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  className="mb-2 block pl-2 text-left text-slate-500"
                   style={{ fontSize: 13, fontWeight: 500 }}
                 >
-                  Giấy phép kinh doanh
+                  <RequiredLabel>Giấy phép kinh doanh</RequiredLabel>
                 </label>
-                <label className={uploadClass}>
+                <label className={getUploadClass("businessLicense")}>
                   <span>Upload ảnh</span>
                   <span className="text-xs text-slate-400">
                     {form.businessLicense ? "Đã chọn ảnh" : "Chưa upload"}
                   </span>
                   <input
+                    ref={fieldRefs.businessLicense}
                     type="file"
                     accept="image/*"
                     onChange={handleBusinessLicenseChange}
                     className="hidden"
                   />
                 </label>
+                <FieldError name="businessLicense" />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  className="mb-2 block pl-2 text-left text-slate-500"
                   style={{ fontSize: 13, fontWeight: 500 }}
                 >
-                  Người đại diện pháp luật
+                  <RequiredLabel>Người đại diện pháp luật</RequiredLabel>
                 </label>
                 <input
+                  ref={fieldRefs.legalRepresentative}
                   value={form.legalRepresentative}
                   onChange={(e) =>
                     setField("legalRepresentative", e.target.value)
                   }
-                  className={inputClass}
+                  className={getInputClass("legalRepresentative")}
                   style={{ fontSize: 14 }}
                 />
+                <FieldError name="legalRepresentative" />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  className="mb-2 block pl-2 text-left text-slate-500"
                   style={{ fontSize: 13, fontWeight: 500 }}
                 >
-                  Số tài khoản ngân hàng
+                  <RequiredLabel>Số tài khoản ngân hàng</RequiredLabel>
                 </label>
                 <input
+                  ref={fieldRefs.bankAccountNumber}
                   value={form.bankAccountNumber}
-                  onChange={(e) => setField("bankAccountNumber", e.target.value)}
+                  onChange={(e) =>
+                    setField("bankAccountNumber", e.target.value)
+                  }
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   required
-                  className={inputClass}
+                  className={getInputClass("bankAccountNumber")}
                   style={{ fontSize: 14 }}
                 />
+                <FieldError name="bankAccountNumber" />
               </div>
 
               <div>
                 <label
-                  className="mb-1.5 block pl-2 text-left text-slate-500"
+                  className="mb-2 block pl-2 text-left text-slate-500"
                   style={{ fontSize: 13, fontWeight: 500 }}
                 >
-                  Ngân hàng
+                  <RequiredLabel>Ngân hàng</RequiredLabel>
                 </label>
                 <input
+                  ref={fieldRefs.bankName}
                   value={form.bankName}
                   onChange={(e) => setField("bankName", e.target.value)}
                   required
-                  className={inputClass}
+                  className={getInputClass("bankName")}
                   style={{ fontSize: 14 }}
                 />
+                <FieldError name="bankName" />
               </div>
             </div>
           ) : null}
 
           <div>
             <label
-              className="mb-1.5 block pl-2 text-left text-slate-500"
+              className="mb-2 block pl-2 text-left text-slate-500"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
-              Email
+              <RequiredLabel>Email</RequiredLabel>
             </label>
             <input
+              ref={fieldRefs.email}
               type="email"
               value={form.email}
               onChange={(e) => setField("email", e.target.value)}
               required
-              className={inputClass}
+              className={getInputClass("email")}
               style={{ fontSize: 14 }}
             />
+            <FieldError name="email" />
           </div>
 
           <div>
             <label
-              className="mb-1.5 block pl-2 text-left text-slate-500"
+              className="mb-2 block pl-2 text-left text-slate-500"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
-              Số điện thoại
+              <RequiredLabel>Số điện thoại</RequiredLabel>
             </label>
             <input
+              ref={fieldRefs.phone}
               value={form.phone}
               onChange={(e) => setField("phone", e.target.value)}
+              inputMode="numeric"
+              pattern="0[0-9]{9}"
               required
-              className={inputClass}
+              className={getInputClass("phone")}
               style={{ fontSize: 14 }}
             />
+            <FieldError name="phone" />
           </div>
 
           <div>
             <label
-              className="mb-1.5 block pl-2 text-left text-slate-500"
+              className="mb-2 block pl-2 text-left text-slate-500"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
-              Mật khẩu
+              <RequiredLabel>Mật khẩu</RequiredLabel>
             </label>
             <input
+              ref={fieldRefs.password}
               type="password"
               value={form.password}
               onChange={(e) => setField("password", e.target.value)}
               required
-              className={inputClass}
+              className={getInputClass("password")}
               style={{ fontSize: 14 }}
             />
+            <FieldError name="password" />
           </div>
 
-          <div>
+          <div className="mb-5 ">
             <label
-              className="mb-1.5 block pl-2 text-left text-slate-500"
+              className="mb-2 block pl-2 text-left text-slate-500"
               style={{ fontSize: 13, fontWeight: 500 }}
             >
-              Xác nhận mật khẩu
+              <RequiredLabel>Xác nhận mật khẩu</RequiredLabel>
             </label>
             <input
+              ref={fieldRefs.confirmPass}
               type="password"
               value={form.confirmPass}
               onChange={(e) => setField("confirmPass", e.target.value)}
               required
-              className={inputClass}
+              className={getInputClass("confirmPass")}
               style={{ fontSize: 14 }}
             />
+            <FieldError name="confirmPass" />
           </div>
 
           {form.role === "provider" ? (
@@ -463,6 +703,7 @@ export default function Register() {
                   <span>{item.label}</span>
                 </label>
               ))}
+              <FieldError name="termsAccepted" />
             </div>
           ) : null}
 
@@ -480,7 +721,6 @@ export default function Register() {
               ) : null}
             </div>
           ) : null}
-
           <button
             type="submit"
             disabled={loading}
@@ -491,7 +731,7 @@ export default function Register() {
             {loading ? "Đang xử lý..." : "Đăng ký"}
           </button>
 
-          <p className="text-center text-slate-500" style={{ fontSize: 14 }}>
+          <p className="mt-3 text-center text-slate-500" style={{ fontSize: 14 }}>
             Đã có tài khoản?{" "}
             <Link
               to="/signin"
@@ -501,33 +741,6 @@ export default function Register() {
               Đăng nhập
             </Link>
           </p>
-
-          <div className="my-2 flex items-center gap-3">
-            <div className="h-[1px] flex-1 bg-gray-200" />
-            <span className="text-xs text-gray-400">Hoặc đăng ký với</span>
-            <div className="h-[1px] flex-1 bg-gray-200" />
-          </div>
-
-          <div className="flex justify-center gap-4">
-            <button
-              type="button"
-              className="flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-gray-50"
-            >
-              <FcGoogle className="text-2xl" />
-            </button>
-            <button
-              type="button"
-              className="flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-blue-50"
-            >
-              <FaFacebook className="text-2xl text-blue-600" />
-            </button>
-            <button
-              type="button"
-              className="flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-pink-50"
-            >
-              <FaInstagram className="text-2xl text-pink-500" />
-            </button>
-          </div>
         </form>
       </div>
 
@@ -558,7 +771,6 @@ export default function Register() {
                 Đóng
               </button>
             </div>
-
             <div className="max-h-[75vh] overflow-y-auto px-6 py-6">
               <TermsContent />
             </div>

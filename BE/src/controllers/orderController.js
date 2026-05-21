@@ -8,6 +8,10 @@ const {
   createRefundEntry,
   normalizeCancellationPolicy,
 } = require("../services/escrowLedgerService.js");
+const {
+  validateCreateOrder,
+  validateUpdateOrderStatus,
+} = require("../validations/orderValidation.js");
 
 const generateOrderCode = async () => {
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -44,6 +48,11 @@ const releaseScheduleSlots = async (order) => {
 // Tao don dat tour moi cho user, co xu ly coupon neu duoc gui len.
 module.exports.createOrder = async (req, res) => {
   try {
+    const validation = validateCreateOrder(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+
     const {
       scheduleId,
       numPeople,
@@ -51,27 +60,7 @@ module.exports.createOrder = async (req, res) => {
       note,
       paymentFlow,
       couponCode,
-    } = req.body;
-
-    const parsedPeople = Number(numPeople);
-    if (!scheduleId) {
-      return res.status(400).json({ message: "Thieu lich khoi hanh" });
-    }
-
-    if (!Number.isInteger(parsedPeople) || parsedPeople < 1) {
-      return res.status(400).json({ message: "So luong khach khong hop le" });
-    }
-
-    if (
-      !customerInfo ||
-      !String(customerInfo.name || "").trim() ||
-      !String(customerInfo.email || "").trim() ||
-      !String(customerInfo.phone || "").trim()
-    ) {
-      return res.status(400).json({
-        message: "Vui long nhap day du ho ten, email va so dien thoai",
-      });
-    }
+    } = validation.data;
 
     const schedule = await Schedule.findById(scheduleId).populate("serviceId");
     if (!schedule || schedule.status !== "open") {
@@ -82,14 +71,14 @@ module.exports.createOrder = async (req, res) => {
 
     const availableSlots =
       Number(schedule.maxSlots || 0) - Number(schedule.bookedSlots || 0);
-    if (parsedPeople > availableSlots) {
+    if (numPeople > availableSlots) {
       return res.status(400).json({
         message: "Số lượng chỗ còn lại không đủ",
       });
     }
 
     const service = schedule.serviceId;
-    const baseTotalPrice = Number(service.prices || 0) * parsedPeople;
+    const baseTotalPrice = Number(service.prices || 0) * numPeople;
     let discountAmount = 0;
     let couponId = null;
     let normalizedCouponCode = "";
@@ -155,7 +144,7 @@ module.exports.createOrder = async (req, res) => {
         pricePerPerson: service.prices,
       },
       customerInfo,
-      numPeople: parsedPeople,
+      numPeople,
       originalPrice: baseTotalPrice,
       totalPrice: finalPrice,
       couponCode: normalizedCouponCode,
@@ -173,7 +162,7 @@ module.exports.createOrder = async (req, res) => {
       paymentStatus: "unpaid",
     });
 
-    schedule.bookedSlots += parsedPeople;
+    schedule.bookedSlots += numPeople;
     if (schedule.bookedSlots >= schedule.maxSlots) {
       schedule.status = "full";
     }
@@ -369,7 +358,11 @@ module.exports.getProviderOrders = async (req, res) => {
 module.exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, paymentStatus } = req.body;
+    const validation = validateUpdateOrderStatus(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+    const { status, paymentStatus } = validation.data;
 
     const order = await Order.findById(id);
     if (!order) {

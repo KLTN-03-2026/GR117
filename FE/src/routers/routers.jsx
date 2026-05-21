@@ -2,16 +2,15 @@
 import PublicLayout from "../layout/PublicLayout.jsx";
 import LayoutAdmin from "../layout/LayoutAdmin.jsx";
 import HomePage from "../Pages/client/HomePage.jsx";
-import SignIn from "../Pages/auth/SignIn.jsx";
-import Register from "../Pages/auth/Register.jsx";
-import ForgotPassword from "../Pages/auth/ForgotPassword.jsx";
+import SignIn from "../Pages/Auth/SignIn.jsx";
+import Register from "../Pages/Auth/Register.jsx";
+import ForgotPassword from "../Pages/Auth/ForgotPassword.jsx";
 import ResetPassword from "../Pages/Auth/ResetPassword.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import { jwt } from "../utils/jwt.js";
 import Services from "../Pages/provider/Services.jsx";
 import DashboardAdmin from "../Pages/admin/DashboardAdmin.jsx";
 import AddServices from "../Pages/provider/AddServices.jsx";
-import DashboardProvider from "../Pages/provider/DashboardProvider.jsx";
 import EditServices from "../Pages/provider/EditServices.jsx";
 import ServicesDetail from "../Pages/provider/ServicesDetail.jsx";
 import Destination from "../Pages/client/Destination.jsx";
@@ -78,8 +77,8 @@ function Routers() {
 
       <Route element={<ProtectedRoute roles={["provider"]} />}>
         <Route path="/provider" element={<ProviderLayout />}>
-          <Route index element={<DashboardProvider />} />
-          <Route path="dashboard" element={<Navigate to="/provider" replace />} />
+          <Route index element={<Revenue />} />
+          <Route path="dashboard" element={<Navigate to="/provider/revenue" replace />} />
           <Route path="services" element={<Services />} />
           <Route path="Services" element={<Navigate to="services" replace />} />
           <Route path="addservices" element={<AddServices />} />

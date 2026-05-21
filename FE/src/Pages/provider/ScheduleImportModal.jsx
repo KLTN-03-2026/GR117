@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { FiFileText, FiX } from "react-icons/fi";
 
 export default function ScheduleImportModal({
@@ -8,14 +8,23 @@ export default function ScheduleImportModal({
   onSubmit,
 }) {
   const [file, setFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!open) setFile(null);
+    if (!open) {
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }, [open]);
 
   if (!open) return null;
 
   const hasFile = !!file;
+
+  const clearFile = () => {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -66,11 +75,25 @@ export default function ScheduleImportModal({
               Chọn file
             </label>
             <input
+              ref={fileInputRef}
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[14px] text-gray-700 outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-2 file:text-[13px] file:font-semibold file:text-orange-600"
             />
+            {file && (
+              <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-white px-3 py-2 text-[13px] text-gray-600">
+                <span className="min-w-0 truncate">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                  aria-label="Xóa file Excel"
+                >
+                  <FiX size={15} />
+                </button>
+              </div>
+            )}
             <p className="mt-2 text-[12px] text-gray-400">
               Dòng đầu tiên phải là tiêu đề cột. Ngày nên nhập theo định dạng YYYY-MM-DD.
             </p>

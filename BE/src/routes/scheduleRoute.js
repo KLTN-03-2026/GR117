@@ -3,11 +3,16 @@ const router = express.Router();
 const scheduleController = require("../controllers/scheduleController.js");
 const {
   verifyToken,
+  optionalVerifyToken,
   authorizeRoles,
 } = require("../middlewares/authMiddleware.js");
 
 // Public: Xem lịch của một tour
-router.get("/service/:serviceId", scheduleController.getSchedulesByService);
+router.get(
+  "/service/:serviceId",
+  optionalVerifyToken,
+  scheduleController.getSchedulesByService,
+);
 
 // Private: Chỉ dành cho Nhà cung cấp (Provider)
 router.post(

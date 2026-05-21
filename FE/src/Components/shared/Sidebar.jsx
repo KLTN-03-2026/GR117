@@ -47,11 +47,7 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        <button className="w-full rounded bg-red-500 py-2 hover:bg-red-600">
-          Đăng xuất
-        </button>
-      </div>
+     
     </div>
   );
 }

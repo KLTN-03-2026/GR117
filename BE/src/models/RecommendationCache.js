@@ -63,8 +63,6 @@ const recommendationCacheSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-recommendationCacheSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
 const RecommendationCache = mongoose.model(
   "RecommendationCache",
   recommendationCacheSchema,

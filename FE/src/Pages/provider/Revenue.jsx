@@ -250,7 +250,7 @@ function Revenue() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8fafc]">
-        <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+        <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
           <Breadcrumb />
           <h1
             style={{
@@ -263,7 +263,7 @@ function Revenue() {
             Quản lý doanh thu
           </h1>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
             Đang tải dữ liệu doanh thu...
           </div>
@@ -274,7 +274,7 @@ function Revenue() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
-      <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
         <Breadcrumb />
         <h1
           style={{
@@ -288,7 +288,7 @@ function Revenue() {
         </h1>
       </div>
 
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-4 sm:p-6">
         {error ? (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -360,12 +360,12 @@ function Revenue() {
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">
+              <h3 className="text-lg font-semibold text-slate-900">
                 Lịch sử giao dịch doanh thu
               </h3>
-              <p className="text-xs text-slate-500">
+              {/* <p className="text-xs text-slate-500">
                 Thanh toán, phí sàn, giải ngân và hoàn tiền của provider.
-              </p>
+              </p> */}
             </div>
           </div>
 
@@ -437,6 +437,7 @@ function Revenue() {
               </tbody>
             </table>
           </div>
+
         </div>
       </div>
     </div>
@@ -444,4 +445,3 @@ function Revenue() {
 }
 
 export default Revenue;
-

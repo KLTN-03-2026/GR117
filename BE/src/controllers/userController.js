@@ -2,6 +2,12 @@ const User = require("../models/User.js");
 const Service = require("../models/Service.js");
 const bcrypt = require("bcrypt");
 const behaviorService = require("../services/behaviorService.js");
+const {
+  validateUpdateProfile,
+  validateChangePassword,
+  validateRecordBehavior,
+  validateUpdateUserStatus,
+} = require("../validations/userValidation.js");
 
 // Lấy thông tin cá nhân hiện tại
 module.exports.getProfile = async (req, res) => {
@@ -20,7 +26,7 @@ module.exports.getProfile = async (req, res) => {
 // Cập nhật thông tin cá nhân (Họ tên, SĐT)
 module.exports.updateProfile = async (req, res) => {
   try {
-    const { fullName, phone } = req.body;
+    const { fullName, phone } = validateUpdateProfile(req.body).data;
 
     // Tìm và cập nhật
     const updatedUser = await User.findByIdAndUpdate(
@@ -42,17 +48,11 @@ module.exports.updateProfile = async (req, res) => {
 // Thay đổi mật khẩu
 module.exports.changePassword = async (req, res) => {
   try {
-    const { oldPassword, newPassword, confirmNewPass } = req.body;
-
-    if (!oldPassword || !newPassword || !confirmNewPass) {
-      return res
-        .status(400)
-        .json({ message: "Vui lòng nhập đầy đủ thông tin" });
+    const validation = validateChangePassword(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
-
-    if (newPassword !== confirmNewPass) {
-      return res.status(400).json({ message: "Mật khẩu mới không khớp" });
-    }
+    const { oldPassword, newPassword } = validation.data;
 
     const user = await User.findById(req.user.id);
     const isMatch = await bcrypt.compare(oldPassword, user.password);
@@ -155,6 +155,11 @@ module.exports.toggleFavoriteService = async (req, res) => {
 
 module.exports.recordBehavior = async (req, res) => {
   try {
+    const validation = validateRecordBehavior(req.body || {});
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+
     const {
       actionType,
       serviceId,
@@ -166,11 +171,7 @@ module.exports.recordBehavior = async (req, res) => {
       holiday,
       source,
       metadata,
-    } = req.body || {};
-
-    if (!actionType) {
-      return res.status(400).json({ message: "Thieu actionType" });
-    }
+    } = validation.data;
 
     let service = null;
     if (serviceId) {
@@ -218,10 +219,14 @@ module.exports.getAllUsers = async (req, res) => {
 // [ADMIN] Khóa/Mở khóa hoặc duyệt Provider
 module.exports.updateUserStatus = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { status, isLocked } = req.body;
+    const { id } = req.params;
+    const validation = validateUpdateUserStatus(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+    const { status, isLocked } = validation.data;
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(id);
     if (!user)
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
 

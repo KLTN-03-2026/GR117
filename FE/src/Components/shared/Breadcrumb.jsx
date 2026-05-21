@@ -6,7 +6,7 @@ const ROOT_ROUTES = {
     to: "/admin",
   },
   provider: {
-    label: "Dashboard",
+    label: "Doanh thu",
     to: "/provider",
   },
   user: {

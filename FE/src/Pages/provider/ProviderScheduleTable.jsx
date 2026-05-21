@@ -52,13 +52,13 @@ export default function ProviderScheduleTable({
               Chỗ đặt
             </th>
             <th
-              className="px-3 py-3 text-left text-gray-500"
+              className="w-[140px] px-3 py-3 text-center text-gray-500"
               style={{ fontWeight: 500, fontSize: 13 }}
             >
               Trạng thái
             </th>
             <th
-              className="px-3 py-3 text-left text-gray-500"
+              className="w-[120px] px-3 py-3 text-center text-gray-500"
               style={{ fontWeight: 500, fontSize: 13 }}
             >
               Thao tác
@@ -109,17 +109,17 @@ export default function ProviderScheduleTable({
                   />
                 </td>
 
-                <td className="px-3 py-3">
+                <td className="w-[140px] px-3 py-3 text-center">
                   <span
-                    className={`rounded-full px-2 py-1 ${st.cls}`}
+                    className={`inline-flex min-w-[86px] justify-center rounded-full px-2 py-1 ${st.cls}`}
                     style={{ fontSize: 12, fontWeight: 500 }}
                   >
                     {st.label}
                   </span>
                 </td>
 
-                <td className="px-3 py-3">
-                  <div className="flex gap-1">
+                <td className="w-[120px] px-3 py-3">
+                  <div className="flex justify-center gap-1">
                     <button
                       onClick={() => onEdit(schedule)}
                       className="rounded-lg p-1.5 text-blue-600 transition hover:bg-blue-50"

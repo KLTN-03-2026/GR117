@@ -239,12 +239,10 @@ function RevenueByProvider() {
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-xl font-semibold text-slate-900">
               Quản lý doanh thu Provider
             </h3>
-            <p className="text-xs text-slate-500">
-              Chọn Gross hoặc Net, đồng thời lọc theo tháng để xem doanh thu gộp hay doanh thu ròng.
-            </p>
+           
           </div>
 
           <div className="flex w-full flex-col gap-2 lg:ml-auto lg:w-auto lg:flex-row lg:items-center">

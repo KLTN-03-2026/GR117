@@ -6,6 +6,7 @@ import { MdOutlineLocalOffer } from "react-icons/md";
 import { FaLocationDot, FaClock } from "../../assets/Icons/Icons";
 import { formatDate } from "../../utils/formatDate";
 import { formatVND } from "../../utils/money";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
 
 const FALLBACK_IMAGE = "https://via.placeholder.com/1200x800?text=No+Image";
 
@@ -467,7 +468,7 @@ function BookingConfirm() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-500">Họ tên</span>
+                  <RequiredLabel className="text-sm text-slate-500">Họ tên</RequiredLabel>
                   <input
                     value={customerForm.fullName}
                     onChange={(e) =>
@@ -481,7 +482,7 @@ function BookingConfirm() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-500">Email</span>
+                  <RequiredLabel className="text-sm text-slate-500">Email</RequiredLabel>
                   <input
                     type="email"
                     value={customerForm.email}
@@ -496,7 +497,7 @@ function BookingConfirm() {
                 </label>
 
                 <label className="space-y-2">
-                  <span className="text-sm text-slate-500">Số điện thoại</span>
+                  <RequiredLabel className="text-sm text-slate-500">Số điện thoại</RequiredLabel>
                   <input
                     value={customerForm.phone}
                     onChange={(e) =>

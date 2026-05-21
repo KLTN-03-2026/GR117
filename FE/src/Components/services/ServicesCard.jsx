@@ -94,6 +94,7 @@ const ServicesCard = ({
   isFavorite = false,
   favoriteLoading = false,
   onToggleFavorite,
+  onView,
 }) => {
   const serviceName = getName(service);
   const destination = getLocation(service);
@@ -109,13 +110,19 @@ const ServicesCard = ({
   const [favoriteToast, setFavoriteToast] = useState("");
   const hasRating = reviewCount > 0 && rating > 0;
 
+  const handleView = () => {
+    onView?.(service);
+  };
+
   const handleEdit = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     onEdit?.(service);
   };
 
   const handleDelete = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     onDelete?.(service);
   };
 
@@ -315,7 +322,19 @@ const ServicesCard = ({
 
   if (viewMode === "list") {
     return (
-      <div className="flex overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg">
+      <div
+        role={onView ? "button" : undefined}
+        tabIndex={onView ? 0 : undefined}
+        onClick={handleView}
+        onKeyDown={(event) => {
+          if (!onView) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleView();
+          }
+        }}
+        className={`flex overflow-hidden rounded-[28px] bg-white shadow transition hover:shadow-lg ${onView ? "cursor-pointer" : ""}`}
+      >
         <img
           src={image}
           alt={serviceName}
@@ -384,7 +403,19 @@ const ServicesCard = ({
   }
 
   return (
-    <div className="overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg">
+    <div
+      role={onView ? "button" : undefined}
+      tabIndex={onView ? 0 : undefined}
+      onClick={handleView}
+      onKeyDown={(event) => {
+        if (!onView) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleView();
+        }
+      }}
+      className={`overflow-hidden rounded-[30px] bg-white shadow transition hover:-translate-y-1 hover:shadow-lg ${onView ? "cursor-pointer" : ""}`}
+    >
       <div className="relative overflow-hidden">
         <img
           src={image}

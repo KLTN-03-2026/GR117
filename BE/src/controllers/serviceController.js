@@ -1,62 +1,13 @@
 const Service = require("../models/Service.js");
 const { parseItineraryExcelBuffer } = require("../utils/itineraryExcelParser.js");
 const behaviorService = require("../services/behaviorService.js");
-
-// Hàm đổi dữ liệu text hoặc JSON từ form-data thành mảng string để lưu vào Mongo đúng kiểu.
-const parseArrayField = (value) => {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item || "").trim()).filter(Boolean);
-  }
-
-  if (typeof value === "string") {
-    const text = value.trim();
-    if (!text) return [];
-
-    try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) {
-        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
-      }
-    } catch {
-      // Nếu không phải JSON thì rơi xuống tách dòng.
-    }
-
-    return text
-      .split(/[,;\n]/g)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-};
-
-// Hàm chuẩn hóa dữ liệu service nhận từ FE trước khi tạo hoặc cập nhật trong DB.
-const normalizeServiceBody = (body) => {
-  const payload = {
-    serviceName: String(body.serviceName || body.name || "").trim(),
-    description: String(body.description || "").trim(),
-    prices: Number(body.prices ?? body.price ?? 0),
-    location: String(body.location || "").trim(),
-    category: String(body.category || "").trim(),
-    duration: String(body.duration || "").trim(),
-    highlight: parseArrayField(body.highlight || body.highlights),
-    includes: parseArrayField(body.includes),
-    images: parseArrayField(body.images),
-    featured: body.featured === true || body.featured === "true",
-    seasonTags: parseArrayField(body.seasonTags || body.seasonTagsJson),
-    bestMonths: parseArrayField(body.bestMonths).map((item) => Number(item)).filter(Number.isFinite),
-    weatherTags: parseArrayField(body.weatherTags),
-    budgetRange: ["low", "mid", "high"].includes(
-      String(body.budgetRange || "mid").trim().toLowerCase(),
-    )
-      ? String(body.budgetRange || "mid").trim().toLowerCase()
-      : "mid",
-    imageUrl: String(body.imageUrl || "").trim(),
-    imageId: String(body.imageId || "").trim(),
-  };
-
-  return payload;
-};
+const {
+  normalizeServiceBody,
+  validateServicePayload,
+  validateItineraryFile,
+  validateApproveRejectService,
+  validateGetServicesQuery,
+} = require("../validations/serviceValidation.js");
 
 // Hàm lấy itinerary từ file Excel nếu FE upload file, hoặc từ body cũ nếu còn gửi JSON.
 const resolveItineraryPayload = (bodyItinerary, file) => {
@@ -100,7 +51,7 @@ module.exports.getAllServices = async (req, res) => {
       maxPrice,
       page = 1,
       limit = 10,
-    } = req.query;
+    } = validateGetServicesQuery(req.query).data;
 
     // Xây dựng bộ lọc
     const query = { status: "active" };
@@ -209,24 +160,18 @@ module.exports.incrementServiceView = async (req, res) => {
 module.exports.createService = async (req, res) => {
   try {
     // Hàm này tạo service mới và đọc lịch trình từ file Excel nếu FE gửi file lên.
-    const payload = normalizeServiceBody(req.body);
-    const itinerary = resolveItineraryPayload(req.body.itinerary, req.file);
-
-    if (
-      !payload.serviceName ||
-      !payload.description ||
-      !payload.prices ||
-      !payload.category
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Thiếu dữ liệu bắt buộc khi tạo service" });
+    const validation = validateServicePayload(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
 
-    if (req.file && (!itinerary || itinerary.length === 0)) {
+    const payload = validation.data;
+    const itinerary = resolveItineraryPayload(req.body.itinerary, req.file);
+    const itineraryValidation = validateItineraryFile(req.file, itinerary);
+    if (!itineraryValidation.isValid) {
       return res
-        .status(400)
-        .json({ message: "File Excel không có dữ liệu lịch trình hợp lệ" });
+        .status(itineraryValidation.status)
+        .json({ message: itineraryValidation.message });
     }
 
     const newService = new Service({
@@ -273,10 +218,11 @@ module.exports.updateService = async (req, res) => {
     };
 
     if (req.file) {
-      if (!itinerary || itinerary.length === 0) {
+      const itineraryValidation = validateItineraryFile(req.file, itinerary);
+      if (!itineraryValidation.isValid) {
         return res
-          .status(400)
-          .json({ message: "File Excel không có dữ liệu lịch trình hợp lệ" });
+          .status(itineraryValidation.status)
+          .json({ message: itineraryValidation.message });
       }
       updateData.itinerary = itinerary;
     } else if (Array.isArray(itinerary)) {
@@ -320,11 +266,13 @@ module.exports.deleteService = async (req, res) => {
 //  LẤY TOUR CỦA TÔI (PROVIDER) 
 module.exports.getMyServices = async (req, res) => {
   try {
-    const services = await Service.find({ provider_id: req.user.id }).sort({
-      createdAt: -1,
-    });
-    //Lay tong so dich vu cua Provider
-    const total = await Service.countDocuments(services);
+    const query = { provider_id: req.user.id };
+    const services = await Service.find(query)
+      .populate("category", "categoryName slug")
+      .sort({
+        createdAt: -1,
+      });
+    const total = await Service.countDocuments(query);
     return res.status(200).json({ total, data: services });
   } catch (error) {
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -356,13 +304,11 @@ module.exports.getPendingServices = async (req, res) => {
 module.exports.approveRejectService = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // Status truyền lên phải là 'active' hoặc 'rejected'
-
-    if (!["active", "rejected"].includes(status)) {
-      return res
-        .status(400)
-        .json({ message: "Trạng thái phê duyệt không hợp lệ" });
+    const validation = validateApproveRejectService(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
+    const { status } = validation.data;
 
     const service = await Service.findById(id);
     if (!service) {

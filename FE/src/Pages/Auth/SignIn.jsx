@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { CiLogin, FaRegEye, FaRegEyeSlash } from "../../assets/Icons/Icons";
-import { FaFacebook } from "react-icons/fa";
-import { FcGoogle } from "react-icons/fc";
-import { FaInstagram } from "react-icons/fa";
 import CustomApi from "../../../Server";
+import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function SignIn() {
   const navigate = useNavigate();
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+
   const getRedirectPath = (role) => {
     const normalizedRole = String(role || "").toLowerCase();
-
     if (normalizedRole === "admin") return "/admin";
     if (normalizedRole === "provider") return "/provider";
     return "/";
@@ -22,16 +25,52 @@ function SignIn() {
   const [showPw, setShowPw] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   if (currentUser) {
     return <Navigate to={getRedirectPath(currentUser.role)} replace />;
   }
 
+  const inputClass =
+    "w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-orange-400";
+  const errorInputClass =
+    "border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-2 focus:ring-rose-100";
+  const getInputClass = (field) =>
+    `${inputClass} ${fieldErrors[field] ? errorInputClass : ""}`;
+  const FieldError = ({ name }) =>
+    fieldErrors[name] ? (
+      <p className="mt-2 px-1 text-left text-sm leading-5 text-rose-500">
+        {fieldErrors[name]}
+      </p>
+    ) : null;
+
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const nextErrors = {};
+
+    if (!email.trim()) nextErrors.email = "Vui lòng nhập email";
+    else if (!EMAIL_REGEX.test(email.trim()))
+      nextErrors.email = "Email không đúng định dạng";
+    if (!password) nextErrors.password = "Vui lòng nhập mật khẩu";
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      if (nextErrors.email) emailRef.current?.focus();
+      else passwordRef.current?.focus();
+      return;
+    }
+
     setLoading(true);
-    setMessage({ type: "", text: "" });
+    setFieldErrors({});
 
     try {
       const res = await CustomApi({
@@ -40,20 +79,26 @@ function SignIn() {
         data: { email, password },
       });
 
-      const accessToken = res.data?.accessToken;
-      const user = res.data?.user;
-      const redirectPath = getRedirectPath(user?.role);
+      const payload = res?.data || res;
+      const authData = payload?.accessToken ? payload : payload?.data;
+      const accessToken = authData?.accessToken;
+      const user = authData?.user;
 
-      if (accessToken) localStorage.setItem("accessToken", accessToken);
-      if (user) localStorage.setItem("currentUser", JSON.stringify(user));
+      if (!accessToken || !user) {
+        throw new Error("Phản hồi đăng nhập không hợp lệ");
+      }
 
-      navigate(redirectPath, { replace: true });
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("currentUser", JSON.stringify(user));
+      toast.success("Đăng nhập thành công");
+
+      navigate(getRedirectPath(user?.role), { replace: true });
       window.location.reload();
     } catch (err) {
-      setMessage({
-        type: "error",
-        text: err.message || "Đăng nhập thất bại",
-      });
+      const message = err.message || "Đăng nhập thất bại";
+      setFieldErrors({ password: message });
+      passwordRef.current?.focus();
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -62,62 +107,61 @@ function SignIn() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-50 to-white px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
-          {/* Title */}
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Đăng nhập</h1>
-            <p className="text-gray-500 text-sm mt-1 mb-3">
+        <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-xl">
+          <div className="mb-6 text-center">
+            <h1 className="mb-2 text-3xl font-bold text-gray-800">Đăng nhập</h1>
+            <p className="mb-3 mt-1 text-sm text-gray-500">
               Chào mừng bạn quay trở lại VIVU Travel
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <label className="text-left pl-2 mb-1.5 block text-slate-500 font-medium text-sm">
-              {" "}
-              Email{" "}
-            </label>
-            <input
-              type="email"
-              placeholder="Email của bạn"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border bg-gray-50 focus:border-orange-400 outline-none text-sm"
-              required
-            />
-
-            {/* Password */}
+          <form noValidate onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-left pl-2 mb-1.5 block text-slate-500 font-medium text-sm">
-                Password
+              <label className="mb-1.5 block pl-2 text-left text-sm font-medium text-slate-500">
+                <RequiredLabel>Email</RequiredLabel>
+              </label>
+              <input
+                ref={emailRef}
+                type="email"
+                placeholder="Email của bạn"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearFieldError("email");
+                }}
+                className={getInputClass("email")}
+              />
+              <FieldError name="email" />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block pl-2 text-left text-sm font-medium text-slate-500">
+                <RequiredLabel>Password</RequiredLabel>
               </label>
 
               <div className="relative">
                 <input
+                  ref={passwordRef}
                   type={showPw ? "text" : "password"}
                   placeholder="Mật khẩu"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border bg-gray-50 focus:border-orange-400 outline-none text-sm pr-10"
-                  required
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearFieldError("password");
+                  }}
+                  className={`${getInputClass("password")} pr-10`}
                 />
-
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-500 hover:text-orange-500 transition"
+                  className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-gray-500 transition hover:text-orange-500"
                 >
-                  {showPw ? (
-                    <FaRegEyeSlash size={18} />
-                  ) : (
-                    <FaRegEye size={18} />
-                  )}
+                  {showPw ? <FaRegEyeSlash size={18} /> : <FaRegEye size={18} />}
                 </button>
               </div>
+              <FieldError name="password" />
             </div>
 
-            {/* Options */}
             <div className="flex justify-between text-sm">
               <label className="flex items-center gap-2 text-gray-500">
                 <input
@@ -130,56 +174,27 @@ function SignIn() {
 
               <span
                 onClick={() => navigate("/forgot-password")}
-                className="text-orange-500 cursor-pointer hover:underline"
+                className="cursor-pointer text-orange-500 hover:underline"
               >
                 Quên mật khẩu?
               </span>
             </div>
 
-            {/* Message */}
-            {message.text && (
-              <p className="text-center text-red-500 text-sm">{message.text}</p>
-            )}
-
-            {/* Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white hover:shadow-lg transition disabled:opacity-70"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] py-3 text-white transition hover:shadow-lg disabled:opacity-70"
             >
               <CiLogin />
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-[1px] bg-gray-200" />
-              <span className="text-xs text-gray-400">Hoặc đăng nhập với</span>
-              <div className="flex-1 h-[1px] bg-gray-200" />
-            </div>
-
-            {/* Social Login */}
-            <div className="flex justify-center gap-4 mb-3">
-              <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-gray-50 transition ">
-                <FcGoogle className="text-2xl" />
-              </button>
-
-              <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-blue-50 transition ">
-                <FaFacebook className="text-blue-600 text-2xl" />
-              </button>
-
-              <button className="flex items-center justify-center w-11 h-11 rounded-full  hover:bg-pink-50 transition ">
-                <FaInstagram className="text-pink-500 text-2xl" />
-              </button>
-            </div>
           </form>
 
-          {/* Register */}
-          <p className="text-center text-sm text-gray-500 mt-6 mb-6 ">
+          <p className="mb-6 mt-6 text-center text-sm text-gray-500">
             Chưa có tài khoản?{" "}
             <Link
               to="/register"
-              className="text-orange-500 font-semibold hover:underline"
+              className="font-semibold text-orange-500 hover:underline"
             >
               Đăng ký
             </Link>

@@ -1,13 +1,20 @@
 const Schedule = require("../models/Schedule.js");
 const Service = require("../models/Service.js");
 const Order = require("../models/Order.js");
+const {
+  validateCreateSchedule,
+  validateUpdateSchedule,
+} = require("../validations/scheduleValidation.js");
 
-//  TẠO LỊCH KHỞI HÀNH MỚI (PROVIDER)
 module.exports.createSchedule = async (req, res) => {
   try {
-    const { serviceId, departureDate, endDate, maxSlots, status } = req.body;
+    const validation = validateCreateSchedule(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
 
-    // 1. Kiểm tra tour có tồn tại không
+    const { serviceId, departureDate, endDate, maxSlots, status } =
+      validation.data;
     const service = await Service.findById(serviceId);
     if (!service) {
       return res
@@ -15,26 +22,18 @@ module.exports.createSchedule = async (req, res) => {
         .json({ message: "Không tìm thấy tour để tạo lịch" });
     }
 
-    // 2. Kiểm tra quyền sở hữu: Chỉ chủ tour mới được tạo lịch
-    if (service.provider_id.toString() !== req.user.id) {
+    if (String(service.provider_id) !== String(req.user.id)) {
       return res
         .status(403)
         .json({ message: "Bạn không có quyền tạo lịch cho tour này" });
     }
 
-    // 3. Kiểm tra ngày khởi hành không được ở quá khứ
-    if (new Date(departureDate) < new Date()) {
-      return res
-        .status(400)
-        .json({ message: "Ngày khởi hành không được ở quá khứ" });
-    }
-
     const newSchedule = await Schedule.create({
       serviceId,
       departureDate,
-      endDate: endDate || null,
+      endDate,
       maxSlots,
-      status: status || "open",
+      status,
     });
 
     return res.status(201).json({
@@ -52,17 +51,24 @@ module.exports.createSchedule = async (req, res) => {
   }
 };
 
-// LẤY LỊCH THEO TOUR (PUBLIC)
 module.exports.getSchedulesByService = async (req, res) => {
   try {
     const { serviceId } = req.params;
+    const service = await Service.findById(serviceId).select("provider_id");
+    const canManageSchedules =
+      service &&
+      req.user?.role === "provider" &&
+      String(service.provider_id) === String(req.user.id);
 
-    // Lấy các lịch còn mở (open) và ngày khởi hành chưa trôi qua
-    const schedules = await Schedule.find({
-      serviceId,
-      status: "open",
-      departureDate: { $gte: new Date() },
-    }).sort({ departureDate: 1 });
+    const query = canManageSchedules
+      ? { serviceId }
+      : {
+          serviceId,
+          status: "open",
+          departureDate: { $gte: new Date() },
+        };
+
+    const schedules = await Schedule.find(query).sort({ departureDate: 1 });
 
     return res.status(200).json({ data: schedules });
   } catch (error) {
@@ -71,37 +77,42 @@ module.exports.getSchedulesByService = async (req, res) => {
   }
 };
 
-//  CẬP NHẬT LỊCH (PROVIDER)
 module.exports.updateSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-    const { maxSlots, status, departureDate, endDate } = req.body;
 
     const schedule = await Schedule.findById(id).populate("serviceId");
-    if (!schedule)
+    if (!schedule) {
       return res.status(404).json({ message: "Không tìm thấy lịch" });
+    }
 
-    // Kiểm tra quyền: serviceId trong schedule đã được populate thành object Service
-    if (schedule.serviceId.provider_id.toString() !== req.user.id) {
+    if (String(schedule.serviceId.provider_id) !== String(req.user.id)) {
       return res
         .status(403)
         .json({ message: "Bạn không có quyền sửa lịch này" });
     }
 
-    // Nếu cập nhật số chỗ, không được nhỏ hơn số chỗ đã đặt
-    if (maxSlots && maxSlots < schedule.bookedSlots) {
-      return res.status(400).json({
-        message: `Số chỗ tối đa không thể nhỏ hơn số khách đã đặt (${schedule.bookedSlots})`,
-      });
+    const validation = validateUpdateSchedule(req.body, schedule.bookedSlots);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
     }
 
-    const updatedSchedule = await Schedule.findByIdAndUpdate(
-      id,
-      { maxSlots, status, departureDate, endDate: endDate || null },
-      { returnDocument: "after" },
-    );
+    const { maxSlots, status, departureDate, endDate } = validation.data;
+    const updateData = {
+      maxSlots,
+      status,
+      departureDate,
+      endDate: endDate || null,
+    };
 
-    // Đồng bộ ngày khởi hành mới cho các đơn hàng còn đang xử lý để user thấy lịch mới
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) delete updateData[key];
+    });
+
+    const updatedSchedule = await Schedule.findByIdAndUpdate(id, updateData, {
+      returnDocument: "after",
+    });
+
     if (departureDate) {
       await Order.updateMany(
         {
@@ -125,20 +136,19 @@ module.exports.updateSchedule = async (req, res) => {
   }
 };
 
-//  XÓA LỊCH (PROVIDER)
 module.exports.deleteSchedule = async (req, res) => {
   try {
     const schedule = await Schedule.findById(req.params.id).populate(
       "serviceId",
     );
-    if (!schedule)
+    if (!schedule) {
       return res.status(404).json({ message: "Không tìm thấy lịch" });
+    }
 
-    if (schedule.serviceId.provider_id.toString() !== req.user.id) {
+    if (String(schedule.serviceId.provider_id) !== String(req.user.id)) {
       return res.status(403).json({ message: "Không có quyền xóa lịch này" });
     }
 
-    // Nếu đã có khách đặt (bookedSlots > 0) thì không cho xóa, chỉ cho phép "closed"
     if (schedule.bookedSlots > 0) {
       return res.status(400).json({
         message:

@@ -21,6 +21,13 @@ const ORANGE = "#f97316";
 
 function ProviderLayout() {
   const user = jwt();
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("currentUser") || "null");
+    } catch {
+      return null;
+    }
+  })();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingBookings, setPendingBookings] = useState(0);
@@ -29,10 +36,10 @@ function ProviderLayout() {
   const NAV_ITEMS = useMemo(
     () => [
       {
-        id: "dashboard",
-        label: "Tổng quan",
-        path: "/provider",
-        icon: FaChartLine,
+        id: "revenue",
+        label: "Doanh thu",
+        path: "/provider/revenue",
+        icon: FaWallet,
       },
       {
         id: "services",
@@ -59,12 +66,6 @@ function ProviderLayout() {
         icon: FaPercent,
       },
       {
-        id: "revenue",
-        label: "Doanh thu",
-        path: "/provider/revenue",
-        icon: FaWallet,
-      },
-      {
         id: "reconciliation",
         label: "Đối soát thanh toán",
         path: "/provider/reconciliation",
@@ -76,7 +77,9 @@ function ProviderLayout() {
 
   const activeItem =
     NAV_ITEMS.find((item) => {
-      if (item.path === "/provider") return location.pathname === "/provider";
+      if (location.pathname.toLowerCase() === "/provider") {
+        return item.id === "revenue";
+      }
       return location.pathname
         .toLowerCase()
         .startsWith(item.path.toLowerCase());
@@ -107,7 +110,21 @@ function ProviderLayout() {
         });
         const profileResult = await profileRes.json();
         if (profileRes.ok) {
-          setProviderProfile(profileResult.data || null);
+          const profile = profileResult.data || null;
+          setProviderProfile(profile);
+          if (profile) {
+            localStorage.setItem(
+              "currentUser",
+              JSON.stringify({
+                ...(currentUser || {}),
+                providerProfile: {
+                  id: profile._id,
+                  businessName: profile.businessName,
+                  legalRepresentative: profile.legalRepresentative,
+                },
+              }),
+            );
+          }
         }
       } catch {
         setPendingBookings(0);
@@ -124,9 +141,12 @@ function ProviderLayout() {
   };
 
   const providerName =
-    providerProfile?.businessName ||
     providerProfile?.providerID?.fullName ||
+    currentUser?.fullName ||
     user?.fullName ||
+    providerProfile?.legalRepresentative ||
+    currentUser?.providerProfile?.legalRepresentative ||
+    currentUser?.legalRepresentative ||
     "Đối tác";
 
   const providerInitial =
@@ -197,7 +217,7 @@ function ProviderLayout() {
             </div>
           ) : null}
 
-          <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+          <nav className="flex-1 space-y-0.5 overflow-y-auto px-4 py-3">
             {NAV_ITEMS.map((item) => {
               const isActive = activeItem.id === item.id;
               const Icon = item.icon;
@@ -235,17 +255,6 @@ function ProviderLayout() {
               );
             })}
           </nav>
-
-          <div className="border-t border-white/5 px-3 py-4">
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-[13px] font-medium text-slate-500 transition-all hover:bg-red-50 hover:text-red-500"
-              type="button"
-            >
-              <FaArrowRightFromBracket size={16} />
-              Đăng xuất
-            </button>
-          </div>
         </aside>
 
         <div className="min-w-0 flex-1 flex flex-col">

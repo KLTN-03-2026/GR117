@@ -204,7 +204,7 @@ function Booking() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
           <div>
             <Breadcrumb />
             <h1
@@ -218,19 +218,9 @@ function Booking() {
               Quản lý đặt chỗ
             </h1>
           </div>
-
-          <button
-            type="button"
-            disabled
-            className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-[13px] font-medium text-[#f97316] opacity-70"
-          >
-            <span className="inline-flex items-center gap-2">
-              <FiRefreshCw size={16} /> Làm mới
-            </span>
-          </button>
         </div>
 
-        <div className="mx-6 rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
+        <div className="mx-4 rounded-3xl border border-dashed border-slate-300 bg-white px-4 py-16 text-center text-slate-400 sm:mx-6 sm:px-6">
           Đang tải danh sách đặt chỗ...
         </div>
       </div>
@@ -239,7 +229,7 @@ function Booking() {
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
         <div>
           <Breadcrumb />
           <h1
@@ -253,24 +243,9 @@ function Booking() {
             Quản lý đặt chỗ
           </h1>
         </div>
-
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing || loading}
-          className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-[13px] font-medium text-[#f97316] transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          <span className="inline-flex items-center gap-2">
-            <FiRefreshCw
-              size={16}
-              className={refreshing ? "animate-spin" : ""}
-            />
-            {refreshing ? "Đang tải..." : "Làm mới"}
-          </span>
-        </button>
       </div>
 
-      <div className="space-y-5 px-6 pb-6">
+      <div className="space-y-5 px-4 pb-6 sm:px-6">
         {error ? (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -300,19 +275,36 @@ function Booking() {
             })}
           </div>
 
-          <div className="relative w-full lg:max-w-sm">
-            <IoSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo tên khách, tour hoặc số điện thoại"
-              className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
-            />
+          <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:items-center">
+            <div className="relative w-full lg:w-[360px]">
+              <IoSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo tên khách, tour hoặc số điện thoại"
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              className="inline-flex h-12 shrink-0 items-center justify-center rounded-2xl border border-orange-200 bg-orange-50 px-5 text-sm font-semibold text-[#f97316] transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <span className="inline-flex items-center gap-2">
+                <FiRefreshCw
+                  size={16}
+                  className={refreshing ? "animate-spin" : ""}
+                />
+                {refreshing ? "Đang tải..." : "Làm mới"}
+              </span>
+            </button>
           </div>
         </div>
 
-        <div className="mx-[27px] rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
           {filteredOrders.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center text-slate-400">
               Chưa có dữ liệu booking
@@ -442,6 +434,7 @@ function Booking() {
               </table>
             </div>
           )}
+
         </div>
       </div>
     </div>

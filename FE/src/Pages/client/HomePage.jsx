@@ -311,28 +311,7 @@ function HomePage() {
             </div>
           </div>
         </section>
-        <section className="py-20 bg-[#f8fafc]">
-          <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[FaShield, FaHeadphones, FaHeart, FaClock].map((Icon, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl p-6 text-center group hover:shadow-xl transition"
-              >
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-[#f97316]/10 flex items-center justify-center mb-4 group-hover:bg-[#f97316] transition">
-                  <Icon className="text-[#f97316] group-hover:text-white transition" />
-                </div>
-
-                <h3 className="text-[16px] font-semibold">
-                  {["An toàn", "Hỗ trợ 24/7", "Trải nghiệm", "Linh hoạt"][i]}
-                </h3>
-
-                <p className="text-gray-500 mt-2 text-sm">
-                  Dịch vụ chất lượng cao
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        
         <section className="py-20">
           <div className="max-w-7xl mx-auto px-6 text-center mb-10">
             <span className="text-[#f97316] text-sm font-semibold tracking-widest">
