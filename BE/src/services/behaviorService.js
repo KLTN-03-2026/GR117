@@ -117,7 +117,7 @@ const buildPreferenceUpdate = (signal) => {
     $push: {
       recentSignals: {
         $each: [{ ...signal, createdAt: new Date() }],
-        $slice: -20,
+        $slice: -30,
       },
     },
   };
@@ -193,7 +193,7 @@ const buildSummaryFromSignals = (signals = []) => {
     }
   }
 
-  summary.recentSignals = signals.slice(0, 10);
+  summary.recentSignals = signals.slice(0, 20);
 
   const toTopList = (mapValue, limit = 3) =>
     Array.from(mapValue.entries())

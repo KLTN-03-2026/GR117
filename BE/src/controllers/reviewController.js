@@ -3,6 +3,31 @@ const Order = require("../models/Order.js");
 const Service = require("../models/Service.js");
 const behaviorService = require("../services/behaviorService.js");
 
+const refreshServiceReviewStats = async (serviceId) => {
+  const reviews = await Review.find({ serviceId }).select("rating").lean();
+  const reviewCount = reviews.length;
+
+  if (reviewCount === 0) {
+    await Service.findByIdAndUpdate(serviceId, {
+      rating: 0,
+      reviewCount: 0,
+    });
+    return { reviewCount: 0, avgRating: 0 };
+  }
+
+  const avgRating =
+    reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) /
+    reviewCount;
+
+  const roundedRating = Number(avgRating.toFixed(1));
+  await Service.findByIdAndUpdate(serviceId, {
+    rating: roundedRating,
+    reviewCount,
+  });
+
+  return { reviewCount, avgRating: roundedRating };
+};
+
 // Gui danh gia moi (user)
 module.exports.createReview = async (req, res) => {
   try {
@@ -40,15 +65,7 @@ module.exports.createReview = async (req, res) => {
       comment,
     });
 
-    const allReviews = await Review.find({ serviceId: order.serviceId });
-    const reviewCount = allReviews.length;
-    const avgRating =
-      allReviews.reduce((sum, item) => sum + item.rating, 0) / reviewCount;
-
-    await Service.findByIdAndUpdate(order.serviceId, {
-      rating: avgRating.toFixed(1),
-      reviewCount,
-    });
+    await refreshServiceReviewStats(order.serviceId);
 
     const serviceForBehavior = await Service.findById(order.serviceId).populate(
       "category",
@@ -126,6 +143,7 @@ module.exports.deleteReview = async (req, res) => {
     }
 
     await Review.findByIdAndDelete(req.params.id);
+    await refreshServiceReviewStats(review.serviceId);
 
     return res.status(200).json({ message: "Da xoa danh gia" });
   } catch (error) {

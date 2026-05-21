@@ -3,6 +3,9 @@ const {
   cleanupExpiredRecommendationCaches,
   markAllRecommendationCachesForRefresh,
 } = require("./recommendationCacheService.js");
+const {
+  refreshRecommendationTrendSnapshot,
+} = require("./recommendationTrendService.js");
 
 let started = false;
 
@@ -14,6 +17,16 @@ const runCacheReset = async (label) => {
     console.log(`Recommendation cache reset completed at ${label}`);
   } catch (error) {
     console.error("Failed to reset recommendation cache:", error);
+  }
+};
+
+// Làm mới snapshot trend định kỳ để recommendation có dữ liệu hot mới nhất.
+const runTrendSnapshotRefresh = async (label) => {
+  try {
+    await refreshRecommendationTrendSnapshot();
+    console.log(`Recommendation trend snapshot refreshed at ${label}`);
+  } catch (error) {
+    console.error("Failed to refresh recommendation trend snapshot:", error);
   }
 };
 
@@ -38,6 +51,12 @@ const startRecommendationCacheCronJobs = () => {
   cron.schedule(
     "0 16 * * *",
     () => runCacheReset("16:00"),
+    options,
+  );
+
+  cron.schedule(
+    "10 0 1 * *",
+    () => runTrendSnapshotRefresh("monthly-00:10"),
     options,
   );
 };
