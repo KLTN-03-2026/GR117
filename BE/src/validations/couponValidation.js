@@ -16,6 +16,19 @@ const normalizeDateOnly = (value) => {
   return date;
 };
 
+const validateDiscountValue = (discountType, discountValue) => {
+  const normalizedValue = Number(discountValue);
+  if (!Number.isFinite(normalizedValue) || normalizedValue <= 0) {
+    return validationError(400, "Gia tri giam phai lon hon 0");
+  }
+
+  if (discountType === "percent" && (normalizedValue < 1 || normalizedValue > 100)) {
+    return validationError(400, "Phan tram giam gia phai tu 1 den 100");
+  }
+
+  return validationSuccess(normalizedValue);
+};
+
 const validateCouponDates = (startDate, endDate, requireStartDate = true) => {
   if (requireStartDate && !startDate) {
     return validationError(400, "Vui lòng nhập ngày bắt đầu");
@@ -73,13 +86,19 @@ const validateCreateCoupon = (body = {}) => {
     return validationError(400, "Loai giam gia khong hop le");
   }
 
+  const discountValueValidation = validateDiscountValue(
+    normalizedDiscountType,
+    discountValue,
+  );
+  if (!discountValueValidation.isValid) return discountValueValidation;
+
   const dateValidation = validateCouponDates(startDate, endDate);
   if (!dateValidation.isValid) return dateValidation;
 
   return validationSuccess({
     code: normalizeCode(code),
     discountType: normalizedDiscountType,
-    discountValue: Number(discountValue),
+    discountValue: discountValueValidation.data,
     minOrderValue: Number(minOrderValue || 0),
     maxUsage: Number(maxUsage || 1),
     startDate: dateValidation.data.startDate,
@@ -103,8 +122,21 @@ const validateUpdateCoupon = (body = {}) => {
   }
 
   if (body.code !== undefined) data.code = normalizeCode(body.code);
-  if (body.discountType !== undefined) data.discountType = String(body.discountType);
-  if (body.discountValue !== undefined) data.discountValue = Number(body.discountValue);
+  if (body.discountType !== undefined) {
+    data.discountType = String(body.discountType);
+    if (!["percent", "fixed"].includes(data.discountType)) {
+      return validationError(400, "Loai giam gia khong hop le");
+    }
+  }
+  if (body.discountValue !== undefined) {
+    const discountType = data.discountType || body.discountType || body.currentDiscountType;
+    const discountValueValidation = validateDiscountValue(
+      String(discountType || "percent"),
+      body.discountValue,
+    );
+    if (!discountValueValidation.isValid) return discountValueValidation;
+    data.discountValue = discountValueValidation.data;
+  }
   if (body.minOrderValue !== undefined) data.minOrderValue = Number(body.minOrderValue);
   if (body.maxUsage !== undefined) data.maxUsage = Number(body.maxUsage);
   if (body.status !== undefined) data.status = String(body.status);

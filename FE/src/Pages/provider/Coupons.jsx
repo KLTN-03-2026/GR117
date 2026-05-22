@@ -43,6 +43,12 @@ const formatNumberInput = (value) => {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
+const formatDiscountValueInput = (discountType, value) => {
+  const digits = getDigitsOnly(value);
+  if (discountType === "fixed") return formatNumberInput(digits);
+  return digits.slice(0, 3);
+};
+
 const todayInputValue = () => {
   const now = new Date();
   const timezoneOffset = now.getTimezoneOffset() * 60000;
@@ -61,6 +67,10 @@ function CouponFormModal({
   onChange,
 }) {
   if (!open) return null;
+
+  const fieldWrapClass = "flex flex-col gap-2";
+  const inputClass =
+    "h-14 w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 text-sm outline-none focus:border-[#f97316]";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
@@ -84,80 +94,86 @@ function CouponFormModal({
 
         <form onSubmit={onSubmit} className="space-y-5 p-6">
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
+            <label className={fieldWrapClass}>
               <RequiredLabel className="text-sm text-slate-500">Mã</RequiredLabel>
               <input
                 value={form.code}
                 onChange={(e) => onChange("code", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                className={inputClass}
               />
             </label>
 
-            <label className="space-y-2">
-              <Label className="text-sm text-slate-500">Trạng thái</Label>
+            <label className={fieldWrapClass}>
+              <span className="text-sm text-slate-500">Trạng thái</span>
               <select
                 value={form.status}
                 onChange={(e) => onChange("status", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                className={inputClass}
               >
                 <option value="active">Hoạt động</option>
                 <option value="inactive">Tắt</option>
               </select>
             </label>
 
-            <label className="space-y-2">
-              <Label className="text-sm text-slate-500">Kiểu giảm</Label>
+            <label className={fieldWrapClass}>
+              <span className="text-sm text-slate-500">Kiểu giảm</span>
               <select
                 value={form.discountType}
                 onChange={(e) => onChange("discountType", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                className={inputClass}
               >
                 <option value="percent">Phần trăm</option>
                 <option value="fixed">Số tiền cố định</option>
               </select>
             </label>
 
-            <label className="space-y-2">
+            <label className={fieldWrapClass}>
               <RequiredLabel className="text-sm text-slate-500">Giá trị giảm</RequiredLabel>
-              <input
-                type="number"
-                min="0"
-                value={form.discountValue}
-                onChange={(e) => onChange("discountValue", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
-              />
+              <div className="relative h-14">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.discountValue}
+                  onChange={(e) => onChange("discountValue", e.target.value)}
+                  placeholder={form.discountType === "percent" ? "1 - 100" : "VD: 50.000"}
+                  className={`${inputClass} pr-14`}
+                />
+                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
+                  {form.discountType === "percent" ? "%" : "VNĐ"}
+                </span>
+              </div>
             </label>
 
-            <label className="space-y-2">
+            <label className={fieldWrapClass}>
               <RequiredLabel className="text-sm text-slate-500">Đơn tối thiểu</RequiredLabel>
               <input
                 type="text"
                 inputMode="numeric"
                 value={form.minOrderValue}
                 onChange={(e) => onChange("minOrderValue", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                className={inputClass}
               />
             </label>
 
-            <label className="space-y-2">
+            <label className={fieldWrapClass}>
               <RequiredLabel className="text-sm text-slate-500">Số lượt dùng</RequiredLabel>
               <input
                 type="number"
                 min="1"
                 value={form.maxUsage}
                 onChange={(e) => onChange("maxUsage", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                className={inputClass}
               />
             </label>
 
-            <label className="space-y-2">
+            <label className={fieldWrapClass}>
               <RequiredLabel className="text-sm text-slate-500">Ngày bắt đầu</RequiredLabel>
               <input
                 type="date"
                 min={minDate}
                 value={form.startDate}
                 onChange={(e) => onChange("startDate", e.target.value)}
-                className={`w-full rounded-xl border bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316] ${
+                className={`h-14 w-full rounded-xl border bg-[#f8fafc] px-4 text-sm outline-none focus:border-[#f97316] ${
                   errors.startDate ? "border-red-400" : "border-slate-200"
                 }`}
               />
@@ -166,14 +182,14 @@ function CouponFormModal({
               ) : null}
             </label>
 
-            <label className="space-y-2">
+            <label className={fieldWrapClass}>
               <RequiredLabel className="text-sm text-slate-500">Ngày hết hạn</RequiredLabel>
               <input
                 type="date"
                 min={form.startDate || minDate}
                 value={form.endDate}
                 onChange={(e) => onChange("endDate", e.target.value)}
-                className={`w-full rounded-xl border bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316] ${
+                className={`h-14 w-full rounded-xl border bg-[#f8fafc] px-4 text-sm outline-none focus:border-[#f97316] ${
                   errors.endDate ? "border-red-400" : "border-slate-200"
                 }`}
               />
@@ -259,11 +275,15 @@ export default function Coupons() {
 
   // Cap nhat state form khi provider chon sua.
   const handleEdit = (coupon) => {
+    const discountType = coupon.discountType || "percent";
     setEditingId(coupon._id || coupon.id || "");
     setForm({
       code: coupon.code || "",
-      discountType: coupon.discountType || "percent",
-      discountValue: String(coupon.discountValue ?? ""),
+      discountType,
+      discountValue:
+        discountType === "fixed"
+          ? formatNumberInput(coupon.discountValue ?? "")
+          : String(coupon.discountValue ?? ""),
       minOrderValue: formatNumberInput(coupon.minOrderValue ?? ""),
       maxUsage: String(coupon.maxUsage ?? 1),
       startDate: coupon.startDate ? String(coupon.startDate).slice(0, 10) : "",
@@ -280,13 +300,28 @@ export default function Coupons() {
   const updateForm = (field, value) => {
     setForm((prev) => ({
       ...prev,
-      [field]: field === "minOrderValue" ? formatNumberInput(value) : value,
+      ...(field === "discountType"
+        ? {
+            discountType: value,
+            discountValue: formatDiscountValueInput(value, prev.discountValue),
+          }
+        : {
+            [field]:
+              field === "minOrderValue"
+                ? formatNumberInput(value)
+                : field === "discountValue"
+                  ? formatDiscountValueInput(prev.discountType, value)
+                  : value,
+          }),
     }));
   };
 
   const buildPayload = () => ({
     ...form,
-    discountValue: Number(form.discountValue || 0),
+    discountValue:
+      form.discountType === "fixed"
+        ? Number(getDigitsOnly(form.discountValue))
+        : Number(form.discountValue || 0),
     minOrderValue: Number(getDigitsOnly(form.minOrderValue)),
     maxUsage: Number(form.maxUsage || 1),
     serviceIds: String(form.serviceIds || "")
@@ -308,6 +343,18 @@ export default function Coupons() {
       setError("");
 
       const payload = buildPayload();
+      if (
+        payload.discountType === "percent" &&
+        (payload.discountValue < 1 || payload.discountValue > 100)
+      ) {
+        toast.error("Phần trăm giảm giá phải từ 1 đến 100.");
+        return;
+      }
+
+      if (payload.discountType === "fixed" && payload.discountValue <= 0) {
+        toast.error("Số tiền giảm phải lớn hơn 0 VNĐ.");
+        return;
+      }
 
       if (editingId) {
         await axios.put(`/api/coupons/${editingId}`, payload, { headers });
@@ -526,3 +573,4 @@ export default function Coupons() {
     </div>
   );
 }
+

@@ -378,7 +378,7 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
                     {errors.price && <p className="mt-1 text-xs font-medium text-red-500">{errors.price}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}><Label>Danh mục</Label></label>
+                    <label className={labelClass}><RequiredLabel>Danh mục</RequiredLabel></label>
                     <select
                       name="category"
                       ref={setFieldRef("category")}
@@ -459,7 +459,7 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
               <div>
                 <div className="space-y-6">
                   <div>
-                    <label className={labelClass}><Label>Mô tả</Label></label>
+                    <label className={labelClass}><RequiredLabel>Mô tả</RequiredLabel></label>
                     <textarea
                       name="description"
                       ref={setFieldRef("description")}

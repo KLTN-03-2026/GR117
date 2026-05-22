@@ -10,12 +10,6 @@ const {
 
 // Routes công khai
 router.get("/", serviceController.getAllServices);
-router.get("/detail/:id", serviceController.getServiceById);
-router.patch(
-  "/:id/view",
-  optionalVerifyToken,
-  serviceController.incrementServiceView,
-);
 
 // Routes dành cho Provider (Nhà cung cấp)
 router.post(
@@ -30,6 +24,12 @@ router.get(
   verifyToken,
   authorizeRoles("provider"),
   serviceController.getMyServices,
+);
+router.get("/detail/:id", serviceController.getServiceById);
+router.patch(
+  "/:id/view",
+  optionalVerifyToken,
+  serviceController.incrementServiceView,
 );
 router.put(
   "/:id",
