@@ -147,6 +147,76 @@ const validateRegister = (body = {}) => {
   };
 };
 
+const validateProviderRegistrationDetails = (body = {}) => {
+  const {
+    businessName,
+    taxCode,
+    businessLicense,
+    address,
+    legalRepresentative,
+    bankAccountNumber,
+    bankName,
+    agreements = {},
+  } = body;
+
+  const normalizedBusinessName = normalizeText(businessName);
+  const normalizedTaxCode = normalizeText(taxCode);
+  const normalizedBusinessLicense = normalizeText(businessLicense);
+  const normalizedAddress = normalizeText(address);
+  const normalizedLegalRepresentative = normalizeText(legalRepresentative);
+  const normalizedBankAccountNumber = normalizeText(bankAccountNumber);
+  const normalizedBankName = normalizeText(bankName);
+
+  if (
+    !normalizedBusinessName ||
+    !normalizedTaxCode ||
+    !normalizedBusinessLicense ||
+    !normalizedAddress ||
+    !normalizedLegalRepresentative ||
+    !normalizedBankAccountNumber ||
+    !normalizedBankName
+  ) {
+    return validationError(400, "Không được để trống bất cứ thông tin nhà cung cấp nào");
+  }
+
+  if (!isValidBusinessText(normalizedBusinessName)) {
+    return validationError(
+      400,
+      "Tên doanh nghiệp không được chứa ký tự đặc biệt",
+    );
+  }
+
+  if (normalizedBusinessName.length < 5 || normalizedBusinessName.length > 30) {
+    return validationError(400, "Tên doanh nghiệp phải từ 5 đến 30 ký tự");
+  }
+
+  if (normalizedAddress.length < 5 || normalizedAddress.length > 30) {
+    return validationError(400, "Địa chỉ doanh nghiệp phải từ 5 đến 30 ký tự");
+  }
+
+  if (!/^\d+$/.test(normalizedBankAccountNumber)) {
+    return validationError(400, "Số tài khoản ngân hàng bắt buộc phải là số");
+  }
+
+  if (agreements?.termsAccepted !== true) {
+    return validationError(400, "Bạn cần đồng ý điều khoản hợp tác");
+  }
+
+  return {
+    isValid: true,
+    data: {
+      businessName: normalizedBusinessName,
+      taxCode: normalizedTaxCode,
+      businessLicense: normalizedBusinessLicense,
+      address: normalizedAddress,
+      legalRepresentative: normalizedLegalRepresentative,
+      bankAccountNumber: normalizedBankAccountNumber,
+      bankName: normalizedBankName,
+      agreements,
+    },
+  };
+};
+
 const validateLogin = (body = {}) => {
   const email = normalizeEmail(body.email);
   const password = body.password;
@@ -212,6 +282,7 @@ const validateResetPassword = (body = {}) => {
 
 module.exports = {
   validateRegister,
+  validateProviderRegistrationDetails,
   validateLogin,
   validateForgotPassword,
   validateResetPassword,

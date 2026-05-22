@@ -8,6 +8,7 @@ const mailer = require("../utils/mailer.js");
 const { cloudinary } = require("../config/cloudinary.js");
 const {
   validateRegister,
+  validateProviderRegistrationDetails,
   validateLogin,
   validateForgotPassword,
   validateResetPassword,
@@ -147,6 +148,96 @@ module.exports.register = async (req, res) => {
   } catch (error) {
     console.error("Loi register:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// User da dang nhap dang ky tro thanh provider, giu lai email/phone/password hien co.
+module.exports.registerProviderForCurrentUser = async (req, res) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ message: "Vui lòng đăng nhập" });
+    }
+
+    if (req.user.role !== "user") {
+      return res.status(400).json({
+        message: "Chỉ tài khoản khách hàng mới có thể đăng ký làm đối tác",
+      });
+    }
+
+    const validation = validateProviderRegistrationDetails(req.body);
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+
+    const existingProvider = await Provider.findOne({ providerID: req.user.id });
+    if (existingProvider) {
+      return res.status(409).json({
+        message: "Tài khoản này đã có hồ sơ đối tác",
+      });
+    }
+
+    const {
+      businessName,
+      taxCode,
+      businessLicense,
+      address,
+      legalRepresentative,
+      bankAccountNumber,
+      bankName,
+      agreements = {},
+    } = validation.data;
+
+    const businessLicenseUrl = await uploadBusinessLicense(businessLicense);
+
+    const providerProfile = await Provider.create({
+      providerID: req.user.id,
+      businessName,
+      taxCode,
+      businessLicense: businessLicenseUrl,
+      address,
+      legalRepresentative,
+      bankAccountNumber,
+      bankName,
+      status: "pending",
+      agreements: {
+        termsAccepted: agreements?.termsAccepted === true,
+        policyAccepted: true,
+        complaintPolicyAccepted: true,
+        infoCommitment: true,
+      },
+    });
+
+    const currentUser = await User.findById(req.user.id).select("-password");
+
+    return res.status(201).json({
+      message: "Đăng ký provider thành công, đang chờ admin duyệt.",
+      data: {
+        id: currentUser._id,
+        fullName: currentUser.fullName,
+        email: currentUser.email,
+        phone: currentUser.phone,
+        role: currentUser.role,
+        status: currentUser.status,
+        providerProfile: {
+          id: providerProfile._id,
+          businessName: providerProfile.businessName,
+          legalRepresentative: providerProfile.legalRepresentative,
+          status: providerProfile.status,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Loi register provider for current user:", error);
+    if (error.message?.includes("Missing Cloudinary config")) {
+      return res.status(500).json({
+        message:
+          "Thiếu cấu hình Cloudinary. Vui lòng kiểm tra CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET trong BE/.env.",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Không thể tạo hồ sơ nhà cung cấp. Vui lòng thử lại sau.",
+    });
   }
 };
 

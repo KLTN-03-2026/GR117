@@ -14,9 +14,21 @@ const {
 //chờ duyệt
 module.exports.getPendingProviders = async (req, res) => {
   try {
-    const providers = await User.find({ role: "provider", status: "pending" })
-      .select("fullName email phone role status createdAt")
+    const providerProfiles = await Provider.find({ status: "pending" })
+      .populate("providerID", "fullName email phone role status createdAt")
       .sort({ createdAt: -1 });
+
+    const providers = providerProfiles
+      .filter((profile) => profile.providerID)
+      .map((profile) => ({
+        _id: profile.providerID._id,
+        fullName: profile.businessName || profile.providerID.fullName,
+        email: profile.providerID.email,
+        phone: profile.providerID.phone,
+        role: profile.providerID.role,
+        status: profile.status,
+        createdAt: profile.createdAt || profile.providerID.createdAt,
+      }));
 
     return res.status(200).json({
       message: "Lấy danh sách đối tác chờ duyệt thành công",
@@ -39,18 +51,26 @@ module.exports.approveProvider = async (req, res) => {
       });
     }
 
-    if (provider.role !== "provider") {
-      return res.status(400).json({
-        message: "Tài khoản này không phải provider",
+    const providerProfile = await Provider.findOne({ providerID: provider._id });
+    if (!providerProfile) {
+      return res.status(404).json({
+        message: "Ho so provider khong ton tai",
       });
     }
 
-    if (provider.status === "active") {
+    if (!["user", "provider"].includes(provider.role)) {
+      return res.status(400).json({
+        message: "Tai khoan nay khong the duyet provider",
+      });
+    }
+
+    if (provider.role === "provider" && provider.status === "active") {
       return res.status(400).json({
         message: "Nhà cung cấp đã được duyệt",
       });
     }
 
+    provider.role = "provider";
     provider.status = "active";
     await provider.save();
     await Provider.findOneAndUpdate(
@@ -86,13 +106,22 @@ module.exports.rejectProvider = async (req, res) => {
       });
     }
 
-    if (provider.role !== "provider") {
-      return res.status(400).json({
-        message: "Tài khoản này không phải provider",
+    const providerProfile = await Provider.findOne({ providerID: provider._id });
+    if (!providerProfile) {
+      return res.status(404).json({
+        message: "Ho so provider khong ton tai",
       });
     }
 
-    provider.status = "rejected";
+    if (!["user", "provider"].includes(provider.role)) {
+      return res.status(400).json({
+        message: "Tai khoan nay khong the tu choi provider",
+      });
+    }
+
+    if (provider.role === "provider") {
+      provider.status = "rejected";
+    }
     await provider.save();
     await Provider.findOneAndUpdate(
       { providerID: provider._id },
@@ -118,37 +147,31 @@ module.exports.rejectProvider = async (req, res) => {
 
 module.exports.getAllProviders = async (req, res) => {
   try {
-    const providerUsers = await User.find({ role: "provider" })
-      .select("fullName email phone role status createdAt")
+    const providerProfiles = await Provider.find()
+      .populate("providerID", "fullName email phone role status createdAt updatedAt")
       .sort({ createdAt: -1 });
 
-    const providerProfiles = await Provider.find({
-      providerID: { $in: providerUsers.map((item) => item._id) },
-    });
+    const providers = providerProfiles
+      .filter((profile) => profile.providerID)
+      .map((profile) => {
+        const user = profile.providerID;
 
-    const providerProfileMap = new Map(
-      providerProfiles.map((profile) => [String(profile.providerID), profile]),
-    );
-
-    const providers = providerUsers.map((user) => {
-      const profile = providerProfileMap.get(String(user._id));
-
-      return {
-        _id: profile?._id || user._id,
-        providerID: user,
-        businessName: profile?.businessName || user.fullName,
-        taxCode: profile?.taxCode || "",
-        businessLicense: profile?.businessLicense || "",
-        address: profile?.address || "",
-        legalRepresentative: profile?.legalRepresentative || "",
-        bankAccountNumber: profile?.bankAccountNumber || "",
-        bankName: profile?.bankName || "",
-        status: profile?.status || user.status,
-        agreements: profile?.agreements || {},
-        createdAt: profile?.createdAt || user.createdAt,
-        updatedAt: profile?.updatedAt || user.updatedAt,
-      };
-    });
+        return {
+          _id: profile._id,
+          providerID: user,
+          businessName: profile.businessName || user.fullName,
+          taxCode: profile.taxCode || "",
+          businessLicense: profile.businessLicense || "",
+          address: profile.address || "",
+          legalRepresentative: profile.legalRepresentative || "",
+          bankAccountNumber: profile.bankAccountNumber || "",
+          bankName: profile.bankName || "",
+          status: profile.status || user.status,
+          agreements: profile.agreements || {},
+          createdAt: profile.createdAt || user.createdAt,
+          updatedAt: profile.updatedAt || user.updatedAt,
+        };
+      });
 
     return res.status(200).json({
       message: "Lay danh sach provider thanh cong",

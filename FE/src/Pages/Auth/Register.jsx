@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { CiLogin } from "../../assets/Icons/Icons";
 import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
+import { useAuthStorage } from "../../utils/authStorage.js";
 
 import TermsContent from "./TermsContent";
 
@@ -27,6 +29,19 @@ const defaultForm = {
   },
 };
 
+const createDefaultForm = (role = "user") => ({
+  ...defaultForm,
+  role,
+  agreements: { ...defaultForm.agreements },
+});
+
+const createDefaultFormForCurrentUser = (role, user) => ({
+  ...createDefaultForm(role),
+  fullName: user?.fullName || "",
+  email: user?.email || "",
+  phone: user?.phone || "",
+});
+
 const PERSON_NAME_REGEX = /^[\p{L}\s]+$/u;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BUSINESS_TEXT_REGEX = /^[\p{L}\d\s]+$/u;
@@ -41,11 +56,20 @@ const fileToDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
-export default function Register() {
+export default function Register({
+  initialRole = "user",
+  lockRole = false,
+  useCurrentUserCredentials = false,
+}) {
   const navigate = useNavigate();
-  const [form, setForm] = useState(defaultForm);
+  const { accessToken, currentUser, user } = useAuthStorage();
+  const loggedInUser = currentUser || user;
+  const [form, setForm] = useState(() =>
+    useCurrentUserCredentials
+      ? createDefaultFormForCurrentUser(initialRole, loggedInUser)
+      : createDefaultForm(initialRole),
+  );
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -91,6 +115,19 @@ export default function Register() {
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!useCurrentUserCredentials || !loggedInUser) return;
+
+    setForm((prev) => ({
+      ...prev,
+      fullName: loggedInUser.fullName || prev.fullName,
+      email: loggedInUser.email || prev.email,
+      phone: loggedInUser.phone || prev.phone,
+      password: "",
+      confirmPass: "",
+    }));
+  }, [loggedInUser, useCurrentUserCredentials]);
 
   const handleBusinessLicenseChange = async (e) => {
     const file = e.target.files?.[0];
@@ -168,9 +205,9 @@ export default function Register() {
       if (!fullName) {
         nextErrors.fullName = "Vui lòng nhập họ tên";
       } else if (!PERSON_NAME_REGEX.test(fullName)) {
-        nextErrors.fullName = "Họ tên chỉ được chứa chữ cái";
-      } else if (fullName.length < 3 || fullName.length > 10) {
-        nextErrors.fullName = "Họ tên phải từ 3 đến 10 ký tự";
+        nextErrors.fullName = "Vui lòng nhập đúng định dạng ";
+      } else if (fullName.length < 3 || fullName.length > 30) {
+        nextErrors.fullName = "Họ tên phải từ 3 đến 30 ký tự";
       }
     } else {
       const businessName = form.businessName.trim();
@@ -201,36 +238,35 @@ export default function Register() {
       if (form.agreements.termsAccepted !== true) nextErrors.termsAccepted = "Bạn cần đồng ý với điều khoản hợp tác";
     }
 
-    if (!email) {
+    if (!useCurrentUserCredentials && !email) {
       nextErrors.email = "Vui lòng nhập email";
-    } else if (!EMAIL_REGEX.test(email)) {
+    } else if (!useCurrentUserCredentials && !EMAIL_REGEX.test(email)) {
       nextErrors.email = "Email không đúng định dạng";
     }
 
-    if (!phone) {
+    if (!useCurrentUserCredentials && !phone) {
       nextErrors.phone = "Vui lòng nhập số điện thoại";
-    } else if (!/^\d+$/.test(phone)) {
+    } else if (!useCurrentUserCredentials && !/^\d+$/.test(phone)) {
       nextErrors.phone = "Số điện thoại chỉ được nhập số";
-    } else if (!VIETNAM_PHONE_REGEX.test(phone)) {
+    } else if (!useCurrentUserCredentials && !VIETNAM_PHONE_REGEX.test(phone)) {
       nextErrors.phone = "Số điện thoại phải đúng 10 số và bắt đầu bằng số 0";
     }
 
-    if (!form.password) {
+    if (!useCurrentUserCredentials && !form.password) {
       nextErrors.password = "Vui lòng nhập mật khẩu";
-    } else if (form.password.length < 6 || form.password.length > 10) {
+    } else if (!useCurrentUserCredentials && (form.password.length < 6 || form.password.length > 10)) {
       nextErrors.password = "Mật khẩu phải từ 6 đến 10 ký tự";
     }
 
-    if (!form.confirmPass) {
+    if (!useCurrentUserCredentials && !form.confirmPass) {
       nextErrors.confirmPass = "Vui lòng nhập lại mật khẩu";
-    } else if (form.password !== form.confirmPass) {
+    } else if (!useCurrentUserCredentials && form.password !== form.confirmPass) {
       nextErrors.confirmPass = "Nhập lại mật khẩu phải trùng với mật khẩu";
     }
 
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
       setError("");
-      setMessage("");
       focusFirstInvalidField(nextErrors);
       return;
     }
@@ -240,50 +276,42 @@ export default function Register() {
     if (form.role === "user") {
       if (!fullName || !email || !phone || !form.password || !form.confirmPass) {
         setError("Không được để trống thông tin đăng ký");
-        setMessage("");
         return;
       }
 
       if (!PERSON_NAME_REGEX.test(fullName)) {
         setError("Họ tên chỉ được chứa chữ cái");
-        setMessage("");
         return;
       }
 
-      if (fullName.length < 3 || fullName.length > 10) {
-        setError("Họ tên phải từ 3 đến 10 ký tự");
-        setMessage("");
+      if (fullName.length < 3 || fullName.length > 30) {
+        setError("Họ tên phải từ 3 đến 30 ký tự");
         return;
       }
     }
 
-    if (!EMAIL_REGEX.test(email)) {
+    if (!useCurrentUserCredentials && !EMAIL_REGEX.test(email)) {
       setError("Email không đúng định dạng");
-      setMessage("");
       return;
     }
 
-    if (!/^\d+$/.test(phone)) {
+    if (!useCurrentUserCredentials && !/^\d+$/.test(phone)) {
       setError("Số điện thoại chỉ được nhập số");
-      setMessage("");
       return;
     }
 
-    if (!VIETNAM_PHONE_REGEX.test(phone)) {
+    if (!useCurrentUserCredentials && !VIETNAM_PHONE_REGEX.test(phone)) {
       setError("Số điện thoại phải đúng 10 số và bắt đầu bằng số 0");
-      setMessage("");
       return;
     }
 
-    if (form.password.length < 6 || form.password.length > 10) {
+    if (!useCurrentUserCredentials && (form.password.length < 6 || form.password.length > 10)) {
       setError("Mật khẩu phải từ 6 đến 10 ký tự");
-      setMessage("");
       return;
     }
 
-    if (form.password !== form.confirmPass) {
+    if (!useCurrentUserCredentials && form.password !== form.confirmPass) {
       setError("Nhập lại mật khẩu phải trùng với mật khẩu");
-      setMessage("");
       return;
     }
 
@@ -291,13 +319,11 @@ export default function Register() {
       const providerError = validateProviderForm();
       if (providerError) {
         setError(providerError);
-        setMessage("");
         return;
       }
     }
 
     setLoading(true);
-    setMessage("");
     setError("");
     setSubmitted(true);
   };
@@ -328,21 +354,44 @@ export default function Register() {
           payload.agreements = form.agreements;
         }
 
-        const res = await fetch("/api/auth/register", {
+        const endpoint = useCurrentUserCredentials
+          ? "/api/auth/register-provider"
+          : "/api/auth/register";
+        const headers = {
+          "Content-Type": "application/json",
+          ...(useCurrentUserCredentials && accessToken
+            ? { Authorization: `Bearer ${accessToken}` }
+            : {}),
+        };
+        const body = useCurrentUserCredentials
+          ? {
+              businessName: form.businessName.trim(),
+              taxCode: form.taxCode.trim(),
+              businessLicense: form.businessLicense,
+              address: form.address.trim(),
+              legalRepresentative: form.legalRepresentative.trim(),
+              bankAccountNumber: form.bankAccountNumber.trim(),
+              bankName: form.bankName.trim(),
+              agreements: form.agreements,
+            }
+          : payload;
+
+        const res = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          headers,
+          body: JSON.stringify(body),
         });
 
         const data = await res.json();
 
         if (res.ok) {
-          setMessage(data.message || "Đăng ký thành công");
-          setForm({
-            ...defaultForm,
-            agreements: { ...defaultForm.agreements },
-          });
-          setTimeout(() => navigate("/signin"), 1000);
+          toast.success(data.message || "Đăng ký thành công", { duration: 4000 });
+          setForm(createDefaultForm(initialRole));
+          if (useCurrentUserCredentials) {
+            setTimeout(() => navigate("/"), 1000);
+          } else {
+            setTimeout(() => navigate("/signin"), 1000);
+          }
         } else {
           if (data.message?.toLowerCase().includes("email")) {
             const nextErrors = { email: data.message };
@@ -364,7 +413,7 @@ export default function Register() {
     };
 
     registerUser();
-  }, [submitted, form, navigate]);
+  }, [accessToken, form, initialRole, navigate, submitted, useCurrentUserCredentials]);
 
   const checkboxItems = [
     {
@@ -423,7 +472,9 @@ export default function Register() {
             Đăng ký
           </h1>
           <p className="mt-2 text-slate-500" style={{ fontSize: 15 }}>
-            Tạo tài khoản mới để bắt đầu hành trình
+            {useCurrentUserCredentials
+              ? "Hoàn tất thông tin đối tác để chờ admin duyệt"
+              : "Tạo tài khoản mới để bắt đầu hành trình"}
           </p>
         </div>
 
@@ -432,6 +483,7 @@ export default function Register() {
           onSubmit={handleSubmit}
           className="space-y-4 rounded-3xl border border-gray-100 bg-white p-8 shadow-xl"
         >
+          {!lockRole ? (
           <div className="flex gap-2 rounded-2xl bg-[#f8fafc] p-2">
             {[
               { value: "user", label: "Khách hàng" },
@@ -451,6 +503,7 @@ export default function Register() {
               </button>
             ))}
           </div>
+          ) : null}
 
           {form.role === "user" ? (
             <div>
@@ -610,6 +663,8 @@ export default function Register() {
             </div>
           ) : null}
 
+          {!useCurrentUserCredentials ? (
+          <>
           <div>
             <label
               className="mb-2 block pl-2 text-left text-slate-500"
@@ -686,6 +741,14 @@ export default function Register() {
             />
             <FieldError name="confirmPass" />
           </div>
+          </>
+          ) : (
+            <div className="rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-left text-sm text-slate-600">
+              <p className="font-semibold text-slate-800">Tài khoản đang đăng nhập</p>
+              <p className="mt-1">Email: {form.email || "Chưa có email"}</p>
+              <p>Số điện thoại: {form.phone || "Chưa có số điện thoại"}</p>
+            </div>
+          )}
 
           {form.role === "provider" ? (
             <div className="space-y-3 rounded-2xl border border-white bg-white p-4">
@@ -707,18 +770,11 @@ export default function Register() {
             </div>
           ) : null}
 
-          {message || error ? (
+          {error ? (
             <div className="space-y-2">
-              {message ? (
-                <p className="rounded-2xl bg-green-50 px-4 py-3 text-center text-sm text-green-600">
-                  {message}
-                </p>
-              ) : null}
-              {error ? (
-                <p className="rounded-2xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
-                  {error}
-                </p>
-              ) : null}
+              <p className="rounded-2xl bg-red-50 px-4 py-3 text-center text-sm text-red-600">
+                {error}
+              </p>
             </div>
           ) : null}
           <button
@@ -731,16 +787,18 @@ export default function Register() {
             {loading ? "Đang xử lý..." : "Đăng ký"}
           </button>
 
-          <p className="mt-3 text-center text-slate-500" style={{ fontSize: 14 }}>
-            Đã có tài khoản?{" "}
-            <Link
-              to="/signin"
-              className="text-[#f97316] transition hover:underline"
-              style={{ fontWeight: 600 }}
-            >
-              Đăng nhập
-            </Link>
-          </p>
+          {!useCurrentUserCredentials ? (
+            <p className="mt-3 text-center text-slate-500" style={{ fontSize: 14 }}>
+              Đã có tài khoản?{" "}
+              <Link
+                to="/signin"
+                className="text-[#f97316] transition hover:underline"
+                style={{ fontWeight: 600 }}
+              >
+                Đăng nhập
+              </Link>
+            </p>
+          ) : null}
         </form>
       </div>
 

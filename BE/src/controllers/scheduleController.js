@@ -6,26 +6,62 @@ const {
   validateUpdateSchedule,
 } = require("../validations/scheduleValidation.js");
 
+const getTourDays = (service) => {
+  if (Array.isArray(service?.itinerary) && service.itinerary.length > 0) {
+    return service.itinerary.length;
+  }
+
+  const duration = String(service?.duration || "").toLowerCase();
+  const dayMatch = duration.match(/(\d+)\s*(ngay|ngày|day|days)/i);
+  if (dayMatch) return Number(dayMatch[1]);
+
+  const firstNumber = duration.match(/\d+/);
+  return firstNumber ? Number(firstNumber[0]) : null;
+};
+
+const findDuplicateSchedule = ({ serviceId, departureDate, endDate, excludeId }) =>
+  Schedule.findOne({
+    ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+    serviceId,
+    departureDate: new Date(departureDate),
+    endDate: new Date(endDate),
+  });
+
 module.exports.createSchedule = async (req, res) => {
   try {
-    const validation = validateCreateSchedule(req.body);
-    if (!validation.isValid) {
-      return res.status(validation.status).json({ message: validation.message });
+    const serviceId = req.body.serviceId || req.body.service_id;
+    if (!serviceId) {
+      return res.status(400).json({ message: "Vui lòng chọn dịch vụ" });
     }
 
-    const { serviceId, departureDate, endDate, maxSlots, status } =
-      validation.data;
     const service = await Service.findById(serviceId);
     if (!service) {
-      return res
-        .status(404)
-        .json({ message: "Không tìm thấy tour để tạo lịch" });
+      return res.status(404).json({ message: "Không tìm thấy tour để tạo lịch" });
     }
 
     if (String(service.provider_id) !== String(req.user.id)) {
       return res
         .status(403)
         .json({ message: "Bạn không có quyền tạo lịch cho tour này" });
+    }
+
+    const validation = validateCreateSchedule(
+      { ...req.body, serviceId },
+      getTourDays(service),
+    );
+    if (!validation.isValid) {
+      return res.status(validation.status).json({ message: validation.message });
+    }
+
+    const { departureDate, endDate, maxSlots, status } = validation.data;
+    const duplicateSchedule = await findDuplicateSchedule({
+      serviceId,
+      departureDate,
+      endDate,
+    });
+
+    if (duplicateSchedule) {
+      return res.status(400).json({ message: "Lịch trình đã tồn tại" });
     }
 
     const newSchedule = await Schedule.create({
@@ -42,9 +78,7 @@ module.exports.createSchedule = async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({ message: "Tour này đã có lịch khởi hành trong ngày này" });
+      return res.status(400).json({ message: "Lịch trình đã tồn tại" });
     }
     console.error("Lỗi createSchedule:", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
@@ -92,17 +126,35 @@ module.exports.updateSchedule = async (req, res) => {
         .json({ message: "Bạn không có quyền sửa lịch này" });
     }
 
-    const validation = validateUpdateSchedule(req.body, schedule.bookedSlots);
+    const validation = validateUpdateSchedule(
+      req.body,
+      schedule.bookedSlots,
+      getTourDays(schedule.serviceId),
+    );
     if (!validation.isValid) {
       return res.status(validation.status).json({ message: validation.message });
     }
 
     const { maxSlots, status, departureDate, endDate } = validation.data;
+
+    if (departureDate || endDate) {
+      const duplicateSchedule = await findDuplicateSchedule({
+        serviceId: schedule.serviceId._id,
+        departureDate: departureDate || schedule.departureDate,
+        endDate: endDate || schedule.endDate,
+        excludeId: id,
+      });
+
+      if (duplicateSchedule) {
+        return res.status(400).json({ message: "Lịch trình đã tồn tại" });
+      }
+    }
+
     const updateData = {
       maxSlots,
       status,
       departureDate,
-      endDate: endDate || null,
+      endDate,
     };
 
     Object.keys(updateData).forEach((key) => {

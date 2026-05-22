@@ -57,7 +57,7 @@ function BookingConfirm() {
     state.scheduleId || getScheduleId(state.selectedSchedule) || "",
   );
   const [bookingForm, setBookingForm] = useState({
-    people: Math.max(Number(state.people || 1), 1),
+    people: state.people ? Math.max(Number(state.people), 1) : "",
     note: state.note || "",
   });
   const [customerForm, setCustomerForm] = useState({
@@ -70,7 +70,7 @@ function BookingConfirm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const people = Math.max(Number(bookingForm.people || 1), 1);
+  const people = Number(bookingForm.people || 0);
   const price = Number(service?.prices || service?.price || 0);
   const originalTotal = Number(state.originalTotal ?? price * people);
   const appliedCoupon =
@@ -239,6 +239,12 @@ function BookingConfirm() {
       return;
     }
 
+    const validationMessage = validateBookingBeforeSubmit();
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
+
     if (!customerForm.fullName || !customerForm.email || !customerForm.phone) {
       setError("Vui long nhap day du ho ten, email va so dien thoai.");
       return;
@@ -340,6 +346,7 @@ function BookingConfirm() {
     : 0;
   const validateBookingBeforeSubmit = () => {
     if (!selectedScheduleId) return "Vui long chon lich khoi hanh.";
+    if (!bookingForm.people) return "Vui lòng nhập số lượng người đi";
     if (people < 1) return "So luong khach khong hop le.";
     if (people > remainingSlots) {
       return "Số lượng chỗ còn lại không đủ";

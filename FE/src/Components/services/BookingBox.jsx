@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -25,7 +25,9 @@ function BookingBox({
   const service = props || {};
   const [showBooking, setShowBooking] = useState(viewPage === false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [people, setPeople] = useState("2");
+  const [people, setPeople] = useState("");
+  const [peopleError, setPeopleError] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
   const [note, setNote] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponResult, setCouponResult] = useState(null);
@@ -35,9 +37,9 @@ function BookingBox({
   const price = Number(service?.price || service?.prices || 0);
   const selectedScheduleId =
     selectedSchedule?._id || selectedSchedule?.id || "";
-  const normalizedPeople = Math.max(
-    Number(String(people || "1").replace(/^0+(?=\d)/, "") || 1),
-    1,
+  const peopleInputRef = useRef(null);
+  const normalizedPeople = Number(
+    String(people || "").replace(/^0+(?=\d)/, "") || 0,
   );
   const subtotal = price * normalizedPeople;
   const discountAmount = Number(couponResult?.discountAmount || 0);
@@ -93,8 +95,20 @@ function BookingBox({
 
   // Tao payload dat tour va chuyen sang trang xac nhan.
   const handleBook = () => {
+    if (!String(people || "").trim()) {
+      setPeopleError("Vui lòng nhập số lượng người đi");
+      peopleInputRef.current?.focus();
+      return;
+    }
+
+    if (normalizedPeople < 1) {
+      setPeopleError("Số lượng khách không hợp lệ.");
+      peopleInputRef.current?.focus();
+      return;
+    }
+
     if (!selectedScheduleId) {
-      setCouponError("Vui long chon lich khoi hanh.");
+      setScheduleError("Vui lòng chọn lịch khởi hành.");
       return;
     }
 
@@ -209,8 +223,11 @@ function BookingBox({
                     if (typeof setSelectedSchedule === "function") {
                       setSelectedSchedule(selected || null);
                     }
+                    if (scheduleError) setScheduleError("");
                   }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-border outline-none focus:border-[#f97316]"
+                  className={`w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-border outline-none focus:border-[#f97316] ${
+                    scheduleError ? "border-red-500 focus:border-red-500" : ""
+                  }`}
                   style={{ fontSize: 14 }}
                 >
                   <option value="">Chọn lịch khởi hành</option>
@@ -231,6 +248,11 @@ function BookingBox({
                       );
                     })}
                 </select>
+                {scheduleError ? (
+                  <p className="mt-2 text-left text-sm text-red-500">
+                    {scheduleError}
+                  </p>
+                ) : null}
               </div>
 
               <div>
@@ -241,27 +263,37 @@ function BookingBox({
                   <RequiredLabel>Số người</RequiredLabel>
                 </label>
                 <input
+                  ref={peopleInputRef}
                   type="text"
                   inputMode="numeric"
                   value={people}
+                  placeholder="Nhập số lượng"
                   onChange={(e) => {
                     const digits = String(e.target.value || "").replace(
                       /\D/g,
                       "",
                     );
                     setPeople(digits);
+                    if (peopleError) setPeopleError("");
                   }}
                   onBlur={() => {
-                    const cleaned = String(people || "1")
+                    const cleaned = String(people || "")
                       .replace(/\D/g, "")
                       .replace(/^0+(?=\d)/, "");
-                    setPeople(String(Math.max(Number(cleaned || 1), 1)));
+                    setPeople(cleaned);
                   }}
-                  className={numberInputClass}
+                  className={`${numberInputClass} ${
+                    peopleError ? "border-red-500 focus:border-red-500" : ""
+                  }`}
                   style={{
                     fontSize: 14,
                   }}
                 />
+                {peopleError ? (
+                  <p className="mt-2 text-left text-sm text-red-500">
+                    {peopleError}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <label

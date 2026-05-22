@@ -6,7 +6,7 @@ const ROOT_ROUTES = {
     to: "/admin",
   },
   provider: {
-    label: "Doanh thu",
+    label: "Quản lý",
     to: "/provider",
   },
   user: {
@@ -16,8 +16,13 @@ const ROOT_ROUTES = {
 };
 
 const PAGE_LABELS = {
+  dashboard: "Dashboard",
+  servicemanager: "Quản lý dịch vụ",
+  accountmanager: "Quản lý tài khoản",
+  bookingmanager: "Quản lý đặt chỗ",
   services: "Dịch vụ",
   addservices: "Thêm dịch vụ",
+  editservices: "Chỉnh sửa dịch vụ",
   detailservices: "Chi tiết dịch vụ",
   schedule: "Lịch khởi hành",
   booking: "Đặt chỗ",

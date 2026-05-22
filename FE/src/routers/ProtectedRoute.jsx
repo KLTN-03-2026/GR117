@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { jwt  } from "../utils/jwt";
+import { useAuthStorage } from "../utils/authStorage.js";
 
 export default function ProtectedRoute({ roles }) {
-  const user = jwt();
+  const { user } = useAuthStorage();
 
   if (!user) return <Navigate to="/signin" replace />;
 

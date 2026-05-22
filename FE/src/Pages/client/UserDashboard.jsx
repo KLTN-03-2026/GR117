@@ -1,6 +1,8 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useRef } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
 import {
   FaClock,
   FaHeart,
@@ -92,6 +94,7 @@ function UserDashboard() {
     email: "",
     phone: "",
   });
+  const [profileErrors, setProfileErrors] = useState({});
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [favoriteServices, setFavoriteServices] = useState([]);
@@ -111,6 +114,8 @@ function UserDashboard() {
   const [payingOrderId, setPayingOrderId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const fullNameRef = useRef(null);
+  const phoneRef = useRef(null);
 
   if (!user || String(user.role).toLowerCase() !== "user") {
     return <Navigate to="/signin" replace />;
@@ -135,6 +140,45 @@ function UserDashboard() {
 
     const digits = raw.replace(/\D/g, "").slice(-4).padStart(4, "0");
     return `OD${digits}`;
+  };
+  const getErrorMessage = (error, fallback) =>
+    error?.response?.data?.message || error?.message || fallback;
+  const profileInputClass = (field) =>
+    `w-full rounded-xl border bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316] ${
+      profileErrors[field]
+        ? "border-red-500 focus:border-red-500"
+        : "border-slate-200"
+    }`;
+  const clearProfileError = (field) => {
+    setProfileErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+  const validateProfileForm = () => {
+    const nextErrors = {};
+    const fullName = String(profile.fullName || "").trim();
+    const phone = String(profile.phone || "").trim();
+
+    if (!fullName) nextErrors.fullName = "Vui lòng nhập họ tên.";
+    else if (fullName.length < 3 || fullName.length > 30) {
+      nextErrors.fullName = "Họ tên phải từ 3 đến 30 ký tự.";
+    } else if (!/^[\p{L}\s]+$/u.test(fullName)) {
+      nextErrors.fullName = "Họ tên không được chứa số hoặc ký tự đặc biệt.";
+    }
+    if (!phone) nextErrors.phone = "Vui lòng nhập số điện thoại.";
+    else if (!/^0\d{9}$/.test(phone)) {
+      nextErrors.phone = "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0.";
+    }
+
+    setProfileErrors(nextErrors);
+
+    if (nextErrors.fullName) fullNameRef.current?.focus();
+    else if (nextErrors.phone) phoneRef.current?.focus();
+
+    return Object.keys(nextErrors).length === 0;
   };
 
   const fetchDashboard = async () => {
@@ -191,17 +235,19 @@ function UserDashboard() {
 
     if (vnpayStatus === "success") {
       const orderCode = callbackOrderCode || displayOrderCode(callbackOrderId);
-      setTab("orders");
-      setNotice(
+      const message =
         callbackUpdated === "1"
-          ? `Thanh toan VNPAY thanh cong. Don ${orderCode} da duoc cap nhat.`
-          : "Thanh toan VNPAY thanh cong. Dashboard dang tai lai du lieu moi nhat.",
-      );
+          ? `Thanh toán VNPAY thành công. Đơn ${orderCode} đã được cập nhật.`
+          : "Thanh toán VNPAY thành công. Đang tải lại dữ liệu đơn hàng.";
+      setTab("orders");
+      setNotice(message);
+      toast.success(message);
       fetchDashboard();
     } else if (vnpayStatus === "failed") {
-      setNotice(
-        "Thanh toán VNPAY chưa thành công hoặc chữ ký xác thực không hợp lệ.",
-      );
+      const message =
+        "Thanh toán VNPAY chưa thành công hoặc chữ ký xác thực không hợp lệ.";
+      setNotice(message);
+      toast.error(message);
     }
 
     const timer = window.setTimeout(() => {
@@ -273,16 +319,22 @@ function UserDashboard() {
   }, [serviceIds, currentUserId]);
 
   const updateProfile = async () => {
-    if (!accessToken) return;
+    if (!validateProfileForm()) return;
 
+    if (!accessToken) {
+      toast.error("Bạn cần đăng nhập để cập nhật hồ sơ.");
+      return;
+    }
+
+    const toastId = toast.loading("Đang cập nhật hồ sơ...");
     try {
       setSavingProfile(true);
       setNotice("");
       const res = await axios.put(
         "/api/users/profile",
         {
-          fullName: profile.fullName,
-          phone: profile.phone,
+          fullName: String(profile.fullName || "").trim(),
+          phone: String(profile.phone || "").trim(),
         },
         {
           headers: {
@@ -305,10 +357,11 @@ function UserDashboard() {
         }),
       );
       setNotice("Cập nhật thông tin thành công!");
+      toast.success("Cập nhật thông tin thành công!", { id: toastId });
     } catch (updateError) {
-      setError(
-        updateError?.response?.data?.message || "Không thể cập nhật hồ sơ.",
-      );
+      const message = getErrorMessage(updateError, "Không thể cập nhật hồ sơ.");
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setSavingProfile(false);
     }
@@ -328,10 +381,13 @@ function UserDashboard() {
 
   const submitReview = async () => {
     if (!reviewForm.comment.trim()) {
-      setError("Vui lòng nhập bình luận");
+      const message = "Vui lòng nhập bình luận";
+      setError(message);
+      toast.error(message);
       return;
     }
 
+    const toastId = toast.loading("Đang gửi đánh giá...");
     try {
       setSubmittingReview(true);
       setNotice("");
@@ -349,12 +405,13 @@ function UserDashboard() {
         },
       );
       setNotice("Đánh giá thành công!");
+      toast.success("Đánh giá thành công!", { id: toastId });
       setShowReviewForm(false);
       fetchDashboard();
     } catch (reviewError) {
-      setError(
-        reviewError?.response?.data?.message || "Không thể gửi đánh giá.",
-      );
+      const message = getErrorMessage(reviewError, "Không thể gửi đánh giá.");
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setSubmittingReview(false);
     }
@@ -377,7 +434,9 @@ function UserDashboard() {
     const orderCode = displayOrderCode(orderId);
 
     if (!accessToken) {
-      setError("Ban can dang nhap de huy don.");
+      const message = "Bạn cần đăng nhập để hủy đơn.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -386,7 +445,9 @@ function UserDashboard() {
         order.status,
       )
     ) {
-      setError("Don nay hien khong the huy o trang thai hien tai.");
+      const message = "Đơn này hiện không thể hủy ở trạng thái hiện tại.";
+      setError(message);
+      toast.error(message);
       setNotice("");
       return;
     }
@@ -396,6 +457,7 @@ function UserDashboard() {
     );
     if (!confirmed) return;
 
+    const toastId = toast.loading(`Đang hủy đơn ${orderCode}...`);
     try {
       setCancellingOrderId(String(orderId));
       setError("");
@@ -412,13 +474,17 @@ function UserDashboard() {
       );
 
       setDetailId((prev) => (prev === orderId ? "" : prev));
-      setNotice(res.data?.message || `Da huy don ${orderCode} thanh cong.`);
+      const message = res.data?.message || `Đã hủy đơn ${orderCode} thành công.`;
+      setNotice(message);
+      toast.success(message, { id: toastId });
       await fetchDashboard();
     } catch (cancelError) {
-      setError(
-        cancelError?.response?.data?.message ||
-          "Khong the huy don nay vao luc nay.",
+      const message = getErrorMessage(
+        cancelError,
+        "Không thể hủy đơn này vào lúc này.",
       );
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setCancellingOrderId("");
     }
@@ -440,8 +506,12 @@ function UserDashboard() {
   };
 
   const handleRemoveFavorite = async (serviceId) => {
-    if (!serviceId || !accessToken) return;
+    if (!serviceId || !accessToken) {
+      toast.error("Bạn cần đăng nhập để cập nhật danh sách yêu thích.");
+      return;
+    }
 
+    const toastId = toast.loading("Đang xóa khỏi danh sách đã lưu...");
     try {
       setError("");
       setNotice("");
@@ -462,11 +532,14 @@ function UserDashboard() {
         ),
       );
       setNotice("Đã xóa khỏi danh sách đã lưu.");
+      toast.success("Đã xóa khỏi danh sách đã lưu.", { id: toastId });
     } catch (removeError) {
-      setError(
-        removeError?.response?.data?.message ||
-          "Không thể xóa khỏi danh sách đã lưu.",
+      const message = getErrorMessage(
+        removeError,
+        "Không thể xóa khỏi danh sách đã lưu.",
       );
+      setError(message);
+      toast.error(message, { id: toastId });
     }
   };
 
@@ -479,18 +552,24 @@ function UserDashboard() {
 
   const handleOrderPay = async (order) => {
     const orderId = getOrderId(order);
+    const orderCode = getOrderCode(order);
 
     if (!accessToken) {
-      setError("Ban can dang nhap de thanh toan.");
+      const message = "Bạn cần đăng nhập để thanh toán.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
     if (!canPay(order)) {
-      setError("Don nay khong con o trang thai co the thanh toan.");
+      const message = "Đơn này không còn ở trạng thái có thể thanh toán.";
+      setError(message);
+      toast.error(message);
       setNotice("");
       return;
     }
 
+    const toastId = toast.loading(`Đang tạo link thanh toán cho đơn ${orderCode}...`);
     try {
       setPayingOrderId(String(orderId));
       setError("");
@@ -515,17 +594,23 @@ function UserDashboard() {
 
       const paymentUrl = res.data?.vnpayRespone;
       if (!paymentUrl) {
-        setError("Khong tao duoc link thanh toan.");
+        const message = "Không tạo được link thanh toán.";
+        setError(message);
+        toast.error(message, { id: toastId });
         return;
       }
 
+      toast.success("Đã tạo link thanh toán. Đang chuyển sang VNPAY...", {
+        id: toastId,
+      });
       window.location.href = paymentUrl;
     } catch (payError) {
-      setError(
-        payError?.response?.data?.message ||
-          payError.message ||
-          "Khong the ket noi den cong thanh toan.",
+      const message = getErrorMessage(
+        payError,
+        "Không thể kết nối đến cổng thanh toán.",
       );
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
       setPayingOrderId("");
     }
@@ -708,18 +793,6 @@ function UserDashboard() {
           </div>
         </div>
 
-        {error ? (
-          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
-
-        {notice ? (
-          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-            {notice}
-          </div>
-        ) : null}
-
         <div className="flex gap-1 overflow-x-auto rounded-2xl bg-[#f0f4f8] p-1">
           {tabs.map((item) => {
             const Icon = item.icon;
@@ -794,29 +867,44 @@ function UserDashboard() {
                   <label className="space-y-2">
                     <RequiredLabel className="ml-1 text-sm text-slate-500">Họ tên</RequiredLabel>
                     <input
+                      ref={fullNameRef}
                       value={profile.fullName}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setProfile((prev) => ({
                           ...prev,
                           fullName: e.target.value,
-                        }))
-                      }
-                      className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                        }));
+                        clearProfileError("fullName");
+                      }}
+                      className={profileInputClass("fullName")}
                     />
+                    {profileErrors.fullName ? (
+                      <p className="ml-1 text-sm text-red-500">
+                        {profileErrors.fullName}
+                      </p>
+                    ) : null}
                   </label>
 
                   <label className="space-y-2">
                     <RequiredLabel className="ml-1 text-sm text-slate-500">Số điện thoại</RequiredLabel>
                     <input
+                      ref={phoneRef}
                       value={profile.phone}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
                         setProfile((prev) => ({
                           ...prev,
-                          phone: e.target.value,
-                        }))
-                      }
-                      className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                          phone: value,
+                        }));
+                        clearProfileError("phone");
+                      }}
+                      className={profileInputClass("phone")}
                     />
+                    {profileErrors.phone ? (
+                      <p className="ml-1 text-sm text-red-500">
+                        {profileErrors.phone}
+                      </p>
+                    ) : null}
                   </label>
                 </div>
 

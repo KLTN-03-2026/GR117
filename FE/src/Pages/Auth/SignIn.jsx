@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { CiLogin, FaRegEye, FaRegEyeSlash } from "../../assets/Icons/Icons";
 import CustomApi from "../../../Server";
 import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
+import { saveAuth } from "../../utils/authStorage.js";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -88,12 +89,10 @@ function SignIn() {
         throw new Error("Phản hồi đăng nhập không hợp lệ");
       }
 
-      localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("currentUser", JSON.stringify(user));
-      toast.success("Đăng nhập thành công");
+      saveAuth(accessToken, user);
+      toast.success("Đăng nhập thành công", { duration: 4000 });
 
       navigate(getRedirectPath(user?.role), { replace: true });
-      window.location.reload();
     } catch (err) {
       const message = err.message || "Đăng nhập thất bại";
       setFieldErrors({ password: message });

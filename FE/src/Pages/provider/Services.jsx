@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { IoSearch } from "react-icons/io5";
+import toast from "react-hot-toast";
 import ServicesCard from "../../Components/services/ServicesCard";
 import AddServices from "./AddServices.jsx";
 import EditServices from "./EditServices.jsx";
+import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 
 const STATUS_META = {
   all: "Tất cả",
@@ -343,7 +345,7 @@ const Services = () => {
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setError("Bạn chưa đăng nhập hoặc token đã hết hạn");
+      toast.error("Bạn chưa đăng nhập hoặc token đã hết hạn");
       return;
     }
 
@@ -357,13 +359,13 @@ const Services = () => {
       const result = await res.json();
 
       if (!res.ok) {
-        setError(result?.message || "Không thể tải chi tiết dịch vụ");
+        toast.error(result?.message || "Không thể tải chi tiết dịch vụ");
         return;
       }
 
       setSelectedService(result?.data || service);
     } catch {
-      setError("Không thể tải chi tiết dịch vụ");
+      toast.error("Không thể tải chi tiết dịch vụ");
     } finally {
       setDetailLoadingId("");
     }
@@ -379,7 +381,7 @@ const Services = () => {
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setError("Bạn chưa đăng nhập hoặc token đã hết hạn");
+      toast.error("Bạn chưa đăng nhập hoặc token đã hết hạn");
       return;
     }
 
@@ -397,13 +399,14 @@ const Services = () => {
       const result = await res.json();
 
       if (!res.ok) {
-        setError(result.message || "Không thể xóa dịch vụ");
+        toast.error(result.message || "Không thể xóa dịch vụ");
         return;
       }
 
       setServices((prev) => prev.filter((item) => item._id !== service._id));
+      toast.success("Xóa dịch vụ thành công");
     } catch (deleteError) {
-      setError(`Lỗi xóa dịch vụ: ${deleteError.message}`);
+      toast.error(`Lỗi xóa dịch vụ: ${deleteError.message}`);
     } finally {
       setActionLoadingId("");
     }
@@ -418,11 +421,7 @@ const Services = () => {
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6">
         <div className="flex items-center gap-3">
           <div>
-            <div className="mb-0.5 flex items-center gap-2 text-[12px] text-gray-400 font-medium">
-              <span>Dashboard</span>
-              <span>{">"}</span>
-              <span className="text-[#f97316]">Dịch vụ</span>
-            </div>
+            <Breadcrumb />
 
             <h1
               style={{

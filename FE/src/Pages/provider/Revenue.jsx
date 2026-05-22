@@ -402,11 +402,7 @@ function Revenue() {
                       </td>
                       <td className="px-2 py-3 text-[12px] text-slate-700">
                         <div className="font-medium leading-tight">{row.customerName}</div>
-                        {row.customerPhone ? (
-                          <div className="text-[11px] text-slate-500">
-                            {row.customerPhone}
-                          </div>
-                        ) : null}
+                        
                       </td>
                       <td className="px-2 py-3 text-[12px] text-slate-600">
                         <div className="max-w-[180px] truncate font-medium text-slate-700">

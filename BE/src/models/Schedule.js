@@ -27,8 +27,11 @@ const scheduleSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
-// Đảm bảo không trùng lịch khởi hành cho cùng 1 tour trong 1 ngày
-scheduleSchema.index({ serviceId: 1, departureDate: 1 }, { unique: true });
+// Đảm bảo không trùng lịch khi cùng dịch vụ, ngày đi và ngày về.
+scheduleSchema.index(
+  { serviceId: 1, departureDate: 1, endDate: 1 },
+  { unique: true },
+);
 const Schedule = mongoose.model("Schedule", scheduleSchema);
 
 module.exports = Schedule;

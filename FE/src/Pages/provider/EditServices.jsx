@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiX } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 import { fileToDataUrl } from "../../utils/fileToDataUrl.js";
 import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
@@ -46,6 +47,16 @@ const CATEGORY_LABELS = {
   "am-thuc": "Ẩm thực",
 };
 
+const getDigitsOnly = (value) => String(value || "").replace(/\D/g, "");
+
+const formatPriceInput = (value) => {
+  const digits = getDigitsOnly(value);
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const isEmbeddedImage = (value) =>
+  /^data:image\//i.test(String(value || "").trim());
+
 const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) => {
   const { id: routeId } = useParams();
   const id = serviceId || routeId;
@@ -58,6 +69,7 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
+  const [existingImages, setExistingImages] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
   const [itineraryFile, setItineraryFile] = useState(null);
   const imageFile = imageFiles[0] || null;
@@ -121,16 +133,23 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
         const result = await res.json();
 
         if (!res.ok) {
-          setMessage(result?.message || "Khong tai duoc thong tin dich vu");
+          toast.error(result?.message || "Không tải được thông tin dịch vụ");
           return;
         }
 
         const service = result?.data || result;
+        const serviceImages = Array.isArray(service.images)
+          ? service.images.filter(Boolean)
+          : service.imageUrl
+            ? [service.imageUrl]
+            : [];
+
+        setExistingImages(serviceImages);
 
         setFormData({
           name: service.serviceName || service.servicesName || service.ServiceName || "",
           description: service.description || service.descriptionDetail || "",
-          price: String(service.prices ?? service.price ?? ""),
+          price: formatPriceInput(service.prices ?? service.price ?? ""),
           location: service.location || service.destination || "",
           category:
             (typeof service.category === "object" && service.category?._id) ||
@@ -143,10 +162,9 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
                 .filter(Boolean)
             : [],
           duration: String(service.duration || ""),
-          images:
-            Array.isArray(service.images) && service.images.length > 0
-              ? service.images.join("\n")
-              : service.imageUrl || "",
+          images: serviceImages
+            .filter((image) => !isEmbeddedImage(image))
+            .join("\n"),
           highlights: Array.isArray(service.highlights)
             ? service.highlights.join("\n")
             : Array.isArray(service.highlight)
@@ -162,7 +180,7 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
             : service.itinerary || "",
         });
       } catch {
-        setMessage("Khong tai duoc thong tin dich vu");
+        toast.error("Không tải được thông tin dịch vụ");
       } finally {
         setLoading(false);
       }
@@ -173,7 +191,10 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "price" ? formatPriceInput(value) : value,
+    }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -237,16 +258,21 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
 
   const validateFields = () => {
     const nextErrors = {};
+    const rawPrice = getDigitsOnly(formData.price);
     if (!formData.name.trim()) nextErrors.name = "Vui lòng nhập tên dịch vụ";
     if (!formData.location.trim()) nextErrors.location = "Vui lòng nhập địa điểm";
-    if (!formData.price || Number(formData.price) <= 0) nextErrors.price = "Giá phải lớn hơn 0";
+    if (!rawPrice || Number(rawPrice) <= 0) nextErrors.price = "Giá phải lớn hơn 0";
     if (!formData.category) nextErrors.category = "Vui lòng chọn danh mục";
     if (formData.seasons.length === 0) nextErrors.seasons = "Vui lòng chọn ít nhất 1 mùa";
     if (!formData.duration.trim()) nextErrors.duration = "Vui lòng nhập thời lượng";
     if (!formData.description.trim()) nextErrors.description = "Vui lòng nhập mô tả";
 
     const linkImages = splitLines(formData.images);
-    if (linkImages.length === 0 && imageFiles.length === 0) {
+    if (
+      linkImages.length === 0 &&
+      imageFiles.length === 0 &&
+      existingImages.length === 0
+    ) {
       nextErrors.images = "Vui lòng chọn ảnh upload hoặc nhập link ảnh";
     }
 
@@ -270,21 +296,22 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
 
     const validationErrors = validateFields();
     if (Object.keys(validationErrors).length > 0) {
-      setMessage("Vui lòng kiểm tra các ô bị lỗi");
+      toast.error("Vui lòng kiểm tra các ô bị lỗi");
       return;
     }
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setMessage("Bạn chưa đăng nhập hoặc token đã hết hạn");
+      toast.error("Bạn chưa đăng nhập hoặc token đã hết hạn");
       return;
     }
 
     const payload = new FormData();
+    const rawPrice = getDigitsOnly(formData.price);
     payload.append("serviceName", formData.name.trim());
     payload.append("nameProvider", currentUser?.fullName || currentUser?.email || "Provider");
     payload.append("description", formData.description.trim());
-    payload.append("prices", String(Number(formData.price)));
+    payload.append("prices", String(Number(rawPrice)));
     payload.append("location", formData.location.trim());
     payload.append("category", formData.category);
     payload.append("seasonTags", JSON.stringify(formData.seasons));
@@ -294,7 +321,12 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
 
     const linkImages = splitLines(formData.images);
     const uploadedImages = await Promise.all(imageFiles.map((file) => fileToDataUrl(file)));
-    const imageList = [...uploadedImages.filter(Boolean), ...linkImages];
+    const embeddedImages = existingImages.filter(isEmbeddedImage);
+    const imageList = [
+      ...uploadedImages.filter(Boolean),
+      ...embeddedImages,
+      ...linkImages,
+    ];
 
     payload.append("images", JSON.stringify(imageList));
     payload.append("imageUrl", imageList[0] || "");
@@ -316,7 +348,7 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
       const result = await res.json();
       if (res.ok) {
         setSuccess(true);
-        setMessage("Cập nhật dịch vụ thành công");
+        toast.success("Cập nhật dịch vụ thành công");
         if (isModal) {
           await onUpdated?.();
           onClose?.();
@@ -324,10 +356,10 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
           navigate("/provider/services");
         }
       } else {
-        setMessage(result.message || "Không thể cập nhật dịch vụ");
+        toast.error(result.message || "Không thể cập nhật dịch vụ");
       }
     } catch (error) {
-      setMessage(`Lỗi kết nối server: ${error.message}`);
+      toast.error(`Lỗi kết nối server: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -410,8 +442,8 @@ const EditServices = ({ isModal = false, serviceId, onClose, onUpdated } = {}) =
                   <div>
                     <label className={labelClass}><RequiredLabel>Giá</RequiredLabel></label>
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       name="price"
                       ref={setFieldRef("price")}
                       value={formData.price}

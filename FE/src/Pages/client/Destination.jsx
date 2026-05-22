@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import CustomBtnDestination from "../../Components/destination/ButtonDestination";
+import { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   FaUmbrellaBeach,
@@ -126,6 +127,7 @@ const Destination = () => {
   const [seasonFilter, setSeasonFilter] = useState("all");
   const [favoriteServiceIds, setFavoriteServiceIds] = useState([]);
   const [favoriteLoadingId, setFavoriteLoadingId] = useState("");
+  const servicesSectionRef = useRef(null);
   const accessToken = localStorage.getItem("accessToken");
   const guestId = useMemo(() => getGuestId(), []);
   const currentUser = useMemo(() => {
@@ -252,6 +254,19 @@ const Destination = () => {
     }
   }, [categories, location.search]);
 
+  useEffect(() => {
+    if (location.hash !== "#services") return;
+
+    const scrollTimer = window.setTimeout(() => {
+      servicesSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [location.hash, location.search]);
+
   const uniqueLocations = [
     ...new Set(Data.map((item) => item?.location).filter(Boolean)),
   ];
@@ -343,7 +358,9 @@ const Destination = () => {
     if (activeCategory !== "Tất cả") params.set("category", activeCategory);
     if (budgetFilter !== "all") params.set("budget", budgetFilter);
     if (seasonFilter !== "all") params.set("season", seasonFilter);
-    navigate(`/destination${params.toString() ? `?${params.toString()}` : ""}`);
+    navigate(
+      `/destination${params.toString() ? `?${params.toString()}` : ""}#services`,
+    );
   };
 
   return (
@@ -470,11 +487,11 @@ const Destination = () => {
                 <button
                   type="button"
                   onClick={handleSearch}
-                  className="flex h-[60px] w-full items-center justify-center whitespace-nowrap rounded-xl rounded-l-none bg-gradient-to-r from-[#F78F10] to-[#F78F10] px-5 text-white transition-all hover:shadow-lg hover:shadow-orange-200 lg:min-w-[140px] lg:w-auto"
+                  className="flex h-[60px] w-full items-center justify-center whitespace-nowrap rounded-xl rounded bg-gradient-to-r from-[#F78F10] to-[#F78F10] px-5 text-white transition-all hover:shadow-lg hover:shadow-orange-200 lg:min-w-[140px] lg:w-auto"
                 >
                   <div className="flex items-center gap-2">
                     <CiSearch className="text-lg font-bold" />
-                    <p className="font-bold text-[13px] leading-none">
+                    <p className="rounded-xl bg-gradient-to-r from-[#F78F10] to-[#F78F10] px-6 py-3.5 text-white transition-all hover:shadow-lg hover:shadow-orange-200">
                       Tìm kiếm
                     </p>
                   </div>
@@ -485,7 +502,11 @@ const Destination = () => {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div
+        id="services"
+        ref={servicesSectionRef}
+        className="max-w-7xl mx-auto px-6 py-8 scroll-mt-24"
+      >
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
           {categories.map((category) => (
             <CustomBtnDestination

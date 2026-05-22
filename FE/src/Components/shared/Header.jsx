@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   FaLocationDot,
   FaRegStar,
@@ -8,18 +7,18 @@ import {
 } from "../../assets/Icons/Icons";
 import { MdOutlineDashboard } from "react-icons/md";
 import { SiGmail } from "react-icons/si";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
+import { clearAuth, useAuthStorage } from "../../utils/authStorage.js";
 
 function Header({ variant = "default" }) {
-  const accessToken = localStorage.getItem("accessToken");
-  const user = JSON.parse(localStorage.getItem("currentUser") || "null");
+  const navigate = useNavigate();
+  const { accessToken, currentUser, user } = useAuthStorage();
   const isCheck = !!accessToken;
   const isDashboardHeader = variant === "dashboard";
 
   const Logout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("currentUser");
-    window.location.reload();
+    clearAuth();
+    navigate("/", { replace: true });
   };
 
   const navClass = ({ isActive }) =>
@@ -53,7 +52,7 @@ function Header({ variant = "default" }) {
                 <span className="flex items-center gap-1">
                   Xin chào <FaUser />
                   <span className="text-[#f97316] ">
-                    {user?.fullName}
+                    {currentUser?.fullName || user?.fullName}
                   </span>
                 </span>
                 <span className="ml-2 px-2 py-0.5 bg-white/10 rounded text-[11px]">

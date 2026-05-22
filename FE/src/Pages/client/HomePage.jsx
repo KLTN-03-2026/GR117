@@ -182,7 +182,9 @@ function HomePage() {
     if (searchKeyword.trim()) params.set("q", searchKeyword.trim());
     if (searchCategory !== "all") params.set("category", searchCategory);
     if (searchBudget !== "all") params.set("budget", searchBudget);
-    navigate(`/destination${params.toString() ? `?${params.toString()}` : ""}`);
+    navigate(
+      `/destination${params.toString() ? `?${params.toString()}` : ""}#services`,
+    );
   };
 
   return (
@@ -471,7 +473,7 @@ function HomePage() {
               hàng nghìn khách hàng tiềm năng
             </p>
             <Link
-              to="register"
+              to="/provider-register"
               className="inline-block px-8 mt-4 py-3.5 bg-gradient-to-r from-[#f97316] to-[#f59e0b] text-white rounded-full hover:shadow-lg transition-all"
             >
               Đăng ký đối tác ngay

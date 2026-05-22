@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import { FiCalendar, FiPlus } from "react-icons/fi";
+import toast from "react-hot-toast";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import ProviderScheduleTable from "./ProviderScheduleTable.jsx";
 import ScheduleFormModal from "./ScheduleFormModal.jsx";
@@ -40,6 +41,33 @@ const toDateInputValue = (value) => {
   return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10);
 };
 
+const todayInputValue = () => {
+  const now = new Date();
+  const timezoneOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10);
+};
+
+const stripUnsafeText = (value) =>
+  String(value || "")
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<\/?[^>]+>/g, "")
+    .replace(/javascript:/gi, "")
+    .trim();
+
+const parseTourDays = (service) => {
+  if (!service) return null;
+  if (Number.isFinite(service.itineraryDays) && service.itineraryDays > 0) {
+    return service.itineraryDays;
+  }
+
+  const duration = String(service.duration || "").toLowerCase();
+  const dayMatch = duration.match(/(\d+)\s*(ngay|ngày|day|days)/i);
+  if (dayMatch) return Number(dayMatch[1]);
+
+  const firstNumber = duration.match(/\d+/);
+  return firstNumber ? Number(firstNumber[0]) : null;
+};
+
 export default function ProviderSchedule() {
   const [services, setServices] = useState([]);
   const [schedules, setSchedules] = useState([]);
@@ -51,9 +79,10 @@ export default function ProviderSchedule() {
     serviceId: "",
     departureDate: "",
     endDate: "",
-    maxPeople: "20",
+    maxPeople: "",
     note: "",
   });
+  const [touchedFields, setTouchedFields] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -71,6 +100,8 @@ export default function ProviderSchedule() {
       "Chưa có tên",
     location:
       item.location || item.destination || item.region || "Chưa cập nhật",
+    duration: item.duration || item.tourDuration || "",
+    itineraryDays: Array.isArray(item.itinerary) ? item.itinerary.length : null,
   });
 
   const loadServices = async () => {
@@ -144,24 +175,42 @@ export default function ProviderSchedule() {
       serviceId: "",
       departureDate: "",
       endDate: "",
-      maxPeople: "20",
+      maxPeople: "",
       note: "",
     });
+    setTouchedFields({});
     setEditingSchedule(null);
   };
 
+  const markFieldTouched = (field) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+  };
+
   const updateForm = (field, value) => {
+    markFieldTouched(field);
+
+    if (field === "maxPeople") {
+      setForm((prev) => ({ ...prev, [field]: value.replace(/\D/g, "") }));
+      return;
+    }
+
+    if (field === "note") {
+      setForm((prev) => ({ ...prev, [field]: stripUnsafeText(value).slice(0, 500) }));
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const openEditModal = (schedule) => {
     setEditingSchedule(schedule);
     setMessage({ type: "", text: "" });
+    setTouchedFields({});
     setForm({
       serviceId: normalizeId(schedule.service_id || schedule.serviceId),
       departureDate: toDateInputValue(schedule.departureDate),
       endDate: toDateInputValue(schedule.endDate),
-      maxPeople: String(schedule.maxSlots || schedule.maxPeople || 20),
+      maxPeople: String(schedule.maxSlots || schedule.maxPeople || ""),
       note: schedule.note || "",
     });
     setShowModal(true);
@@ -181,20 +230,86 @@ export default function ProviderSchedule() {
     );
   };
 
-  const validateForm = () => {
-    if (
-      !form.serviceId ||
-      !form.departureDate ||
-      Number(form.maxPeople) <= 0
-    ) {
-      setMessage({ type: "error", text: "Vui lòng nhập đầy đủ thông tin" });
-      return false;
+  const validateScheduleForm = (targetForm = form) => {
+    const nextErrors = {};
+    const selectedService = getService(targetForm.serviceId);
+    const departureDate = targetForm.departureDate;
+    const endDate = targetForm.endDate;
+    const today = todayInputValue();
+
+    if (!targetForm.serviceId) {
+      nextErrors.serviceId = "Vui lòng chọn dịch vụ";
     }
-    return true;
+
+    if (!departureDate) {
+      nextErrors.departureDate = "Vui lòng nhập ngày đi";
+    } else if (departureDate < today) {
+      nextErrors.departureDate = "Ngày đi không được chọn trong quá khứ";
+    }
+
+    if (!endDate) {
+      nextErrors.endDate = "Vui lòng nhập ngày về";
+    } else if (departureDate) {
+      const tourDays = parseTourDays(selectedService);
+      if (tourDays === 1 && endDate !== departureDate) {
+        nextErrors.endDate = "Tour 1 ngày phải có ngày về trùng ngày đi";
+      } else if (tourDays !== 1 && endDate <= departureDate) {
+        nextErrors.endDate = "Ngày về phải sau ngày đi";
+      }
+    }
+
+    if (!targetForm.maxPeople) {
+      nextErrors.maxPeople = "Vui lòng nhập số chỗ tối đa";
+    } else if (!/^[1-9]\d*$/.test(targetForm.maxPeople)) {
+      nextErrors.maxPeople = "Số chỗ chỉ được nhập số và phải lớn hơn 0";
+    } else if (Number(targetForm.maxPeople) > 500) {
+      nextErrors.maxPeople = "Số chỗ tối đa không được vượt quá 500";
+    }
+
+    if (targetForm.note.length > 500) {
+      nextErrors.note = "Ghi chú không được vượt quá 500 ký tự";
+    }
+
+    const hasDuplicate =
+      targetForm.serviceId &&
+      departureDate &&
+      endDate &&
+      schedules.some((schedule) => {
+        const sameSchedule = editingSchedule?._id && schedule._id === editingSchedule._id;
+        if (sameSchedule) return false;
+
+        return (
+          normalizeId(schedule.service_id || schedule.serviceId) === targetForm.serviceId &&
+          toDateInputValue(schedule.departureDate) === departureDate &&
+          toDateInputValue(schedule.endDate) === endDate
+        );
+      });
+
+    if (hasDuplicate) {
+      nextErrors.duplicate = "Lịch trình đã tồn tại";
+    }
+
+    return nextErrors;
   };
 
+  const formErrors = showModal ? validateScheduleForm(form) : {};
+  const visibleErrors = Object.fromEntries(
+    Object.entries(formErrors).filter(([field]) => {
+      if (field === "duplicate") {
+        return Boolean(form.serviceId && form.departureDate && form.endDate);
+      }
+
+      return Boolean(touchedFields[field]);
+    }),
+  );
+  const isFormValid = showModal && Object.keys(formErrors).length === 0;
+
   const handleSaveSchedule = async () => {
-    if (!validateForm()) return;
+    const nextErrors = validateScheduleForm();
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error(nextErrors.duplicate || Object.values(nextErrors)[0]);
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -218,31 +333,22 @@ export default function ProviderSchedule() {
           endDate: form.endDate,
           maxSlots: Number(form.maxPeople),
           status: editingSchedule?.status || "open",
-          note: form.note.trim(),
+          note: stripUnsafeText(form.note),
         }),
       });
 
       const result = await res.json();
 
       if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: result.message || (isEdit ? "Không thể cập nhật lịch khởi hành" : "Không thể thêm lịch khởi hành"),
-        });
+        toast.error(result.message || (isEdit ? "Không thể cập nhật lịch khởi hành" : "Không thể thêm lịch khởi hành"));
         return;
       }
 
-      setMessage({
-        type: "success",
-        text: isEdit ? "Cập nhật lịch khởi hành thành công" : "Thêm lịch khởi hành thành công",
-      });
+      toast.success(isEdit ? "Cập nhật lịch khởi hành thành công" : "Thêm lịch khởi hành thành công");
       await loadSchedules(services);
       closeModal();
     } catch (error) {
-      setMessage({
-        type: "error",
-        text: `Lỗi khi lưu lịch: ${error.message}`,
-      });
+      toast.error(`Lỗi khi lưu lịch: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -285,10 +391,7 @@ export default function ProviderSchedule() {
       const result = await res.json();
 
       if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: result.message || "Không thể cập nhật trạng thái lịch",
-        });
+        toast.error(result.message || "Không thể cập nhật trạng thái lịch");
         return;
       }
 
@@ -298,18 +401,13 @@ export default function ProviderSchedule() {
         ),
       );
 
-      setMessage({
-        type: "success",
-        text:
-          nextStatus === "open"
-            ? "Đã mở lại lịch khởi hành"
-            : "Đã đóng lịch khởi hành",
-      });
+      toast.success(
+        nextStatus === "open"
+          ? "Đã mở lại lịch khởi hành"
+          : "Đã đóng lịch khởi hành",
+      );
     } catch (error) {
-      setMessage({
-        type: "error",
-        text: `Lỗi khi cập nhật trạng thái: ${error.message}`,
-      });
+      toast.error(`Lỗi khi cập nhật trạng thái: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -338,20 +436,17 @@ export default function ProviderSchedule() {
       const result = await res.json();
 
       if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: result.message || "Không thể xóa lịch khởi hành",
-        });
+        toast.error(result.message || "Không thể xóa lịch khởi hành");
         return;
       }
 
-      setMessage({ type: "success", text: "Xóa lịch khởi hành thành công" });
+      toast.success("Xóa lịch khởi hành thành công");
       setSchedules((prev) =>
         prev.filter((item) => item._id !== deleteTarget._id),
       );
       setDeleteTarget(null);
     } catch (error) {
-      setMessage({ type: "error", text: `Lỗi khi xóa lịch: ${error.message}` });
+      toast.error(`Lỗi khi xóa lịch: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -435,8 +530,12 @@ export default function ProviderSchedule() {
         services={services}
         form={form}
         isSubmitting={isSubmitting}
+        errors={visibleErrors}
+        canSubmit={isFormValid}
+        minDate={todayInputValue()}
         onClose={closeModal}
         onChange={updateForm}
+        onBlur={markFieldTouched}
         onSubmit={handleSubmit}
       />
 

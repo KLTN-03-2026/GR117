@@ -4,10 +4,10 @@ import LayoutAdmin from "../layout/LayoutAdmin.jsx";
 import HomePage from "../Pages/client/HomePage.jsx";
 import SignIn from "../Pages/Auth/SignIn.jsx";
 import Register from "../Pages/Auth/Register.jsx";
+import RegisterProvider from "../Pages/Auth/RegisterProvider.jsx";
 import ForgotPassword from "../Pages/Auth/ForgotPassword.jsx";
 import ResetPassword from "../Pages/Auth/ResetPassword.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
-import { jwt } from "../utils/jwt.js";
 import Services from "../Pages/provider/Services.jsx";
 import DashboardAdmin from "../Pages/admin/DashboardAdmin.jsx";
 import AddServices from "../Pages/provider/AddServices.jsx";
@@ -29,9 +29,10 @@ import BookingManagement from "../Pages/admin/BookingManagement.jsx";
 import DetailServices from "../Pages/client/DetailServers.jsx";
 import Error404 from "../Pages/client/Error404.jsx";
 import ProviderLayout from "../layout/ProviderLayout.jsx";
+import { useAuthStorage } from "../utils/authStorage.js";
 
 function Routers() {
-  const user = jwt();
+  const { user } = useAuthStorage();
   const isStaff = user?.role === "admin" || user?.role === "provider";
   const homePath = user?.role === "admin" ? "/admin" : user?.role === "provider" ? "/provider" : "/";
 
@@ -41,6 +42,18 @@ function Routers() {
         <Route path="/" element={isStaff ? <Navigate to={homePath} replace /> : <HomePage />} />
         <Route path="/signin" element={user ? <Navigate to={homePath} replace /> : <SignIn />} />
         <Route path="/register" element={user ? <Navigate to={homePath} replace /> : <Register />} />
+        <Route
+          path="/provider-register"
+          element={
+            !user ? (
+              <Navigate to="/signin" replace />
+            ) : user.role === "user" ? (
+              <RegisterProvider />
+            ) : (
+              <Navigate to={homePath} replace />
+            )
+          }
+        />
         <Route path="/forgot-password" element={user ? <Navigate to={homePath} replace /> : <ForgotPassword />} />
         <Route path="/reset-password" element={user ? <Navigate to={homePath} replace /> : <ResetPassword />} />
         <Route path="/destination" element={isStaff ? <Navigate to={homePath} replace /> : <Destination />} />

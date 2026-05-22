@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { FiEdit2, FiPlus, FiTrash2, FiX } from "react-icons/fi";
+import toast from "react-hot-toast";
 import Breadcrumb from "../../Components/shared/Breadcrumb.jsx";
 import RequiredLabel from "../../Components/shared/RequiredLabel.jsx";
 
@@ -35,10 +36,25 @@ const formatDiscountValue = (coupon) => {
   return `${value.toLocaleString("vi-VN")}đ`;
 };
 
+const getDigitsOnly = (value) => String(value || "").replace(/\D/g, "");
+
+const formatNumberInput = (value) => {
+  const digits = getDigitsOnly(value);
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+const todayInputValue = () => {
+  const now = new Date();
+  const timezoneOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10);
+};
+
 function CouponFormModal({
   open,
   isEdit,
   form,
+  errors = {},
+  minDate,
   isSubmitting,
   onClose,
   onSubmit,
@@ -78,7 +94,7 @@ function CouponFormModal({
             </label>
 
             <label className="space-y-2">
-              <RequiredLabel className="text-sm text-slate-500">Trạng thái</RequiredLabel>
+              <Label className="text-sm text-slate-500">Trạng thái</Label>
               <select
                 value={form.status}
                 onChange={(e) => onChange("status", e.target.value)}
@@ -90,7 +106,7 @@ function CouponFormModal({
             </label>
 
             <label className="space-y-2">
-              <RequiredLabel className="text-sm text-slate-500">Kiểu giảm</RequiredLabel>
+              <Label className="text-sm text-slate-500">Kiểu giảm</Label>
               <select
                 value={form.discountType}
                 onChange={(e) => onChange("discountType", e.target.value)}
@@ -115,8 +131,8 @@ function CouponFormModal({
             <label className="space-y-2">
               <RequiredLabel className="text-sm text-slate-500">Đơn tối thiểu</RequiredLabel>
               <input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={form.minOrderValue}
                 onChange={(e) => onChange("minOrderValue", e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
@@ -138,27 +154,39 @@ function CouponFormModal({
               <RequiredLabel className="text-sm text-slate-500">Ngày bắt đầu</RequiredLabel>
               <input
                 type="date"
+                min={minDate}
                 value={form.startDate}
                 onChange={(e) => onChange("startDate", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                className={`w-full rounded-xl border bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316] ${
+                  errors.startDate ? "border-red-400" : "border-slate-200"
+                }`}
               />
+              {errors.startDate ? (
+                <p className="text-xs font-medium text-red-500">{errors.startDate}</p>
+              ) : null}
             </label>
 
             <label className="space-y-2">
               <RequiredLabel className="text-sm text-slate-500">Ngày hết hạn</RequiredLabel>
               <input
                 type="date"
+                min={form.startDate || minDate}
                 value={form.endDate}
                 onChange={(e) => onChange("endDate", e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316]"
+                className={`w-full rounded-xl border bg-[#f8fafc] px-4 py-3 text-sm outline-none focus:border-[#f97316] ${
+                  errors.endDate ? "border-red-400" : "border-slate-200"
+                }`}
               />
+              {errors.endDate ? (
+                <p className="text-xs font-medium text-red-500">{errors.endDate}</p>
+              ) : null}
             </label>
           </div>
 
           <div className="flex justify-end gap-3">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || Object.keys(errors).length > 0}
               className="rounded-xl bg-gradient-to-r from-[#f97316] to-[#f59e0b] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Đang lưu..." : isEdit ? "Cập nhật" : "Tạo mã"}
@@ -178,7 +206,6 @@ export default function Coupons() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [showModal, setShowModal] = useState(false);
 
   const getAuthHeaders = () => {
@@ -190,7 +217,7 @@ export default function Coupons() {
   const fetchCoupons = async () => {
     const headers = getAuthHeaders();
     if (!headers) {
-      setError("Không tìm thấy token đăng nhập.");
+      toast.error("Không tìm thấy token đăng nhập.");
       setLoading(false);
       return;
     }
@@ -202,7 +229,7 @@ export default function Coupons() {
       const res = await axios.get("/api/coupons/my-coupons", { headers });
       setCoupons(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch (fetchError) {
-      setError(
+      toast.error(
         fetchError?.response?.data?.message || "Không tải được mã giảm giá.",
       );
     } finally {
@@ -221,7 +248,6 @@ export default function Coupons() {
 
   const openAddModal = () => {
     resetForm();
-    setNotice("");
     setError("");
     setShowModal(true);
   };
@@ -238,7 +264,7 @@ export default function Coupons() {
       code: coupon.code || "",
       discountType: coupon.discountType || "percent",
       discountValue: String(coupon.discountValue ?? ""),
-      minOrderValue: String(coupon.minOrderValue ?? ""),
+      minOrderValue: formatNumberInput(coupon.minOrderValue ?? ""),
       maxUsage: String(coupon.maxUsage ?? 1),
       startDate: coupon.startDate ? String(coupon.startDate).slice(0, 10) : "",
       endDate: coupon.endDate ? String(coupon.endDate).slice(0, 10) : "",
@@ -247,19 +273,21 @@ export default function Coupons() {
         : "",
       status: coupon.status || "active",
     });
-    setNotice("");
     setError("");
     setShowModal(true);
   };
 
   const updateForm = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [field]: field === "minOrderValue" ? formatNumberInput(value) : value,
+    }));
   };
 
   const buildPayload = () => ({
     ...form,
     discountValue: Number(form.discountValue || 0),
-    minOrderValue: Number(form.minOrderValue || 0),
+    minOrderValue: Number(getDigitsOnly(form.minOrderValue)),
     maxUsage: Number(form.maxUsage || 1),
     serviceIds: String(form.serviceIds || "")
       .split(",")
@@ -271,29 +299,28 @@ export default function Coupons() {
     e.preventDefault();
     const headers = getAuthHeaders();
     if (!headers) {
-      setError("Không tìm thấy token đăng nhập.");
+      toast.error("Không tìm thấy token đăng nhập.");
       return;
     }
 
     try {
       setIsSubmitting(true);
       setError("");
-      setNotice("");
 
       const payload = buildPayload();
 
       if (editingId) {
         await axios.put(`/api/coupons/${editingId}`, payload, { headers });
-        setNotice("Cập nhật mã giảm giá thành công.");
+        toast.success("Cập nhật mã giảm giá thành công.");
       } else {
         await axios.post("/api/coupons", payload, { headers });
-        setNotice("Tạo mã giảm giá thành công.");
+        toast.success("Tạo mã giảm giá thành công.");
       }
 
       closeModal();
       await fetchCoupons();
     } catch (submitError) {
-      setError(
+      toast.error(
         submitError?.response?.data?.message || "Không lưu được mã giảm giá.",
       );
     } finally {
@@ -305,7 +332,7 @@ export default function Coupons() {
   const handleDelete = async (couponId) => {
     const headers = getAuthHeaders();
     if (!headers) {
-      setError("Không tìm thấy token đăng nhập.");
+      toast.error("Không tìm thấy token đăng nhập.");
       return;
     }
 
@@ -313,15 +340,14 @@ export default function Coupons() {
 
     try {
       setError("");
-      setNotice("");
       setIsSubmitting(true);
 
       await axios.delete(`/api/coupons/${couponId}`, { headers });
 
-      setNotice("Đã xóa mã giảm giá.");
+      toast.success("Đã xóa mã giảm giá.");
       await fetchCoupons();
     } catch (deleteError) {
-      setError(
+      toast.error(
         deleteError?.response?.data?.message || "Không xóa được mã giảm giá.",
       );
     } finally {
@@ -356,12 +382,6 @@ export default function Coupons() {
       {error ? (
         <div className="mx-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600 sm:mx-6">
           {error}
-        </div>
-      ) : null}
-
-      {notice ? (
-        <div className="mx-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-[13px] text-green-700 sm:mx-6">
-          {notice}
         </div>
       ) : null}
 
@@ -427,7 +447,7 @@ export default function Coupons() {
                             {Array.isArray(coupon.serviceIds) &&
                             coupon.serviceIds.length > 0
                               ? `${coupon.serviceIds.length} dịch vụ`
-                              : "Áp dụng cho toàn bộ dịch vụ"}
+                              : ""}
                           </p>
                         </div>
                       </td>
@@ -450,10 +470,10 @@ export default function Coupons() {
                         {Number(coupon.maxUsage || 0)}
                       </td>
                       <td className="px-3 py-4 text-slate-600">
-                        <div className="whitespace-nowrap">
+                        <div className="flex whitespace-nowrap">
                           <p>{formatDate(coupon.startDate)}</p>
                           <p className="text-xs text-slate-400">
-                            đến {formatDate(coupon.endDate)}
+                           - {formatDate(coupon.endDate)}
                           </p>
                         </div>
                       </td>

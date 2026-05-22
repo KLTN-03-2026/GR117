@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiX } from "react-icons/fi";
+import toast from "react-hot-toast";
 import ButtonBack from "../../Components/shared/ButtonBack";
 import { splitLines, isValidImageUrl } from "../../utils/stringHelpers.js";
 import { fileToDataUrl } from "../../utils/fileToDataUrl.js";
@@ -45,6 +46,13 @@ const CATEGORY_LABELS = {
   "mao-hiem": "Mạo hiểm",
   "kham-pha": "Khám phá",
   "am-thuc": "Ẩm thực",
+};
+
+const getDigitsOnly = (value) => String(value || "").replace(/\D/g, "");
+
+const formatPriceInput = (value) => {
+  const digits = getDigitsOnly(value);
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
 const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
@@ -111,7 +119,10 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "price" ? formatPriceInput(value) : value,
+    }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -175,9 +186,10 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
 
   const validateFields = () => {
     const nextErrors = {};
+    const rawPrice = getDigitsOnly(formData.price);
     if (!formData.name.trim()) nextErrors.name = "Vui lòng nhập tên dịch vụ";
     if (!formData.location.trim()) nextErrors.location = "Vui lòng nhập địa điểm";
-    if (!formData.price || Number(formData.price) <= 0) nextErrors.price = "Giá phải lớn hơn 0";
+    if (!rawPrice || Number(rawPrice) <= 0) nextErrors.price = "Giá phải lớn hơn 0";
     if (!formData.category) nextErrors.category = "Vui lòng chọn danh mục";
     if (formData.seasons.length === 0) nextErrors.seasons = "Vui lòng chọn ít nhất 1 mùa";
     if (!formData.duration.trim()) nextErrors.duration = "Vui lòng nhập thời lượng";
@@ -209,21 +221,22 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
 
     const validationErrors = validateFields();
     if (Object.keys(validationErrors).length > 0) {
-      setMessage("Vui lòng kiểm tra các ô bị lỗi");
+      toast.error("Vui lòng kiểm tra các ô bị lỗi");
       return;
     }
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
-      setMessage("Bạn chưa đăng nhập hoặc token đã hết hạn");
+      toast.error("Bạn chưa đăng nhập hoặc token đã hết hạn");
       return;
     }
 
     const payload = new FormData();
+    const rawPrice = getDigitsOnly(formData.price);
     payload.append("serviceName", formData.name.trim());
     payload.append("nameProvider", currentUser?.fullName || currentUser?.email || "Provider");
     payload.append("description", formData.description.trim());
-    payload.append("prices", String(Number(formData.price)));
+    payload.append("prices", String(Number(rawPrice)));
     payload.append("location", formData.location.trim());
     payload.append("category", formData.category);
     payload.append("seasonTags", JSON.stringify(formData.seasons));
@@ -253,7 +266,7 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
       const result = await res.json();
       if (res.ok) {
         setSuccess(true);
-        setMessage("Thêm dịch vụ thành công");
+        toast.success("Thêm dịch vụ thành công");
         setFormData(EMPTY_FORM);
         setImageFiles([]);
         setItineraryFile(null);
@@ -267,10 +280,10 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
           navigate("/provider/services");
         }
       } else {
-        setMessage(result.message || "Không thể thêm dịch vụ");
+        toast.error(result.message || "Không thể thêm dịch vụ");
       }
     } catch (error) {
-      setMessage(`Lỗi kết nối server: ${error.message}`);
+      toast.error(`Lỗi kết nối server: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -353,8 +366,8 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
                   <div>
                     <label className={labelClass}><RequiredLabel>Giá</RequiredLabel></label>
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       name="price"
                       ref={setFieldRef("price")}
                       value={formData.price}
@@ -365,7 +378,7 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
                     {errors.price && <p className="mt-1 text-xs font-medium text-red-500">{errors.price}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}><RequiredLabel>Danh mục</RequiredLabel></label>
+                    <label className={labelClass}><Label>Danh mục</Label></label>
                     <select
                       name="category"
                       ref={setFieldRef("category")}
@@ -428,7 +441,7 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
                     {errors.seasons && <p className="mt-1 text-xs font-medium text-red-500">{errors.seasons}</p>}
                   </div>
                   <div>
-                    <label className={labelClass}>Thời lượng</label>
+                    <RequiredLabel className={labelClass}>Thời lượng</RequiredLabel>
                     <input
                       type="text"
                       name="duration"
@@ -446,7 +459,7 @@ const AddServices = ({ isModal = false, onClose, onCreated } = {}) => {
               <div>
                 <div className="space-y-6">
                   <div>
-                    <label className={labelClass}><RequiredLabel>Mô tả</RequiredLabel></label>
+                    <label className={labelClass}><Label>Mô tả</Label></label>
                     <textarea
                       name="description"
                       ref={setFieldRef("description")}
